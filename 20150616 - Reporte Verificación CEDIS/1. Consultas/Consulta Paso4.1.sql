@@ -4,7 +4,7 @@ SELECT FUV1.USER_NAME                                       CREATED_BY,
        TO_CHAR(LAST_UPDATE_DATE, 'DD-MON-YYYY HH24:MI:SS')  LAST_UPDATE_DATE,
        REPLACE(COLUMN_DESC, '_', ' ')                       COLUMN_DESC,
        COLUMN_VAL,  
-       PAC_VERIFY_CEDIS_PKG.VERIFY_STEP4(COLUMN_DESC, COLUMN_VAL, :P_ORG_INVENTORY_ID)  VALIDATION
+       PAC_VERIFY_CEDIS_PKG.VERIFY_STEP4(COLUMN_DESC, COLUMN_VAL, :P_ORG_INVENTORY_ID, :P_OPERATING_UNIT_ID)  VALIDATION
   FROM (SELECT TO_CHAR(MP.ORGANIZATION_CODE)                                             AS  "Organization_Code",
                TO_CHAR(HOU.NAME)                                                         AS  "Item_Master_Organization",
                TO_CHAR(MP.CALENDAR_CODE)                                                 AS  "Calendar",

@@ -58,4 +58,5 @@ SELECT FUV1.USER_NAME                                       CREATED_BY,
        FND_USER_VIEW  FUV2    
  WHERE 1 = 1
    AND FUV1.USER_ID = CREATED_BY
-   AND FUV2.USER_ID = LAST_UPDATED_BY                           
+   AND FUV2.USER_ID = LAST_UPDATED_BY     
+                 
