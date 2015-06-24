@@ -1,0 +1,67 @@
+SELECT 1    AS  "REPORT_BREAK",
+       D.PERIOD_TYPE,
+       D.PAYROLL,
+       D.EMPLOYEE_NUMBER,
+       D.EMPLOYEE_NAME,
+       D.FONACOT_CREDITO,
+       D.FONACOT_FOLIO,
+       SUM(D.FONACOT_MENSUAL)       AS  "FONACOT_MENSUAL",
+       D.FONACOT_DEBIDO_TOTAL,
+       TO_NUMBER(NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(MAX(D.ASSIGNMENT_ACTION_ID),  'D059_FONACOT', 'Saldo Pagado'),'0'))      AS  FONACOT_SALDO_PAGADO,
+       TO_NUMBER(NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(MAX(D.ASSIGNMENT_ACTION_ID),  'D059_FONACOT', 'Saldo Restante'),'0'))    AS  FONACOT_SALDO_RESTANTE,
+       MAX(D.ASSIGNMENT_ACTION_ID)  AS  "MAX_ASSIGNMENT_ACTION_ID"
+  FROM (SELECT DISTINCT
+               (CASE
+                    WHEN PPF.PERIOD_TYPE IN ('Week', 'Semana') THEN 'S'
+                    WHEN PPF.PERIOD_TYPE IN ('Semi-Month', 'Quincena') THEN 'Q'
+                END)                                                        AS  "PERIOD_TYPE",
+               PPF.ATTRIBUTE1                                               AS  "PAYROLL",
+               PAA.ASSIGNMENT_ID,          
+               PAPF.EMPLOYEE_NUMBER                                         AS  "EMPLOYEE_NUMBER",
+               PAPF.FULL_NAME                                               AS  "EMPLOYEE_NAME",
+               PAA.ASSIGNMENT_ACTION_ID,
+               NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D059_FONACOT', 'No Credito'),  '0')            AS  FONACOT_CREDITO,
+               NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D059_FONACOT', 'Folio'),       '0')            AS  FONACOT_FOLIO,
+               TO_NUMBER(NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D059_FONACOT', 'Pay Value'),   '0')) AS  FONACOT_MENSUAL,
+               TO_NUMBER(NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D059_FONACOT', 'Total Owed'),'0'))   AS  FONACOT_DEBIDO_TOTAL
+          FROM PAY_PAYROLL_ACTIONS          PPA,
+               PER_TIME_PERIODS             PTP,
+               PAY_ASSIGNMENT_ACTIONS       PAA,
+               PAY_PAYROLLS_F               PPF,
+               PER_ALL_PEOPLE_F             PAPF,
+               PER_ASSIGNMENTS_F            PAF
+         WHERE PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
+           AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
+           AND PPA.PAYROLL_ID = PPF.PAYROLL_ID 
+            ----------Parametros de Ejecucion-----------------
+           AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = :P_COMPANY_ID    
+           AND PPA.PAYROLL_ID = NVL(:P_PAYROLL_ID,  PPA.PAYROLL_ID)
+           AND PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
+           AND PPA.ACTION_TYPE IN ('Q', 'R')             
+           AND EXTRACT(YEAR FROM PPA.EFFECTIVE_DATE) = :P_YEAR
+           AND EXTRACT(MONTH FROM PPA.EFFECTIVE_DATE) = :P_MONTH
+           ------------------------------------------------------  
+           AND PAPF.PERSON_ID = PAF.PERSON_ID
+           AND PAF.ASSIGNMENT_ID = PAA.ASSIGNMENT_ID 
+           AND PPA.EFFECTIVE_DATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+           AND PPA.EFFECTIVE_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
+         GROUP BY PAA.ASSIGNMENT_ACTION_ID, 
+                  PPF.PERIOD_TYPE,
+                  PPF.ATTRIBUTE1,
+                  PAA.ASSIGNMENT_ID,
+                  PAPF.EMPLOYEE_NUMBER,
+                  PAPF.FULL_NAME) D
+ WHERE 1 = 1           
+   AND D.FONACOT_CREDITO <> 0
+ GROUP BY D.PERIOD_TYPE,
+          D.PAYROLL,
+          D.EMPLOYEE_NUMBER,
+          D.EMPLOYEE_NAME,
+          D.FONACOT_CREDITO,
+          D.FONACOT_FOLIO,
+          D.FONACOT_DEBIDO_TOTAL
+ ORDER BY D.PERIOD_TYPE,        
+          D.PAYROLL,
+          D.EMPLOYEE_NAME;
+          
+ 

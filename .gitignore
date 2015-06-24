@@ -13,6 +13,29 @@ $RECYCLE.BIN/
 *.msi
 *.msm
 *.msp
+*.rar
+*.zip
+*.rdf
+*.rtf
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.xml
+*.png
+*.txt
+*.csv
+*.eft
+*.fmx
+*.fmb
+*.mp4
+*.mp3
+*.jpg
+*.camrec
+*.gsheet
+*.gform
+
 
 # Windows shortcuts
 *.lnk

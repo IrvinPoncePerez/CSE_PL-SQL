@@ -1,0 +1,31 @@
+        SELECT HAPF.POSITION_ID,
+               FFV.FLEX_VALUE           AS  "NUM_DEPARTMENT",
+               FFVT.DESCRIPTION         AS  "DEPARTMENT",
+               PPD.SEGMENT1             AS  "POSITION",
+               HAPF.FTE                 AS  "FTE"
+          FROM FND_FLEX_VALUE_SETS   FFVS,
+               FND_FLEX_VALUES       FFV,
+               FND_FLEX_VALUES_TL    FFVT,
+               PER_POSITION_DEFINITIONS PPD,
+               HR_ALL_POSITIONS_F       HAPF
+         WHERE FFVS.FLEX_VALUE_SET_NAME = 'XXCALV_DEPA'
+           AND FFV.FLEX_VALUE_SET_ID = FFVS.FLEX_VALUE_SET_ID
+           AND FFVT.LANGUAGE = USERENV('LANG')
+           AND FFV.FLEX_VALUE_ID = FFVT.FLEX_VALUE_ID
+           AND FFV.ENABLED_FLAG = 'Y'
+           AND FFV.FLEX_VALUE = PPD.SEGMENT2
+           AND PPD.POSITION_DEFINITION_ID = HAPF.POSITION_DEFINITION_ID;
+           
+           
+        SELECT PPG.SEGMENT1             AS  "NUM_AREA",
+               FFV.FLEX_VALUE           AS  "NUM_MANAGEMENT",
+               FFVT.DESCRIPTION         AS  "DES_MANAGEMENT"
+          FROM PAY_PEOPLE_GROUPS        PPG,
+               FND_FLEX_VALUE_SETS      FFVS,
+               FND_FLEX_VALUES          FFV,
+               FND_FLEX_VALUES_TL       FFVT
+         WHERE FFVS.FLEX_VALUE_SET_NAME = 'CALV_GERENCIAS'
+           AND FFVS.FLEX_VALUE_SET_ID = FFV.FLEX_VALUE_SET_ID
+           AND FFV.FLEX_VALUE_ID = FFVT.FLEX_VALUE_ID
+           AND FFVT.LANGUAGE = USERENV('LANG')
+           AND PPG.SEGMENT2 = FFV.FLEX_VALUE;

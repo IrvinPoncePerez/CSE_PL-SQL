@@ -1,0 +1,56 @@
+SELECT F.NUM_DAY,
+       F.MON_DAY,
+       D.VEHICLE_ID,
+       D.DEPARTURE_NUMBER,
+       D.DEPARTURE_DATE,
+       D.DRIVER_NAME,
+       D.DESTINATION_NAME,
+       D.ACTUAL_READING,
+       D.TRIP_DISTANCE,
+       PAC_FUEL_EC_REPORTS_PKG.GET_READING_ACUM(:P_VEHICLE_ID, F.MON_DAY)    AS  READING_ACUM,
+       D.CONSUMED_FUEL,
+       D.EXTERNAL_CONSUMED_FUEL,
+       D.TOTAL_CONSUMED_FUEL,
+       PAC_FUEL_EC_REPORTS_PKG.GET_CONSUMED_FUEL_ACUM(:P_VEHICLE_ID, F.MON_DAY)    AS  CONSUMED_FUEL_ACUM,
+       D.REAL_EFFICIENCY,
+       PAC_FUEL_EC_REPORTS_PKG.GET_EFFICIENCY_ACUM(:P_VEHICLE_ID, F.MON_DAY)    AS  EFFICIENCY_ACUM,
+       D.TRAILER_TYPE,
+       D.DIFFERENCE
+  FROM (SELECT PFED1.DEPARTURE_NUMBER,
+               PFEE.VEHICLE_ID,
+               PFED2.DEPARTURE_DATE,
+               PFED1.DRIVER_NAME,
+               PFED1.TO_ORG_NAME     AS  DESTINATION_NAME,
+               PFEE.ACTUAL_READING,
+               PFEE.TRIP_DISTANCE,
+               PFEE.CONSUMED_FUEL,
+               PFEE.EXTERNAL_CONSUMED_FUEL,
+               PFEE.TOTAL_CONSUMED_FUEL,
+               PFEE.REAL_EFFICIENCY,
+               PFED1.TRAILER_TYPE,
+               PFEE.ATTRIBUTE3      AS  DIFFERENCE
+          FROM PAC_FUEL_EC_DEPARTURES       PFED1,
+               PAC_FUEL_EC_EFFICIENCIES     PFEE,
+               PAC_FUEL_EC_DEPARTURES       PFED2
+         WHERE PFED1.DEPARTURE_TYPE = 'SALIDA'
+           AND PFED1.DEPARTURE_NUMBER = PFEE.TRAFFIC_NUMBER
+           AND PFED1.DEPARTURE_ID = PFEE.DEPARTURE_ID
+           AND PFEE.ATTRIBUTE4 = 'Y'
+           AND PFEE.VEHICLE_ID = :P_VEHICLE_ID 
+           AND PFED2.DEPARTURE_TYPE = 'ENTRADA'
+           AND PFED2.DEPARTURE_NUMBER = PFEE.TRAFFIC_NUMBER
+           AND PFED2.DEPARTURE_ID = PFEE.ARRIVAL_ID
+        )      D
+   RIGHT JOIN ( SELECT LEVEL                  NUM_DAY,
+                       TO_DATE(TO_CHAR(LEVEL
+                                       , '09')||
+                               TO_CHAR(EXTRACT(MONTH FROM :CP_DATE)
+                                       , '09')||
+                               TO_CHAR(EXTRACT(YEAR FROM :CP_DATE)
+                                       , '9999')
+                               ,'dd.mm.yyyy') MON_DAY
+                  FROM DUAL 
+                 WHERE ROWNUM <= EXTRACT(DAY FROM LAST_DAY(:CP_DATE))
+               CONNECT BY LEVEL = ROWNUM 
+               )  F ON F.MON_DAY = D.DEPARTURE_DATE
+   ORDER BY F.NUM_DAY;

@@ -1,0 +1,1 @@
+wscript "C:\sendkey.vbs"

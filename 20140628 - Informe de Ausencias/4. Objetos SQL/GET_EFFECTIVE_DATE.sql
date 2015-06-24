@@ -1,0 +1,42 @@
+CREATE OR REPLACE FUNCTION PAC_GET_EFFECTIVE_DATE(P_PERSON_ID     NUMBER)   
+RETURN VARCHAR2
+IS
+    EFFECTIVE_DATE      VARCHAR2(50);
+BEGIN
+   
+    BEGIN
+
+        SELECT PPTU.EFFECTIVE_START_DATE
+          INTO EFFECTIVE_DATE
+          FROM PER_PERSON_TYPE_USAGES_F     PPTU,
+               PER_PERIODS_OF_SERVICE_V     PPOS
+         WHERE PPTU.PERSON_ID = P_PERSON_ID
+           AND PPOS.PERSON_ID = PPTU.PERSON_ID
+           AND PPTU.EFFECTIVE_START_DATE = PPOS.DATE_START
+           AND PPOS.ACTUAL_TERMINATION_DATE IS NULL;
+           
+    EXCEPTION WHEN OTHERS THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error en la ejecución de la consulta de la fecha de alta. ' || SQLERRM);
+        dbms_output.put_line('**Error en la ejecución de la consulta de la fecha de alta. ' || SQLERRM);
+    END;
+       
+    IF EFFECTIVE_DATE IS NULL THEN
+        
+        SELECT MAX(PPTU.EFFECTIVE_START_DATE)
+          INTO EFFECTIVE_DATE
+          FROM PER_PERSON_TYPE_USAGES_F     PPTU,
+               PER_PERIODS_OF_SERVICE_V     PPOS
+         WHERE PPTU.PERSON_ID = P_PERSON_ID
+           AND PPOS.PERSON_ID = PPTU.PERSON_ID
+           AND PPTU.EFFECTIVE_START_DATE = PPOS.DATE_START
+           AND PPOS.ACTUAL_TERMINATION_DATE IS NOT NULL;
+    
+    END IF;
+    
+
+    RETURN EFFECTIVE_DATE;  
+
+EXCEPTION WHEN OTHERS THEN
+    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error en la ejecución de la función GET_EFFECTIVE_DATE. ' || SQLERRM);
+    dbms_output.put_line('**Error en la ejecución de la función GET_EFFECTIVE_DATE. ' || SQLERRM);
+END;

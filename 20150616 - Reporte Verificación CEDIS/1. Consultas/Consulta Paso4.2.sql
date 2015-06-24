@@ -1,0 +1,73 @@
+SELECT FUV1.USER_NAME                                       CREATED_BY,
+       TO_CHAR(CREATION_DATE, 'DD-MON-YYYY HH24:MI:SS')     CREATION_DATE,
+       FUV2.USER_NAME                                       LAST_UPDATED_BY,
+       TO_CHAR(LAST_UPDATE_DATE, 'DD-MON-YYYY HH24:MI:SS')  LAST_UPDATE_DATE,
+       REPLACE(COLUMN_DESC, '_', ' ')                       COLUMN_DESC,
+       COLUMN_VAL,  
+       PAC_VERIFY_CEDIS_PKG.VERIFY_STEP4(COLUMN_DESC, COLUMN_VAL, :P_ORG_INVENTORY_ID)  VALIDATION
+  FROM (SELECT TO_CHAR(RP.ENFORCE_SHIP_TO_LOCATION_CODE)        AS  "Enforce_Ship-To",
+               TO_CHAR(RP.RECEIPT_ASN_EXISTS_CODE)              AS  "ASN_Control_Action",
+               TO_CHAR(RP.DAYS_EARLY_RECEIPT_ALLOWED)           AS  "Receipt_Days_Early",
+               TO_CHAR(RP.DAYS_LATE_RECEIPT_ALLOWED)            AS  "Receipt_Days_Late",
+               TO_CHAR(RP.RECEIPT_DAYS_EXCEPTION_CODE)          AS  "Receipt_Days_Exceed-Action",
+               TO_CHAR(RP.QTY_RCV_TOLERANCE)                    AS  "Over_Receipt_Tolerance",
+               TO_CHAR(RP.QTY_RCV_EXCEPTION_CODE)               AS  "Over_Receipt_Action",
+               TO_CHAR(PRR1.RECEIVING_ROUTING_NAME)             AS  "RMA_Receipt_Routing",
+               TO_CHAR(PRR2.RECEIVING_ROUTING_NAME)             AS  "Receipt_Routing",
+               TO_CHAR(RP.ALLOW_SUBSTITUTE_RECEIPTS_FLAG)       AS  "Allow_Substitute_Receipts",
+               TO_CHAR(RP.ALLOW_UNORDERED_RECEIPTS_FLAG)        AS  "Allow_Unordered_Receipts",
+               TO_CHAR(RP.ALLOW_EXPRESS_DELIVERY_FLAG)          AS  "Allow_Express_Transactions",
+               TO_CHAR(RP.ALLOW_CASCADE_TRANSACTIONS)           AS  "Allow_Cascade_Transactions",
+               TO_CHAR(RP.BLIND_RECEIVING_FLAG)                 AS  "Allow_Blind_Receiving",
+               TO_CHAR(RP.ENFORCE_RMA_SERIAL_NUM)               AS  "Validate_Serial_Numbers",
+               TO_CHAR(RP.USER_DEFINED_RECEIPT_NUM_CODE)        AS  "Receipt_Number_Generation",
+               TO_CHAR(RP.MANUAL_RECEIPT_NUM_TYPE)              AS  "Receipt_Number_Type",
+               TO_CHAR(RP.NEXT_RECEIPT_NUM)                     AS  "Next_Receipt_Number",
+               TO_CHAR(RP.ENFORCE_RMA_LOT_NUM)                  AS  "Validate_Lots_on_RMA_Receipts",
+               TO_CHAR(PAC_VERIFY_CEDIS_PKG.GET_ACCOUNT(RP.RECEIVING_ACCOUNT_ID))        AS  "Receiving_Inventory",
+               TO_CHAR(PAC_VERIFY_CEDIS_PKG.GET_ACCOUNT(RP.RETROPRICE_ADJ_ACCOUNT_ID))   AS  "Retroactive_Price_Adjustment",
+               TO_CHAR(PAC_VERIFY_CEDIS_PKG.GET_ACCOUNT(RP.CLEARING_ACCOUNT_ID))         AS  "Clearing",
+               TO_CHAR(RP.ADVANCED_PRICING)                     AS  "Advanced_Pricing",
+               TO_CHAR(RP.TRANSPORTATION_EXECUTION)             AS  "Transportation_Execution",
+               RP.CREATED_BY,
+               RP.CREATION_DATE,
+               RP.LAST_UPDATED_BY,
+               RP.LAST_UPDATE_DATE
+          FROM RCV_PARAMETERS           RP,
+               POBV_RECEIVING_ROUTINGS  PRR1,
+               POBV_RECEIVING_ROUTINGS  PRR2
+         WHERE 1 = 1
+           AND RP.ORGANIZATION_ID = :P_ORG_INVENTORY_ID
+           AND PRR1.RECEIVING_ROUTING_ID = RP.RMA_RECEIPT_ROUTING_ID
+           AND PRR2.RECEIVING_ROUTING_ID = RP.RECEIVING_ROUTING_ID
+        ) DETAIL
+ UNPIVOT (COLUMN_VAL FOR COLUMN_DESC IN("Enforce_Ship-To",
+                                        "ASN_Control_Action",
+                                        "Receipt_Days_Early",
+                                        "Receipt_Days_Late",
+                                        "Receipt_Days_Exceed-Action",
+                                        "Over_Receipt_Tolerance",
+                                        "Over_Receipt_Action",
+                                        "RMA_Receipt_Routing",
+                                        "Receipt_Routing",
+                                        "Allow_Substitute_Receipts",
+                                        "Allow_Unordered_Receipts",
+                                        "Allow_Express_Transactions",
+                                        "Allow_Cascade_Transactions",
+                                        "Allow_Blind_Receiving",
+                                        "Validate_Serial_Numbers",
+                                        "Receipt_Number_Generation",
+                                        "Receipt_Number_Type",
+                                        "Next_Receipt_Number",
+                                        "Validate_Lots_on_RMA_Receipts",
+                                        "Receiving_Inventory",
+                                        "Retroactive_Price_Adjustment",
+                                        "Clearing",
+                                        "Advanced_Pricing",
+                                        "Transportation_Execution")),
+       FND_USER_VIEW  FUV1,
+       FND_USER_VIEW  FUV2    
+ WHERE 1 = 1
+   AND FUV1.USER_ID = CREATED_BY
+   AND FUV2.USER_ID = LAST_UPDATED_BY                                           
+        

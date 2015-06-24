@@ -1,0 +1,66 @@
+SELECT D.NUM_DEPARTMENT,
+       D.DEPARTMENT,
+       D.POSITION,
+       D.FTE,
+       COUNT(DISTINCT PAF1.PERSON_ID)                   AS  "CATEGORY_PLANTA",
+       COUNT(DISTINCT PAF2.PERSON_ID)                   AS  "CATEGORY_EVENTUAL",
+       NVL(PAF1.PEOPLE_GROUP_ID, PAF2.PEOPLE_GROUP_ID)  AS  "PEOPLE_GROUP",
+       P.NUM_MANAGEMENT,
+       P.DES_MANAGEMENT,
+       P.NUM_AREA
+  FROM (SELECT HAPF.POSITION_ID,
+               FFV.FLEX_VALUE           AS  "NUM_DEPARTMENT",
+               FFVT.DESCRIPTION         AS  "DEPARTMENT",
+               PPD.SEGMENT1             AS  "POSITION",
+               HAPF.FTE                 AS  "FTE"
+          FROM FND_FLEX_VALUE_SETS   FFVS,
+               FND_FLEX_VALUES       FFV,
+               FND_FLEX_VALUES_TL    FFVT,
+               PER_POSITION_DEFINITIONS PPD,
+               HR_ALL_POSITIONS_F       HAPF
+         WHERE FFVS.FLEX_VALUE_SET_NAME = 'XXCALV_DEPA'
+           AND FFV.FLEX_VALUE_SET_ID = FFVS.FLEX_VALUE_SET_ID
+           AND FFVT.LANGUAGE = USERENV('LANG')
+           AND FFV.FLEX_VALUE_ID = FFVT.FLEX_VALUE_ID
+           AND FFV.ENABLED_FLAG = 'Y'
+           AND FFV.FLEX_VALUE = PPD.SEGMENT2
+           AND PPD.POSITION_DEFINITION_ID = HAPF.POSITION_DEFINITION_ID) D
+  LEFT JOIN PER_ALL_ASSIGNMENTS_F   PAF1 
+         ON (    D.POSITION_ID = PAF1.POSITION_ID 
+             AND PAF1.EMPLOYMENT_CATEGORY LIKE '%MX1_P%'
+             AND (    PAF1.EFFECTIVE_START_DATE <= TO_DATE(:P_YEAR || '/' || :P_MONTH || '/1', 'yyyy/mm/dd')
+                  AND PAF1.EFFECTIVE_END_DATE >= LAST_DAY(TO_DATE(:P_YEAR || '/' || :P_MONTH || '/1', 'yyyy/mm/dd')))
+             AND PAF1.ASSIGNMENT_STATUS_TYPE_ID = 1)
+  LEFT JOIN PER_ALL_ASSIGNMENTS_F   PAF2
+         ON (    D.POSITION_ID = PAF2.POSITION_ID 
+             AND PAF2.EMPLOYMENT_CATEGORY LIKE '%MX2_E%'
+             AND (    PAF2.EFFECTIVE_START_DATE <= TO_DATE(:P_YEAR || '/' || :P_MONTH || '/1', 'yyyy/mm/dd')
+                  AND PAF2.EFFECTIVE_END_DATE >= LAST_DAY(TO_DATE(:P_YEAR || '/' || :P_MONTH || '/1', 'yyyy/mm/dd')))
+             AND PAF2.ASSIGNMENT_STATUS_TYPE_ID = 1)
+  LEFT JOIN (SELECT PPG.PEOPLE_GROUP_ID,
+                    PPG.SEGMENT1             AS  "NUM_AREA",
+                    FFV.FLEX_VALUE           AS  "NUM_MANAGEMENT",
+                    FFVT.DESCRIPTION         AS  "DES_MANAGEMENT"
+               FROM PAY_PEOPLE_GROUPS        PPG,
+                    FND_FLEX_VALUE_SETS      FFVS,
+                    FND_FLEX_VALUES          FFV,
+                    FND_FLEX_VALUES_TL       FFVT
+              WHERE FFVS.FLEX_VALUE_SET_NAME = 'CALV_GERENCIAS'
+                AND FFVS.FLEX_VALUE_SET_ID = FFV.FLEX_VALUE_SET_ID
+                AND FFV.FLEX_VALUE_ID = FFVT.FLEX_VALUE_ID
+                AND FFVT.LANGUAGE = USERENV('LANG')
+                AND PPG.SEGMENT2 = FFV.FLEX_VALUE)       P
+             ON P.PEOPLE_GROUP_ID = NVL(PAF1.PEOPLE_GROUP_ID, PAF2.PEOPLE_GROUP_ID)
+ WHERE 1 = 1
+--   AND D.DEPARTMENT LIKE '%GERENCIA DE%'
+ GROUP BY   D.NUM_DEPARTMENT,
+            D.DEPARTMENT,
+            D.POSITION,
+            D.FTE,
+            PAF1.PEOPLE_GROUP_ID,
+            PAF2.PEOPLE_GROUP_ID,
+            P.NUM_MANAGEMENT,
+            P.DES_MANAGEMENT,
+            P.NUM_AREA            
+ ORDER BY   D.NUM_DEPARTMENT,
+            D.POSITION;
