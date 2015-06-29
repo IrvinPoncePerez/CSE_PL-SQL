@@ -13,61 +13,55 @@ declare
    l_asset_dist_tbl           FA_API_TYPES.asset_dist_tbl_type;
    l_inv_tbl                  FA_API_TYPES.inv_tbl_type;
    l_inv_rate_tbl             FA_API_TYPES.inv_rate_tbl_type;
-   l_inv_rec                  FA_API_TYPES.inv_rec_type;
 
-   l_return_status            VARCHAR2(1);          
+   l_return_status            VARCHAR2(1);     
    l_mesg_count               number;
    l_mesg                     varchar2(4000);
 
 begin
 
-    l_asset_desc_rec.DESCRIPTION        :=  'SEMI REMOLQUE TIPO TOLVA';
-    l_asset_desc_rec.TAG_NUMBER         :=  'E-52';
-    l_asset_desc_rec.SERIAL_NUMBER      :=  '3R9T84432FD';
-    l_asset_desc_rec.CURRENT_UNITS      :=  1;
-        
-    l_asset_cat_rec.CATEGORY_ID         :=  106;
---    l_asset_cat_rec.CATEGORY_DESC_FLEX :=  'EQUIPO DE TRANSPORTE.SEMI REMOLQUE';
-    
-    l_asset_type_rec.ASSET_TYPE         :=  'CAPITALIZED';
-        
-    l_inv_rec.PO_VENDOR_ID              :=  1386;
-    l_inv_rec.INVOICE_NUMBER            :=  1333;
-    
-    l_asset_hdr_rec.BOOK_TYPE_CODE      :=  'CORP GRB';
-    
-    l_asset_fin_rec.COST                :=  380000;
-    l_asset_fin_rec.DATE_PLACED_IN_SERVICE  :=  '01-JAN-2011';
-    l_asset_fin_rec.DEPRN_METHOD_CODE   :=  'TASA 20';
-    l_asset_fin_rec.DEPRECIATE_FLAG     :=  'Y';
---    l_asset_fin_rec.LIFE_IN_YEARS     :=  5;
-    l_asset_fin_rec.LIFE_IN_MONTHS :=  0;
-    l_asset_fin_rec.PRORATE_CONVENTION_CODE :=  'MES SIGUIE';
-    
-    l_asset_dist_rec.UNITS_ASSIGNED     :=  1;
-    l_asset_dist_rec.EXPENSE_CCID       :=  10692;
-    l_asset_dist_rec.LOCATION_CCID        :=  104;
-    
-    
-    --FA_ADDITIONS
-    --FA_CATEGORIES_B
-    --PO_VENDORS
-    --FA_BOOK_CONTROLS
-    --FA_METHODS
-    --FA_CONVENTION_TYPES,
-    --GL_CODE_COMBINATIONS
-    --FA_LOCATIONS_KFV
-    
-    
+   dbms_output.enable(10000000);
 
-   
+   FA_SRVR_MSG.Init_Server_Message;
 
-   -- call the api
+   -- desc info
+   l_asset_desc_rec.description                  := '&description';
+   l_asset_desc_rec.asset_key_ccid               := null;
+
+   -- cat info 
+   l_asset_cat_rec.category_id                   := &category_id
+
+   --type info
+   l_asset_type_rec.asset_type                   := '&asset_type';
+
+   -- fin info
+   l_asset_fin_rec.cost                          := &cost
+   l_asset_fin_rec.date_placed_in_service        := '&DPIS';
+   l_asset_fin_rec.depreciate_flag               := 'YES';
+
+   -- deprn info
+   l_asset_deprn_rec.ytd_deprn                   := &ytd
+   l_asset_deprn_rec.deprn_reserve               := &reserve
+   l_asset_deprn_rec.bonus_ytd_deprn             := 0;
+   l_asset_deprn_rec.bonus_deprn_reserve         := 0;
+
+   -- book / trans info
+   l_asset_hdr_rec.book_type_code                := '&book';
+
+   -- distribution info
+   l_asset_dist_rec.units_assigned               := 1;
+   l_asset_dist_rec.expense_ccid                 := &ccid
+   l_asset_dist_rec.location_ccid                := &location_id
+   l_asset_dist_rec.assigned_to                  := null;
+   l_asset_dist_rec.transaction_units            := l_asset_dist_rec.units_assigned;
+   l_asset_dist_tbl(1)                           := l_asset_dist_rec;
+
+   -- call the api 
    fa_addition_pub.do_addition(
            -- std parameters
            p_api_version             => 1.0,
            p_init_msg_list           => FND_API.G_FALSE,
-           p_commit                  => FND_API.G_TRUE,
+           p_commit                  => FND_API.G_FALSE,
            p_validation_level        => FND_API.G_VALID_LEVEL_FULL,
            p_calling_fn              => null,
            x_return_status           => l_return_status,
@@ -86,8 +80,6 @@ begin
            px_asset_dist_tbl         => l_asset_dist_tbl,
            px_inv_tbl                => l_inv_tbl
           );
- 
-   dbms_output.put_line(l_return_status);
 
    --dump messages
    l_mesg_count := fnd_msg_pub.count_msg;
@@ -111,7 +103,6 @@ begin
       fnd_msg_pub.delete_msg();
 
    end if;
-
 
    if (l_return_status <> FND_API.G_RET_STS_SUCCESS) then
      dbms_output.put_line('FAILURE');
