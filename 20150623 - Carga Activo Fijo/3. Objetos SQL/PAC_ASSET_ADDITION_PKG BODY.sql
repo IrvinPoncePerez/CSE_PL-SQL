@@ -1,10 +1,58 @@
 CREATE OR REPLACE PACKAGE BODY PAC_ASSET_ADDITION_PKG
 IS
 
-    PROCEDURE ASSET_ADDITION
+    PROCEDURE ASSET_ADDITION(
+                    P_ERRBUF    OUT NOCOPY  VARCHAR2,
+                    P_RETCODE   OUT NOCOPY  VARCHAR2
+              )
     IS
+    
+            CURSOR DETAIL_LIST  IS
+                SELECT PAAT.DESCRIPTION,
+                       PAAT.TAG_NUMBER,
+                       PAAT.SERIAL_NUMBER,
+                       PAAT.UNITS,
+                       PAAT.CATEGORY,
+                       PAAT.COST,
+                       PAAT.VENDOR_NAME,
+                       PAAT.INVOICE_NUMBER,
+                       PAAT.BOOK_CODE,
+                       PAAT.DATE_IN_SERVICE,
+                       PAAT.DEPRECIATE_METHOD,
+                       PAAT.PRORATE_CODE,
+                       PAAT.CODE_COMBINATION,
+                       PAAT.LOCATION
+                  FROM PAC_ASSET_ADDITIONS_TB   PAAT;
+    
     BEGIN
-        NULL;
+    
+    
+        FOR detail  IN  DETAIL_LIST LOOP
+            ADD_ASSET_ADDITION(
+                P_DESCRIPTION       => detail.DESCRIPTION,
+                P_TAG_NUMBER        => detail.TAG_NUMBER,
+                P_SERIAL_NUMBER     => detail.SERIAL_NUMBER,
+                P_UNITS             => TO_NUMBER(detail.UNITS),
+                P_CATEGORY          => detail.CATEGORY,
+                P_COST              => TO_NUMBER(REPLACE(detail.COST, ',', '')),
+                P_VENDOR_NAME       => detail.VENDOR_NAME,
+                P_INVOICE_NUMBER    => detail.INVOICE_NUMBER,
+                P_BOOK_CODE         => detail.BOOK_CODE,
+                P_DATE_IN_SERVICE   => TO_DATE(detail.DATE_IN_SERVICE, 'dd/mm/yyyy'),
+                P_DEPRECIATE_METHOD => detail.DEPRECIATE_METHOD,
+                P_PRORATE_CODE      => detail.PRORATE_CODE,
+                P_CODE_COMBINATION  => detail.CODE_COMBINATION,
+                P_LOCATION          => detail.LOCATION
+            );
+        END LOOP;
+        
+        
+        FND_FILE.PUT_LINE(FND_FILE.LOG , '**************************************************************************************************');
+        
+        
+        DELETE FROM PAC_ASSET_ADDITIONS_TB;   
+        COMMIT;     
+    
     END ASSET_ADDITION;
     
     PROCEDURE ADD_ASSET_ADDITION (
@@ -20,8 +68,8 @@ IS
                     P_DATE_IN_SERVICE       DATE,       --Fecha en Servicio
                     P_DEPRECIATE_METHOD     VARCHAR2,   --Método
                     P_PRORATE_CODE          VARCHAR2,   --Convención Prorrateo
-                    P_CODE_COMBINATION      NUMBER,     --Cuenta Gastos
-                    P_LOCATION              NUMBER      --Dirección
+                    P_CODE_COMBINATION      VARCHAR2,     --Cuenta Gastos
+                    P_LOCATION              VARCHAR2      --Dirección
               )
     IS
     
@@ -69,6 +117,7 @@ IS
         
         
         FND_FILE.PUT_LINE(FND_FILE.LOG , '**************************************************************************************************');
+        FND_FILE.PUT_LINE(FND_FILE.LOG , '');
         
         FA_SRVR_MSG.Init_Server_Message;
 
@@ -91,10 +140,11 @@ IS
                AND FCB.SEGMENT2 = SUBSTR(P_CATEGORY, INSTR(P_CATEGORY, '.') + 1);
                
         EXCEPTION WHEN OTHERS THEN
-            FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar la categoría.');
+            FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar la categoría.' || SQLERRM);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Descripción : ' || P_DESCRIPTION);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Etiqueta : ' || P_TAG_NUMBER);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Serie : ' || P_SERIAL_NUMBER);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Categoría : ' || P_CATEGORY);
             RETURN;
         END;
         
@@ -109,19 +159,20 @@ IS
                     CONSULTA DEL PROVEEDOR
         **********************************************/
         BEGIN
-        
-            SELECT VENDOR_ID
-              INTO var_vendor_id
-              FROM PO_VENDORS   PV
-             WHERE 1 = 1
-               AND PV.VENDOR_TYPE_LOOKUP_CODE = 'VENDOR'
-               AND PV.VENDOR_NAME = P_VENDOR_NAME;
-               
+            IF P_VENDOR_NAME IS NOT NULL THEN
+                SELECT VENDOR_ID
+                  INTO var_vendor_id
+                  FROM PO_VENDORS   PV
+                 WHERE 1 = 1
+                   AND PV.VENDOR_TYPE_LOOKUP_CODE = 'VENDOR'
+                   AND PV.VENDOR_NAME = P_VENDOR_NAME;
+            END IF;
         EXCEPTION WHEN OTHERS THEN
-            FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar el nombre del proveedor.');
+            FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar el nombre del proveedor.' || SQLERRM);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Descripción : ' || P_DESCRIPTION);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Etiqueta : ' || P_TAG_NUMBER);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Serie : ' || P_SERIAL_NUMBER);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Proveedor : ' || P_VENDOR_NAME);
             RETURN;
         END;
                                   
@@ -153,10 +204,11 @@ IS
                AND FM.METHOD_CODE = P_DEPRECIATE_METHOD;
                
         EXCEPTION WHEN OTHERS THEN
-            FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar el método de depreciación.');
+            FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar el método de depreciación.' || SQLERRM);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Descripción : ' || P_DESCRIPTION);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Etiqueta : ' || P_TAG_NUMBER);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Serie : ' || P_SERIAL_NUMBER);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Método de Depreciación : ' || P_DEPRECIATE_METHOD);
             RETURN;
         END;
         
@@ -185,10 +237,11 @@ IS
                    GCC.SEGMENT6 = REPLACE(P_CODE_COMBINATION, '-', '');
         
         EXCEPTION WHEN OTHERS THEN
-            FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar la cuenta contable.');
+            FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar la cuenta contable.' || SQLERRM);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Descripción : ' || P_DESCRIPTION);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Etiqueta : ' || P_TAG_NUMBER);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Serie : ' || P_SERIAL_NUMBER);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Cuenta de Gastos : ' || P_CODE_COMBINATION);
             RETURN;
         END;
         
@@ -197,24 +250,35 @@ IS
         /**********************************************
                     CONSULTA DE LA DIRECCIÓN
         **********************************************/
-        BEGIN
+        DECLARE
+            var_segment1    VARCHAR2(100);
+            var_segment2    VARCHAR2(100);
+            var_segment3    VARCHAR2(100);
+            var_location    VARCHAR2(100);
+        BEGIN  
+        
+            var_segment1 := TRIM(SUBSTR(P_LOCATION, 0, INSTR(P_LOCATION, '.') - 1));
+            var_location := TRIM(REPLACE(P_LOCATION, SUBSTR(P_LOCATION, 0, INSTR(P_LOCATION, '.')), ''));
+            var_segment2 := TRIM(SUBSTR(var_location, 0, INSTR(var_location, '.') - 1));
+            var_segment3 := TRIM(REPLACE(var_location, SUBSTR(var_location, 0, INSTR(var_location, '.')), ''));
             
-            SELECT FLK.LOCATION_ID
+            SELECT FL.LOCATION_ID
               INTO var_location_id
-              FROM FA_LOCATIONS_KFV FLK
-             WHERE 1 = 1
-               AND FLK.CONCATENATED_SEGMENTS = P_LOCATION
-               AND FLK.ENABLED_FLAG = 'Y';
+              FROM FA_LOCATIONS FL
+             WHERE SEGMENT1 = var_segment1
+               AND SEGMENT2 = var_segment2
+               AND SEGMENT3 = SUBSTR(var_segment3, 0, 4);
         
         EXCEPTION WHEN OTHERS THEN
-            FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar la dirección de asignación.');
+            FND_FILE.PUT_LINE(FND_FILE.LOG, '* * * ERROR * * *: Al consultar la dirección de asignación.' || SQLERRM);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Descripción : ' || P_DESCRIPTION);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Etiqueta : ' || P_TAG_NUMBER);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Serie : ' || P_SERIAL_NUMBER);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Dirección : ' || P_LOCATION);
             RETURN;
         END;
         
-        l_asset_dist_rec.LOCATION_CCID      :=  var_location_id;                                --Required
+        l_asset_dist_rec.LOCATION_CCID      :=  var_location_id;                                
         l_asset_dist_rec.ASSIGNED_TO        :=  NULL;
         l_asset_dist_rec.TRANSACTION_UNITS  :=  l_asset_dist_rec.UNITS_ASSIGNED;
         l_asset_dist_tbl(1)                 :=  l_asset_dist_rec;
