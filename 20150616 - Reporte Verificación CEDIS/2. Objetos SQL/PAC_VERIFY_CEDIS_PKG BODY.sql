@@ -123,7 +123,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_VERIFY_CEDIS_PKG  AS
     END;
     
     
-    FUNCTION VERIFY_STEP5 (ORGANIZATION_CODE VARCHAR2, RESPONSABILITY_NAME  VARCHAR2)   
+    FUNCTION VERIFY_STEP5 (ORGANIZATION_CODE    VARCHAR2, 
+                           RESPONSABILITY_NAME  VARCHAR2)   
     RETURN VARCHAR2
     IS 
     BEGIN
@@ -148,7 +149,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_VERIFY_CEDIS_PKG  AS
     END;
     
     
-    FUNCTION VERIFY_STEP6 (COLUMN_DESC    VARCHAR2, COLUMN_VAL     VARCHAR2) 
+    FUNCTION VERIFY_STEP6 (COLUMN_DESC    VARCHAR2, 
+                           COLUMN_VAL     VARCHAR2) 
     RETURN VARCHAR2
     IS
     BEGIN
@@ -157,9 +159,40 @@ CREATE OR REPLACE PACKAGE BODY PAC_VERIFY_CEDIS_PKG  AS
 --        ELSIF   COLUMN_DESC = 'Description'             THEN   IF COLUMN_VAL IN ('SUBINVENTARIO DE DEVOLUCIONES', 'SUBINVENTARIO DE HUEVO', 'SUBINVENTARIO DE INSUMOS')    THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
         ELSIF   COLUMN_DESC = 'Status'                  THEN   IF COLUMN_VAL = 'Active'    THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
         ELSIF   COLUMN_DESC = 'Replenishment_Count_Type'THEN   IF COLUMN_VAL = 'Order Quantity'    THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
-        ELSE    RETURN ' ';
+        ELSE    RETURN '';
         END IF;
     
+    END;
+    
+    
+    FUNCTION VERIFY_STEP7 (COLUMN_DESC    VARCHAR2, 
+                           COLUMN_VAL     VARCHAR2, 
+                           P_ORG_INVENTORY_ID  NUMBER   DEFAULT 0) 
+    RETURN VARCHAR2
+    IS
+    BEGIN
+    
+        IF      COLUMN_DESC = 'Organization_Code' THEN   IF COLUMN_VAL = GET_ORGANIZATION_CODE(P_ORG_INVENTORY_ID) THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSIF   COLUMN_DESC = 'Item_Assign'       THEN   IF COLUMN_VAL IN ('HVOBCO0070',
+                                                                            'HVOBCO0200',
+                                                                            'HVOBCO0201',
+                                                                            'HVOBCO0202',
+                                                                            'HVOBCO0203',
+                                                                            'HVOBCO0204',
+                                                                            'HVOBCO0205',
+                                                                            'HVOBCO0206',
+                                                                            'HVOCON0001',
+                                                                            'HVOCON0002',
+                                                                            'HVOCON0003',
+                                                                            'HVOCON0007',
+                                                                            'HVORES0001')  THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSIF   COLUMN_DESC = 'Assigned'          THEN   IF COLUMN_VAL = 'Y'        THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSIF   COLUMN_DESC = 'Category_Set'      THEN   IF COLUMN_VAL = 'COSTOS'   THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSIF   COLUMN_DESC = 'Control_Level'     THEN   IF COLUMN_VAL = 'Org'      THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSIF   COLUMN_DESC = 'Category'          THEN   IF COLUMN_VAL = 'HUEV'     THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSE RETURN '';
+        END IF;
+        
     END;
     
     

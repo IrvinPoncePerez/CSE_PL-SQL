@@ -35,7 +35,7 @@ CREATE OR REPLACE PROCEDURE APPS.XXCALV_TEF_PAY_P (  errbuf                     
    l_count_files                        NUMBER := 1;
    l_importe_total                      NUMBER := 0;
    l_linea                              VARCHAR(1000);
-   l_split                              NUMBER := 1000;
+   l_split                              NUMBER := 2000;
    l_start_date                         DATE;
    l_end_date                           DATE;
    l_fecha_aplicacion                   DATE;
