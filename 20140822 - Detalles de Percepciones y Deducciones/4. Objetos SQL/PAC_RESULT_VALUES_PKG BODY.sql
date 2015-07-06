@@ -308,6 +308,11 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
       
       
             RETURN var_effective_start_date;
+      EXCEPTION WHEN NO_DATA_FOUND THEN
+        RETURN NULL;        
+              WHEN OTHERS THEN
+        dbms_output.put_line('**Error en la función GET_DATA_MOVEMENT. (' || P_PERSON_ID || ',' || SQLERRM);
+        FND_FILE.put_line(FND_FILE.LOG, '**Error en la función GET_DATA_MOVEMENT. (' || P_PERSON_ID || ',' || SQLERRM);
       END;
       
 

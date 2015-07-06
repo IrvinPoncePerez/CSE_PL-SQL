@@ -2,7 +2,10 @@
                PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID)                               AS  "NUMERO_EMPLEADO",
                PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
                PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PERSON_ID)                              AS  RFC,
-               PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PERSON_ID)                        AS  EFFECTIVE_START_DATE,                
+               PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PERSON_ID)                        AS  EFFECTIVE_START_DATE,    
+               PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(DETAIL.ASSIGNMENT_ID)                   AS  REG_PATRONAL,
+               SUELDO_DIARIO,
+               SALARIO_DIARIO_INTEGRADO,            
                SUM(SUELDO_NORMAL)        AS SUELDO_NORMAL,      
                SUM(HORAS_EXTRA)          AS HORAS_EXTRA,         
                SUM(HORAS_EXTRA_EXE)      AS HORAS_EXTRA_EXE,    
@@ -49,7 +52,8 @@
                SUM(ISPT)                 AS ISPT,                           
                SUM(FONDO_AHO_TR)         AS FONDO_AHO_TR,       
                SUM(FONDO_AHO_EM)         AS FONDO_AHO_EM,       
-               SUM(ISR_GRAVADO)          AS ISR_GRAVADO
+               SUM(ISR_GRAVADO)          AS ISR_GRAVADO,
+               SUM(DIAS_PAGADOS)         AS DIAS_PAGADOS
           FROM (SELECT DISTINCT
                        PPA.PAYROLL_ACTION_ID,
                        PAA.ASSIGNMENT_ID,
@@ -69,8 +73,8 @@
                        EXTRACT(MONTH FROM PTP.END_DATE)                                         AS  MES,
                        PTP.PERIOD_NUM                                                           AS  NUM_NOMINA,
                        -----------------------------------------------------------------------------------------
---                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'I001_SALARIO_DIARIO',      'Pay Value'), '0')    AS  SUELDO_DIARIO,
---                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'Integrated Daily Wage',    'Pay Value'), '0')    AS  SALARIO_DIARIO_INTEGRADO,
+                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'I001_SALARIO_DIARIO',      'Pay Value'), '0')    AS  SUELDO_DIARIO,
+                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'Integrated Daily Wage',    'Pay Value'), '0')    AS  SALARIO_DIARIO_INTEGRADO,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P001_SUELDO NORMAL',       'Pay Value'), '0')    AS  SUELDO_NORMAL,
                        -----------------------------------------------------------------------------------------
                        ----                                 DATOS INFONAVIT
@@ -198,21 +202,21 @@
                                                                AND LANGUAGE = USERENV('LANG')))
                            AND PIVF.NAME = 'ISR Subject'
                            AND PIVF.UOM = 'M'
-                       )                                                                       AS  ISR_GRAVADO 
---                       (NVL((SELECT 
---                                   SUM(PRRV.RESULT_VALUE)
---                              FROM PAY_RUN_RESULTS          PRR,
---                                   PAY_ELEMENT_TYPES_F      PETF,
---                                   PAY_RUN_RESULT_VALUES    PRRV,
---                                   PAY_INPUT_VALUES_F       PIVF
---                             WHERE PRR.ASSIGNMENT_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID
---                               AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
---                               AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
---                               AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
---                               AND (PETF.ELEMENT_NAME = 'P001_SUELDO NORMAL'
---                                 OR PETF.ELEMENT_NAME = 'P005_VACACIONES')
---                               AND PIVF.NAME = 'Days'
---                              ), '0'))                                                         AS  DIAS_PAGADOS,
+                       )                                                                       AS  ISR_GRAVADO, 
+                       (NVL(TRUNC((SELECT 
+                                   SUM(PRRV.RESULT_VALUE)
+                              FROM PAY_RUN_RESULTS          PRR,
+                                   PAY_ELEMENT_TYPES_F      PETF,
+                                   PAY_RUN_RESULT_VALUES    PRRV,
+                                   PAY_INPUT_VALUES_F       PIVF
+                             WHERE PRR.ASSIGNMENT_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID
+                               AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                               AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                               AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                               AND (PETF.ELEMENT_NAME = 'P001_SUELDO NORMAL'
+                                 OR PETF.ELEMENT_NAME = 'P005_VACACIONES')
+                               AND PIVF.NAME = 'Days'
+                              ),2), '0'))                                                         AS  DIAS_PAGADOS
 --                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'Employer State Tax Liability','Pay Value'),'0')    AS  IMPUESTO_ESTATAL,
 --                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'Social Security Quota Calculation ER','Pay Value'),'0')    AS  IMSS_PATRONAL,
 --                       (SELECT (TO_NUMBER(REPLACE(MEANING, '%', '')) / 100)       
@@ -263,7 +267,10 @@
            AND DETAIL.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
          GROUP BY CLAVE_NOMINA,
                   PAAF.PERSON_ID,
-                  PERSON_ID
+                  PERSON_ID,
+                  DETAIL.ASSIGNMENT_ID,
+                  DETAIL.SALARIO_DIARIO_INTEGRADO,
+                  DETAIL.SUELDO_DIARIO
          ORDER BY CLAVE_NOMINA,                      
                   TO_NUMBER(NUMERO_EMPLEADO);       
                     
