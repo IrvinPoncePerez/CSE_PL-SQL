@@ -196,6 +196,23 @@ CREATE OR REPLACE PACKAGE BODY PAC_VERIFY_CEDIS_PKG  AS
     END;
     
     
+    FUNCTION VERIFY_STEP8 (COLUMN_DESC    VARCHAR2, 
+                           COLUMN_VAL     VARCHAR2, 
+                           P_ORG_INVENTORY_ID  NUMBER   DEFAULT 0) 
+    RETURN VARCHAR2
+    IS
+    BEGIN
+        
+        IF      COLUMN_DESC = 'From_Organization_Code'  THEN   IF COLUMN_VAL IN ('200', GET_ORGANIZATION_CODE(P_ORG_INVENTORY_ID))    THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSIF   COLUMN_DESC = 'To_Organization_Code'    THEN   IF COLUMN_VAL IN ('200', GET_ORGANIZATION_CODE(P_ORG_INVENTORY_ID))    THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSIF   COLUMN_DESC = 'Price_List'              THEN   IF COLUMN_VAL = 'LISTA_PRECIOS_CALVARIO'                             THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSIF   COLUMN_DESC = 'Interorg_Profit_Account' THEN   IF COLUMN_VAL = '01-0000-110723000001-00-0000-0000'                  THEN RETURN 'Y'; ELSE RETURN 'N'; END IF;
+        ELSE RETURN '';
+        END IF;
+        
+    END;
+    
+    
     
     
     
