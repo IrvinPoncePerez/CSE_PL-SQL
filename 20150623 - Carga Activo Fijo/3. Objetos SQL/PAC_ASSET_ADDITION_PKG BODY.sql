@@ -8,42 +8,52 @@ IS
     IS
     
             CURSOR DETAIL_LIST  IS
-                SELECT PAAT.DESCRIPTION,
-                       PAAT.TAG_NUMBER,
-                       PAAT.SERIAL_NUMBER,
-                       PAAT.UNITS,
-                       PAAT.CATEGORY,
-                       PAAT.COST,
-                       PAAT.VENDOR_NAME,
-                       PAAT.INVOICE_NUMBER,
-                       PAAT.BOOK_CODE,
-                       PAAT.DATE_IN_SERVICE,
-                       PAAT.DEPRECIATE_METHOD,
-                       PAAT.PRORATE_CODE,
-                       PAAT.CODE_COMBINATION,
-                       PAAT.LOCATION
+                SELECT TRIM(UPPER(PAAT.DESCRIPTION))                        AS  DESCRIPTION,
+                       TRIM(UPPER(PAAT.TAG_NUMBER))                         AS  TAG_NUMBER,
+                       TRIM(UPPER(PAAT.SERIAL_NUMBER))                      AS  SERIAL_NUMBER,
+                       TO_NUMBER(PAAT.UNITS)                                AS  UNITS,
+                       (PAAT.CATEGORY || '.' ||
+                        PAAT.SUBCATEGORY)                                   AS  CATEGORY,
+                       TO_NUMBER(REPLACE(PAAT.COST, ',', ''))               AS  COST,
+                       TRIM(UPPER(PAAT.VENDOR_NAME))                        AS  VENDOR_NAME,
+                       TRIM(UPPER(PAAT.INVOICE_NUMBER))                     AS  INVOICE_NUMBER,
+                       PAAT.BOOK_CODE                                       AS  BOOK_CODE,
+                       TO_DATE(PAAT.DATE_IN_SERVICE, 'dd/mm/yyyy')          AS  DATE_IN_SERVICE,
+                       PAAT.DEPRECIATE_METHOD                               AS  DEPRECIATE_METHOD,
+                       PAAT.PRORATE_CODE                                    AS  PRORATE_CODE,
+                       REPLACE(TO_CHAR(PAAT.CODE_COMPANY,  '00') || 
+                               TO_CHAR(PAAT.CODE_CCOST,    '0000') ||
+                               TO_CHAR(PAAT.CODE_ACCOUNT,  '000000000000') ||
+                               TO_CHAR(PAAT.CODE_INTERORG, '00') ||
+                               TO_CHAR(PAAT.CODE_FUTURO1,  '0000') ||
+                               TO_CHAR(PAAT.CODE_FUTURO1,  '0000'), ' ', '')AS  CODE_COMBINATION,
+                       (PAAT.LOCATION_STATE || '.' ||
+                        PAAT.LOCATION_CITY || '.' ||
+                        PAAT.LOCATION_COST)                                 AS  LOCATION
                   FROM PAC_ASSET_ADDITIONS_TB   PAAT;
     
     BEGIN
     
     
         FOR detail  IN  DETAIL_LIST LOOP
+        
             ADD_ASSET_ADDITION(
                 P_DESCRIPTION       => detail.DESCRIPTION,
                 P_TAG_NUMBER        => detail.TAG_NUMBER,
                 P_SERIAL_NUMBER     => detail.SERIAL_NUMBER,
-                P_UNITS             => TO_NUMBER(detail.UNITS),
+                P_UNITS             => detail.UNITS,
                 P_CATEGORY          => detail.CATEGORY,
-                P_COST              => TO_NUMBER(REPLACE(detail.COST, ',', '')),
+                P_COST              => detail.COST,
                 P_VENDOR_NAME       => detail.VENDOR_NAME,
                 P_INVOICE_NUMBER    => detail.INVOICE_NUMBER,
                 P_BOOK_CODE         => detail.BOOK_CODE,
-                P_DATE_IN_SERVICE   => TO_DATE(detail.DATE_IN_SERVICE, 'dd/mm/yyyy'),
+                P_DATE_IN_SERVICE   => detail.DATE_IN_SERVICE,
                 P_DEPRECIATE_METHOD => detail.DEPRECIATE_METHOD,
                 P_PRORATE_CODE      => detail.PRORATE_CODE,
                 P_CODE_COMBINATION  => detail.CODE_COMBINATION,
                 P_LOCATION          => detail.LOCATION
             );
+            
         END LOOP;
         
         
@@ -103,6 +113,22 @@ IS
         
     BEGIN
     
+--            fnd_file.put_line(fnd_file.log, P_DESCRIPTION       || '-' ||
+--                                            P_TAG_NUMBER        || '-' ||
+--                                            P_SERIAL_NUMBER     || '-' ||
+--                                            P_UNITS             || '-' ||
+--                                            P_CATEGORY          || '-' ||
+--                                            P_COST              || '-' ||
+--                                            P_VENDOR_NAME       || '-' ||
+--                                            P_INVOICE_NUMBER    || '-' ||
+--                                            P_BOOK_CODE         || '-' ||
+--                                            P_DATE_IN_SERVICE   || '-' ||
+--                                            P_DEPRECIATE_METHOD || '-' ||
+--                                            P_PRORATE_CODE      || '-' ||
+--                                            P_CODE_COMBINATION  || '-' ||
+--                                            P_LOCATION          );
+--        return;
+        
         /********************************************
         TABLAS UTILES:
                     FA_ADDITIONS
