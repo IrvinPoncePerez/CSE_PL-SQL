@@ -24,14 +24,14 @@ IS
     
     CURSOR DETAIL_LIST  IS
             SELECT 
-    PPPM.ATTRIBUTE1                                                          AS  NUM_CUENTA,
-    PAP.EMPLOYEE_NUMBER                                                      AS  NUM_EMPLEADO,
-    (PAP.FIRST_NAME || ' ' || PAP.MIDDLE_NAMES)                              AS  NOMBRES,
-    PAP.LAST_NAME                                                            AS  AP_PATERNO,
-    PAP.PER_INFORMATION1                                                     AS  AP_MATERNO,
-    REPLACE(PAP.PER_INFORMATION2, '-' , '')                                  AS  RFC,
-    PAP.NATIONAL_IDENTIFIER                                                  AS  CURP,
-    TO_CHAR(REPLACE(NVL(PAP.PER_INFORMATION3, '0'), '-', ''), '00000000000') AS  NUM_SEGURO
+    PPPM.ATTRIBUTE1                                                                AS  NUM_CUENTA,
+    PAP.EMPLOYEE_NUMBER                                                            AS  NUM_EMPLEADO,
+    (PAP.FIRST_NAME || ' ' || PAP.MIDDLE_NAMES)                                    AS  NOMBRES,
+    PAP.LAST_NAME                                                                  AS  AP_PATERNO,
+    PAP.PER_INFORMATION1                                                           AS  AP_MATERNO,
+    REPLACE(PAP.PER_INFORMATION2, '-' , '')                                        AS  RFC,
+    PAP.NATIONAL_IDENTIFIER                                                        AS  CURP,
+    TRIM(TO_CHAR(REPLACE(NVL(PAP.PER_INFORMATION3, '0'), '-', ''), '00000000000')) AS  NUM_SEGURO
   FROM PER_ALL_PEOPLE_F                     PAP,
        PER_ALL_ASSIGNMENTS_F                PAA,
        PAY_PAYROLLS_F                       PP,

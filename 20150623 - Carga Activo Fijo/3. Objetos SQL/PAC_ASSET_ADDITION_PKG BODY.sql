@@ -18,7 +18,7 @@ IS
                        TRIM(UPPER(PAAT.VENDOR_NAME))                        AS  VENDOR_NAME,
                        TRIM(UPPER(PAAT.INVOICE_NUMBER))                     AS  INVOICE_NUMBER,
                        PAAT.BOOK_CODE                                       AS  BOOK_CODE,
-                       TO_DATE(PAAT.DATE_IN_SERVICE, 'dd/mm/yyyy')          AS  DATE_IN_SERVICE,
+                       TO_DATE(UPPER(PAAT.DATE_IN_SERVICE), 'dd/mm/yyyy')   AS  DATE_IN_SERVICE,
                        PAAT.DEPRECIATE_METHOD                               AS  DEPRECIATE_METHOD,
                        PAAT.PRORATE_CODE                                    AS  PRORATE_CODE,
                        REPLACE(TO_CHAR(PAAT.CODE_COMPANY,  '00') || 
@@ -38,20 +38,20 @@ IS
         FOR detail  IN  DETAIL_LIST LOOP
         BEGIN
         
-            FND_FILE.PUT_LINE(FND_FILE.LOG, detail.DESCRIPTION       || '*' ||
-                                            detail.TAG_NUMBER        || '*' ||
-                                            detail.SERIAL_NUMBER     || '*' ||
-                                            detail.UNITS             || '*' ||
-                                            detail.CATEGORY          || '*' ||
-                                            detail.COST              || '*' ||
-                                            detail.VENDOR_NAME       || '*' ||
-                                            detail.INVOICE_NUMBER    || '*' ||
-                                            detail.BOOK_CODE         || '*' ||
-                                            detail.DATE_IN_SERVICE   || '*' ||
-                                            detail.DEPRECIATE_METHOD || '*' ||
-                                            detail.PRORATE_CODE      || '*' ||
-                                            detail.CODE_COMBINATION  || '*' ||
-                                            detail.LOCATION          );
+--            FND_FILE.PUT_LINE(FND_FILE.LOG, detail.DESCRIPTION       || '*' ||
+--                                            detail.TAG_NUMBER        || '*' ||
+--                                            detail.SERIAL_NUMBER     || '*' ||
+--                                            detail.UNITS             || '*' ||
+--                                            detail.CATEGORY          || '*' ||
+--                                            detail.COST              || '*' ||
+--                                            detail.VENDOR_NAME       || '*' ||
+--                                            detail.INVOICE_NUMBER    || '*' ||
+--                                            detail.BOOK_CODE         || '*' ||
+--                                            detail.DATE_IN_SERVICE   || '*' ||
+--                                            detail.DEPRECIATE_METHOD || '*' ||
+--                                            detail.PRORATE_CODE      || '*' ||
+--                                            detail.CODE_COMBINATION  || '*' ||
+--                                            detail.LOCATION          );
         
             ADD_ASSET_ADDITION(
                 P_DESCRIPTION       => detail.DESCRIPTION,
@@ -148,23 +148,22 @@ IS
         
     BEGIN
             
-            FND_FILE.PUT_LINE(FND_FILE.LOG , '**************************************************************************************************');
         
-            FND_FILE.PUT_LINE(FND_FILE.LOG, P_DESCRIPTION       || '*' ||
-                                            P_TAG_NUMBER        || '*' ||
-                                            P_SERIAL_NUMBER     || '*' ||
-                                            P_UNITS             || '*' ||
-                                            P_CATEGORY          || '*' ||
-                                            P_COST              || '*' ||
-                                            P_VENDOR_NAME       || '*' ||
-                                            P_INVOICE_NUMBER    || '*' ||
-                                            P_BOOK_CODE         || '*' ||
-                                            P_DATE_IN_SERVICE   || '*' ||
-                                            P_DEPRECIATE_METHOD || '*' ||
-                                            P_PRORATE_CODE      || '*' ||
-                                            P_CODE_COMBINATION  || '*' ||
-                                            P_LOCATION          );
-            RETURN;
+--            FND_FILE.PUT_LINE(FND_FILE.LOG, P_DESCRIPTION       || '*' ||
+--                                            P_TAG_NUMBER        || '*' ||
+--                                            P_SERIAL_NUMBER     || '*' ||
+--                                            P_UNITS             || '*' ||
+--                                            P_CATEGORY          || '*' ||
+--                                            P_COST              || '*' ||
+--                                            P_VENDOR_NAME       || '*' ||
+--                                            P_INVOICE_NUMBER    || '*' ||
+--                                            P_BOOK_CODE         || '*' ||
+--                                            P_DATE_IN_SERVICE   || '*' ||
+--                                            P_DEPRECIATE_METHOD || '*' ||
+--                                            P_PRORATE_CODE      || '*' ||
+--                                            P_CODE_COMBINATION  || '*' ||
+--                                            P_LOCATION          );
+--            RETURN;
         
         /********************************************
         TABLAS UTILES:

@@ -179,10 +179,6 @@ PACKAGE BODY PAC_FUEL_EC_EFFICIENCIES_PKG IS
 	
 				:CREATION_DATE := NULL;
 
-			ELSIF :AREA <> 'REPARTO' THEN
-
-				:CREATION_DATE := NULL;
-		
 			END IF;
 		
 		END;
@@ -476,10 +472,73 @@ PACKAGE BODY PAC_FUEL_EC_EFFICIENCIES_PKG IS
 						 WHERE PFEC.AREA = :AREA
 						   AND PFEC.TRAFFIC_NUMBER = :TRAFFIC_NUMBER
 						   AND EXTRACT(YEAR FROM CREATION_DATE) = EXTRACT(YEAR FROM SYSDATE);
-					MESSAGE('Registro consultado...');		   
+
+
+					IF :FUEL_TYPE IS NULL THEN
+						BEGIN
+						
+							SELECT DISTINCT
+										 ATTRIBUTE10
+							  INTO :FUEL_TYPE
+							  FROM CSI_ITEM_INSTANCES		CII
+							 WHERE CII.SERIAL_NUMBER = :VEHICLE_ID;
+							 
+						EXCEPTION WHEN OTHERS THEN
+							MESSAGE('Sin registro de combustible.');
+						END;
+					END IF;
+
+					var_group_description := PAC_FUEL_EC_EFFICIENCIES_PKG.GET_ASSET_GROUP_DESCRIPTION(:VEHICLE_ID);
+					:ATTRIBUTE8 := var_group_description;
+					  
+					--Consulta de rendimientos esperados 
+					PAC_FUEL_EC_EFFICIENCIES_PKG.GET_EFFICIENCY_EXPECTED;
+
+
+					--Consulta del registro previo al registro actual.
+					IF :PREVIOUS_EFFICIENCY_ID IS NULL THEN
+						BEGIN
+							
+							SELECT NVL(MAX(PFEE.EFFICIENCY_ID), 0)
+		       			INTO :PREVIOUS_EFFICIENCY_ID
+		  					FROM PAC_FUEL_EC_EFFICIENCIES    PFEE
+		 					 WHERE PFEE.VEHICLE_ID = :VEHICLE_ID
+		  					 AND PFEE.TRAFFIC_NUMBER <> :TRAFFIC_NUMBER
+		  					 AND EXTRACT(YEAR FROM PFEE.CREATION_DATE) = EXTRACT(YEAR FROM SYSDATE);
+							 
+						EXCEPTION WHEN NO_DATA_FOUND THEN
+							MESSAGE('Registro inicial');
+							:PREVIOUS_EFFICIENCY_ID := 0;
+						END;
+					END IF;
+
+
+					IF 	 :LAST_READING IS NULL 
+						OR :LAST_READING = '0'
+						OR :LAST_READING = 0 THEN
+							BEGIN
+								
+	 							 	var_meter_id := PAC_FUEL_EFFICIENCY.FIND_METER_ID(:VEHICLE_ID);
+	 								:LAST_READING := PAC_FUEL_EFFICIENCY.GET_METER_READING(var_meter_id);
+								   
+								 
+							EXCEPTION WHEN NO_DATA_FOUND THEN
+								set_alert_property('ERROR_MSG', 
+																	 alert_message_text, 
+																	 'No se ha podido consultar la lectura anterior del kilometraje de la unidad '
+																	 || :VEHICLE_ID); 
+								var_alert_number := show_alert('ERROR_MSG');
+								RAISE FORM_TRIGGER_FAILURE;
+							END;				
+					END IF;
+					
+					PAC_FUEL_EC_EFFICIENCIES_PKG.CHECK_STATUS_BY_CONTROL();
+
+						   
 				EXCEPTION WHEN NO_DATA_FOUND THEN
-					MESSAGE('Creando un registro nuevo...');
-				END;				
+					MESSAGE('Creando un nuevo registro.');
+				END;							
+				
 
 				END IF;
 			END IF;	
@@ -916,6 +975,7 @@ PACKAGE BODY PAC_FUEL_EC_EFFICIENCIES_PKG IS
 	PROCEDURE VALIDATE_VEHICLE_ID IS
 		var_group_description VARCHAR2(1000);
 		var_alert_number			NUMBER;
+		var_meter_id							NUMBER;
 	BEGIN
 		
 		IF :AREA <> 'REPARTO' THEN
@@ -927,51 +987,33 @@ PACKAGE BODY PAC_FUEL_EC_EFFICIENCIES_PKG IS
 
 			END IF;		
 			
-			BEGIN
-							
-					 SELECT CCR.COUNTER_READING
-						 INTO :LAST_READING
-             FROM APPS.CSI_ITEM_INSTANCES          CSI, 
-                  APPS.CSI_COUNTER_ASSOCIATIONS    CCA,
-                  APPS.CSI_COUNTER_READINGS        CCR,
-          				APPS.CSI_COUNTERS_V              CCV                                    
-            WHERE CSI.INSTANCE_ID = CCA.SOURCE_OBJECT_ID
-              AND CCA.COUNTER_ID = CCR.COUNTER_ID
-      				AND CCV.COUNTER_ID = CCR.COUNTER_ID
-      				AND CCV.UOM_CODE = 'KM'
-      				AND CCA.END_DATE_ACTIVE IS NULL
-              AND CSI.INSTANCE_NUMBER = :VEHICLE_ID
-              AND NVL (CCR.DISABLED_FLAG, 'N') = 'N'
-              AND CCR.CREATION_DATE = (SELECT MAX(CCR1.CREATION_DATE)
-                                         FROM APPS.CSI_ITEM_INSTANCES CSI1, 
-                                              APPS.CSI_COUNTER_ASSOCIATIONS CCA1,
-                                              APPS.CSI_COUNTER_READINGS CCR1
-                                        WHERE CSI1.INSTANCE_ID = CCA1.SOURCE_OBJECT_ID
-                                          AND CCA1.COUNTER_ID = CCR1.COUNTER_ID
-                                          AND CSI1.INSTANCE_NUMBER = :VEHICLE_ID
-                                          AND NVL (CCR1.DISABLED_FLAG, 'N') = 'N');
-				 
-			EXCEPTION WHEN NO_DATA_FOUND THEN
-				set_alert_property('ERROR_MSG', 
-													 alert_message_text, 
-													 'No se ha podido consultar la lectura anterior del kilometraje de la unidad. '
-													 || :VEHICLE_ID); 
-				var_alert_number := show_alert('ERROR_MSG');
-				RAISE FORM_TRIGGER_FAILURE;
-			END;			
+			IF 	 :LAST_READING IS NULL 
+				OR :LAST_READING = '0'
+				OR :LAST_READING = 0 THEN
+					BEGIN
+						
+							 	var_meter_id := PAC_FUEL_EFFICIENCY.FIND_METER_ID(:VEHICLE_ID);
+								:LAST_READING := PAC_FUEL_EFFICIENCY.GET_METER_READING(var_meter_id);
+						   
+						 
+					EXCEPTION WHEN NO_DATA_FOUND THEN
+						set_alert_property('ERROR_MSG', 
+															 alert_message_text, 
+															 'No se ha podido consultar la lectura anterior del kilometraje de la unidad '
+															 || :VEHICLE_ID); 
+						var_alert_number := show_alert('ERROR_MSG');
+						RAISE FORM_TRIGGER_FAILURE;
+					END;				
+			END IF;
 			
 			var_group_description := PAC_FUEL_EC_EFFICIENCIES_PKG.GET_ASSET_GROUP_DESCRIPTION(:VEHICLE_ID);
 			
-			SELECT AVG(XRXD.RENDIMIENTO_ESPERA)
-				INTO :EXPECTED_EFFICIENCY
-			  FROM XXCALV_REND_X_DESTINO XRXD
-			 WHERE DESTINO IS NULL
-			   AND XRXD.GRUPO_UNIDAD = var_group_description;
+			
 			  
 			IF :EFFICIENCY_ID IS NULL THEN	   
 				
 				SELECT MAX(PFEE.EFFICIENCY_ID)
-			    INTO :PREVIOUS_EFFICIENCY_ID
+			     INTO :PREVIOUS_EFFICIENCY_ID
 					FROM PAC_FUEL_EC_EFFICIENCIES PFEE
 				 WHERE PFEE.VEHICLE_ID = :VEHICLE_ID;
 				 
