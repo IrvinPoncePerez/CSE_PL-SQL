@@ -12,8 +12,8 @@ IS
                        TRIM(UPPER(PAAT.TAG_NUMBER))                         AS  TAG_NUMBER,
                        TRIM(UPPER(PAAT.SERIAL_NUMBER))                      AS  SERIAL_NUMBER,
                        TO_NUMBER(PAAT.UNITS)                                AS  UNITS,
-                       (PAAT.CATEGORY || '.' ||
-                        PAAT.SUBCATEGORY)                                   AS  CATEGORY,
+                       (TRIM(PAAT.CATEGORY) || '.' ||
+                        TRIM(PAAT.SUBCATEGORY))                                   AS  CATEGORY,
                        TO_NUMBER(REPLACE(PAAT.COST, ',', ''))               AS  COST,
                        TRIM(UPPER(PAAT.VENDOR_NAME))                        AS  VENDOR_NAME,
                        TRIM(UPPER(PAAT.INVOICE_NUMBER))                     AS  INVOICE_NUMBER,
@@ -36,6 +36,22 @@ IS
     
     
         FOR detail  IN  DETAIL_LIST LOOP
+        BEGIN
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG, detail.DESCRIPTION       || '*' ||
+                                            detail.TAG_NUMBER        || '*' ||
+                                            detail.SERIAL_NUMBER     || '*' ||
+                                            detail.UNITS             || '*' ||
+                                            detail.CATEGORY          || '*' ||
+                                            detail.COST              || '*' ||
+                                            detail.VENDOR_NAME       || '*' ||
+                                            detail.INVOICE_NUMBER    || '*' ||
+                                            detail.BOOK_CODE         || '*' ||
+                                            detail.DATE_IN_SERVICE   || '*' ||
+                                            detail.DEPRECIATE_METHOD || '*' ||
+                                            detail.PRORATE_CODE      || '*' ||
+                                            detail.CODE_COMBINATION  || '*' ||
+                                            detail.LOCATION          );
         
             ADD_ASSET_ADDITION(
                 P_DESCRIPTION       => detail.DESCRIPTION,
@@ -54,6 +70,25 @@ IS
                 P_LOCATION          => detail.LOCATION
             );
             
+            
+            
+        EXCEPTION WHEN OTHERS THEN
+             FND_FILE.PUT_LINE(FND_FILE.LOG, detail.DESCRIPTION       || '**' ||
+                                            detail.TAG_NUMBER        || '**' ||
+                                            detail.SERIAL_NUMBER     || '**' ||
+                                            detail.UNITS             || '**' ||
+                                            detail.CATEGORY          || '**' ||
+                                            detail.COST              || '**' ||
+                                            detail.VENDOR_NAME       || '**' ||
+                                            detail.INVOICE_NUMBER    || '**' ||
+                                            detail.BOOK_CODE         || '**' ||
+                                            detail.DATE_IN_SERVICE   || '**' ||
+                                            detail.DEPRECIATE_METHOD || '**' ||
+                                            detail.PRORATE_CODE      || '**' ||
+                                            detail.CODE_COMBINATION  || '**' ||
+                                            detail.LOCATION          || '**' ||
+                                            SQLERRM);   
+        END;   
         END LOOP;
         
         
@@ -112,22 +147,24 @@ IS
        
         
     BEGIN
-    
---            fnd_file.put_line(fnd_file.log, P_DESCRIPTION       || '-' ||
---                                            P_TAG_NUMBER        || '-' ||
---                                            P_SERIAL_NUMBER     || '-' ||
---                                            P_UNITS             || '-' ||
---                                            P_CATEGORY          || '-' ||
---                                            P_COST              || '-' ||
---                                            P_VENDOR_NAME       || '-' ||
---                                            P_INVOICE_NUMBER    || '-' ||
---                                            P_BOOK_CODE         || '-' ||
---                                            P_DATE_IN_SERVICE   || '-' ||
---                                            P_DEPRECIATE_METHOD || '-' ||
---                                            P_PRORATE_CODE      || '-' ||
---                                            P_CODE_COMBINATION  || '-' ||
---                                            P_LOCATION          );
---        return;
+            
+            FND_FILE.PUT_LINE(FND_FILE.LOG , '**************************************************************************************************');
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG, P_DESCRIPTION       || '*' ||
+                                            P_TAG_NUMBER        || '*' ||
+                                            P_SERIAL_NUMBER     || '*' ||
+                                            P_UNITS             || '*' ||
+                                            P_CATEGORY          || '*' ||
+                                            P_COST              || '*' ||
+                                            P_VENDOR_NAME       || '*' ||
+                                            P_INVOICE_NUMBER    || '*' ||
+                                            P_BOOK_CODE         || '*' ||
+                                            P_DATE_IN_SERVICE   || '*' ||
+                                            P_DEPRECIATE_METHOD || '*' ||
+                                            P_PRORATE_CODE      || '*' ||
+                                            P_CODE_COMBINATION  || '*' ||
+                                            P_LOCATION          );
+            RETURN;
         
         /********************************************
         TABLAS UTILES:
@@ -316,7 +353,7 @@ IS
            p_api_version             => 1.0,
            p_init_msg_list           => FND_API.G_FALSE,
            p_commit                  => FND_API.G_TRUE,
-           p_validation_level        => FND_API.G_VALID_LEVEL_FULL,
+           p_validation_level        => FND_API.G_VALID_LEVEL_NONE,
            p_calling_fn              => null,
            x_return_status           => l_return_status,
            x_msg_count               => l_mesg_count,
