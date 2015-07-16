@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE PAC_ALTAS_EDENRED_PRC (
+    CREATE OR REPLACE PROCEDURE PAC_ALTAS_EDENRED_PRC (
                 P_ERRBUF    OUT NOCOPY  VARCHAR2,
                 P_RETCODE   OUT NOCOPY  VARCHAR2,
                 P_COMPANY_ID            VARCHAR2,
@@ -54,67 +54,7 @@ IS
    AND PPPM.OBJECT_VERSION_NUMBER = (SELECT MAX(PPPM1.OBJECT_VERSION_NUMBER)
                                        FROM PAY_PERSONAL_PAYMENT_METHODS_F  PPPM1
                                       WHERE PPPM1.PERSONAL_PAYMENT_METHOD_ID = PPPM.PERSONAL_PAYMENT_METHOD_ID);
-                       
-    --Definición de subprogramas para la manipulación del Archivo Excel.
-    PROCEDURE OPEN_FILE IS
-    BEGIN
-        UTL_FILE.FREMOVE(var_path, var_file_name);
-        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'w', 20000);
-    EXCEPTION 
-        WHEN UTL_FILE.INVALID_OPERATION THEN
-            var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'w', 20000);    
-        WHEN OTHERS THEN
-            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error en el Procedimiento openFile(). ' || SQLERRM);
-            dbms_output.put_line('**Error en el Procedimiento openFile(). ' || SQLERRM);        
-    END;
-    
-    PROCEDURE CLOSE_FILE IS
-    BEGIN
-        UTL_FILE.FCLOSE(var_file);
-    EXCEPTION WHEN OTHERS THEN
-        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error en el Procedimiento closeFile(). ' || SQLERRM); 
-        dbms_output.put_line('**Error en el Procedimiento closeFile(). ' || SQLERRM);   
-    END;
-    
-    PROCEDURE START_WORKBOOK IS
-    BEGIN
-        UTL_FILE.PUT_LINE(var_file, '<?xml version="1.0"?>');
-        UTL_FILE.PUT_LINE(var_file, '<ss:Workbook xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">');
-    END;
-    
-    PROCEDURE END_WORKBOOK IS
-    BEGIN
-        UTL_FILE.PUT_LINE(var_file, '</ss:Workbook>');
-    END;
-    
-    PROCEDURE START_WORKSHEET(p_sheetname VARCHAR2) IS
-    BEGIN
-        UTL_FILE.PUT_LINE(var_file, '<ss:Worksheet ss:Name="' || p_sheetname || '">');
-        UTL_FILE.PUT_LINE(var_file, '<ss:Table>');
-    END;
-    
-    PROCEDURE END_WORKSHEET IS
-    BEGIN
-        UTL_FILE.PUT_LINE(var_file, '</ss:Table>');
-        UTL_FILE.PUT_LINE(var_file, '</ss:Worksheet>');
-    END;
-    
-    PROCEDURE ADD_ROW IS
-    BEGIN
-        UTL_FILE.PUT_LINE(var_file, '<ss:Row>');
-    END;
-    
-    PROCEDURE CLOSE_ROW IS
-    BEGIN
-        UTL_FILE.PUT_LINE(var_file, '</ss:Row>');
-    END;
-    
-    PROCEDURE ADD_CELL(var_data VARCHAR2, var_type VARCHAR2) IS
-    BEGIN
-        UTL_FILE.PUT_LINE(var_file, '<ss:Cell>');
-        UTL_FILE.PUT_LINE(var_file, '<ss:Data ss:Type="' || var_type || '">' || var_data || '</ss:Data>');
-        UTL_FILE.PUT_LINE(var_file, '</ss:Cell>');
-    END;    
+                          
 
 BEGIN
 
@@ -206,7 +146,25 @@ BEGIN
         var_file_name := var_file_name || var_campo4; 
         var_file_name := var_file_name || var_campo2; 
         var_file_name := var_file_name || TRIM(TO_CHAR(SYSDATE, 'RRRRMMDD')); 
-        var_file_name := var_file_name || '.xls';    
+        var_file_name := var_file_name || '.csv';    
+        
+        
+        
+        BEGIN
+        
+            var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
+            UTL_FILE.FREMOVE(var_path, var_file_name);
+        
+        EXCEPTION WHEN UTL_FILE.INVALID_OPERATION THEN
+            var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
+                  WHEN OTHERS THEN
+            dbms_output.put_line('**Error al Limpiar el Archivo. ' || SQLERRM);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo. ' || SQLERRM);
+        END;
+        
+        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
+        
+        
         
         --Consulta del Total de Registros Consultados.
         FOR detail IN DETAIL_LIST LOOP
@@ -220,50 +178,45 @@ BEGIN
     
     BEGIN
     
-        OPEN_FILE(); --Creación del Documento Excel.
-            START_WORKBOOK();
-                START_WORKSHEET('Hoja1');
-                
-                    ADD_ROW();
-                        ADD_CELL(var_campo1, 'Number');     --Campo 1: Valor Constante = '85', requerido
-                        ADD_CELL(var_campo2, 'Number');     --Campo 2: Número de sucursal,  valor constante = '001', requerido
-                        ADD_CELL(var_campo3, 'Number');     --Campo 3: Valor Constante = '012', requerido 
-                        ADD_CELL(var_campo4, 'Number');     --Campo 4: Número de grupo de cliente, Valor Constante = '72256', requerido
-                        ADD_CELL(var_campo5, 'Number');     --Campo 5: Número de sucursal,  valor constante = '001', requerido
-                        ADD_CELL(var_campo6, 'String');     --Campo 6: Razón Social de su Empresa Longitud de 40 caracteres alfanumérico, requerido.
-                        ADD_CELL(var_campo7, 'Number');     --Campo 7: Número total de registro de alta de personas. 
-                    CLOSE_ROW();
+                     
+        UTL_FILE.PUT_LINE(var_file, 
+                                var_campo1 || ',' ||     --Campo 1: Valor Constante = '85', requerido
+                                var_campo2 || ',' ||     --Campo 2: Número de sucursal,  valor constante = '001', requerido
+                                var_campo3 || ',' ||     --Campo 3: Valor Constante = '012', requerido 
+                                var_campo4 || ',' ||     --Campo 4: Número de grupo de cliente, Valor Constante = '72256', requerido
+                                var_campo5 || ',' ||     --Campo 5: Número de sucursal,  valor constante = '001', requerido
+                                var_campo6 || ',' ||     --Campo 6: Razón Social de su Empresa Longitud de 40 caracteres alfanumérico, requerido.
+                                var_campo7 || ','        --Campo 7: Número total de registro de alta de personas. 
+                          );
         
-                    --Recorrido de los Registros de Detalle.
-                    BEGIN
+        --Recorrido de los Registros de Detalle.
+        BEGIN
                         
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, 'Creando los Registros de Detalle. . .');
-                        dbms_output.put_line('Creando los Registros de Detalle. . .');
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Creando los Registros de Detalle. . .');
+            dbms_output.put_line('Creando los Registros de Detalle. . .');
                         
-                        FOR detail IN DETAIL_LIST LOOP
+            FOR detail IN DETAIL_LIST LOOP
                             
-                            ADD_ROW();
-                                ADD_CELL(TRIM(RPAD(detail.NUM_CUENTA, 16, ' ')), 'String');      --Campo 8: Número de Tarjeta:
-                                ADD_CELL(var_campo9, 'String');                                  --Campo 9: Valor constante = 'T', requerido
-                                ADD_CELL(TRIM(RPAD(detail.NUM_EMPLEADO, 10, ' ')), 'Number');    --Campo 10: Id de empleado
-                                ADD_CELL(TRIM(RPAD(detail.AP_PATERNO, 20, ' ')), 'String');      --Campo 11: Apellido Paterno, requerido. Longitud limitada a 20 posiciones.
-                                ADD_CELL(TRIM(RPAD(detail.AP_MATERNO, 20, ' ')), 'String');      --Campo 12: Apellido Materno, requerido. Longitud limitada a 20 posiciones.
-                                ADD_CELL(TRIM(RPAD(detail.NOMBRES, 20, ' ')), 'String');         --Campo 13: Nombres, requerido. Longitud limitada a 10 posiciones.
-                                ADD_CELL(TRIM(RPAD(detail.RFC, 13, ' ')), 'String');             --Campo 14: RFC Trabajador. Longitud limitada a 13 posiciones. 
-                                ADD_CELL(TRIM(RPAD(detail.CURP, 18, ' ')), 'String');            --Campo 15: CURP. Longitud limitada a 18 posiciones, tipo alfanumérico.
-                                ADD_CELL(detail.NUM_SEGURO, 'String');                           --Campo 16: NSS del Empleado. Longitud limitada a 11 posiciones. 
-                            CLOSE_ROW();  
+                UTL_FILE.PUT_LINE(var_file,
+                                    TRIM(RPAD(detail.NUM_CUENTA, 16, ' '))  || ',' ||      --Campo 8: Número de Tarjeta:
+                                    TRIM(var_campo9)                        || ',' ||      --Campo 9: Valor constante = 'T', requerido
+                                    TRIM(RPAD(detail.NUM_EMPLEADO, 10, ' '))|| ',' ||      --Campo 10: Id de empleado
+                                    TRIM(RPAD(detail.AP_PATERNO, 20, ' '))  || ',' ||      --Campo 11: Apellido Paterno, requerido. Longitud limitada a 20 posiciones.
+                                    TRIM(RPAD(detail.AP_MATERNO, 20, ' '))  || ',' ||      --Campo 12: Apellido Materno, requerido. Longitud limitada a 20 posiciones.
+                                    TRIM(RPAD(detail.NOMBRES, 20, ' '))     || ',' ||      --Campo 13: Nombres, requerido. Longitud limitada a 10 posiciones.
+                                    TRIM(RPAD(detail.RFC, 13, ' '))         || ',' ||      --Campo 14: RFC Trabajador. Longitud limitada a 13 posiciones. 
+                                    TRIM(RPAD(detail.CURP, 18, ' '))        || ',' ||      --Campo 15: CURP. Longitud limitada a 18 posiciones, tipo alfanumérico.
+                                    TRIM(detail.NUM_SEGURO)                 || ','         --Campo 16: NSS del Empleado. Longitud limitada a 11 posiciones. 
+                                  );  
                         
-                        END LOOP;
+            END LOOP;
                     
-                    EXCEPTION WHEN OTHERS THEN
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Realizar el Recorrido del Cursor. ' || SQLERRM);
-                        dbms_output.put_line('**Error al Realizar el Recorrido del Cursor. ' || SQLERRM);
-                    END;
+        EXCEPTION WHEN OTHERS THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Realizar el Recorrido del Cursor. ' || SQLERRM);
+            dbms_output.put_line('**Error al Realizar el Recorrido del Cursor. ' || SQLERRM);
+        END;
                 
-                END_WORKSHEET();
-            END_WORKBOOK();
-        CLOSE_FILE(); --Cierre del Documento Excel.
+               
     
     EXCEPTION WHEN OTHERS THEN
         FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Ejecutar el Crear l Cuerpo del Documento Excel. ' || SQLERRM);
