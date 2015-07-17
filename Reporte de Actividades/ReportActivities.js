@@ -1,18 +1,53 @@
-function mergeRange(numSheet){
-  //var objSpreadSheet = SpreadsheetApp.getActiveSpreadsheet();
-  //var objSheet = objSpreadSheet.getSheets()[numSheet];
+function mergeRange(numSheet, numColumn){
+  var objSpreadSheet,
+      value = ' ', 
+      objSheet,
+      range,
+      startRange,
+      endRange,
+      rangeNotation = ' ';
   
-  //for (i = 11; i <= objSheet.getLastRow(); i++){
-    //var range = objSheet.getRange(i, 1);
-    //var value = range.getValue();   
-  //}
+  objSpreadSheet = SpreadsheetApp.getActiveSpreadsheet();
+  objSheet = objSpreadSheet.getSheets()[numSheet];
+  
+  for (i = 11; i <= objSheet.getLastRow() + 1; i++){
+    range = objSheet.getRange(i, numColumn);
+    
+    if (value != range.getValue()) {
+      
+      if (rangeNotation != ' ') {
+        objSheet.getRange(rangeNotation).mergeVertically();
+      }
+      
+      value = range.getValue();
+      startRange = range.getA1Notation();
+      rangeNotation = range.getA1Notation();
+      
+    } else if (value == range.getValue()) {
+      
+      endRange = range.getA1Notation();
+      rangeNotation = startRange + ':' + endRange;
+        
+    }
+
+  }
 }
 
 function debuggerScript(){
   
-  sendWeeklyReport();
-  sendMontlyReport();
+  Logger.log('debugger');
+  //mergeRange(3, 1);
+  //Logger.log('Columna B');
+  //mergeRange(3, 2);
   
+}
+
+function clearReport(numSheet){
+  var objSpreadSheet = SpreadsheetApp.getActiveSpreadsheet();
+  var objSheet = objSpreadSheet.getSheets()[numSheet];  
+  var numRows = objSheet.getRange('A11:A'+ objSheet.getLastRow()).getNumRows();
+  
+  objSheet.deleteRows(11, numRows);
 }
 
 function onFormSubmit(e){
@@ -49,82 +84,52 @@ function onFormSubmit(e){
 
 function sendWeeklyReport(){
   
-  var objFile, 
-      fileId,
+  var fileId,
       objSpreadSheet,
       objSheet,
       title,
-      newSpreadSheet,
-      objFolder,
-      objBlob;
+      objFolder;
       
+  mergeRange(1, 1);
+  mergeRange(1, 2);
+  
   objSpreadSheet = SpreadsheetApp.getActiveSpreadsheet();
   objSheet = objSpreadSheet.getSheets()[1];
   
-  title = 'REPORTE DE ACTIVIDADES - ' + getDescriptionDate(1)
-  newSpreadSheet = SpreadsheetApp.create(title);
+  title = 'REPORTE DE ACTIVIDADES ' + getDescriptionDate(1)
   objFolder = DriveApp.getFolderById('0B4ALFd2MlYZhLVRiOG9DWldFM2M');  
-  
-  objSheet.copyTo(newSpreadSheet);
-  newSpreadSheet.deleteSheet(newSpreadSheet.getSheets()[0]);
-  
-  objBlob = UrlFetchApp.fetch('https://docs.google.com/spreadsheets/d/' + newSpreadSheet.getId() + 
-                                   '/export?format=xlsx&id=' + newSpreadSheet.getId(), 
-                                   {headers: {'Authorization': 'Bearer ' +  
-                                              ScriptApp.getOAuthToken() }
-                                   }).getAs('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  
-  fileId = objFolder.createFile(objBlob).getId();  
     
-  objFile = DriveApp.getFileById(newSpreadSheet.getId());
-  DriveApp.removeFile(objFile);
+  fileId = getFileId(objFolder, objSheet, title);
   
-  objFile = DriveApp.getFileById(fileId);
-  objFile.setName(title);
-  
-  //sendMail(fileId, title, "Reporte de Actividades.");
-}
-
-function sendMail(fileId, subject, body){
-  GmailApp.sendEmail("irvinponceperez@gmail.com, ariasam@gmail.com, abrahan@gmail.com", subject, body, {attachments: DriveApp.getFileById(fileId)});
+  sendMail(fileId, title, "Reporte de Actividades.");
+  clearReport(1);
 }
 
 function sendMontlyReport(){
  
-  var objFile, 
-      fileId,
+  var fileId,
       objSpreadSheet,
       objSheet,
       title,
-      newSpreadSheet,
-      objFolder,
-      objBlob;
+      objFolder;
+  
+  mergeRange(2, 1);
+  mergeRange(2, 2);
       
   objSpreadSheet = SpreadsheetApp.getActiveSpreadsheet();
   objSheet = objSpreadSheet.getSheets()[2];
   
   title = 'REPORTE DE ACTIVIDADES - ' + getDescriptionDate(2)
-  newSpreadSheet = SpreadsheetApp.create(title);
   objFolder = DriveApp.getFolderById('0B4ALFd2MlYZhSVhfZDEyYV9fT1k');  
   
-  objSheet.copyTo(newSpreadSheet);
-  newSpreadSheet.deleteSheet(newSpreadSheet.getSheets()[0]);
+  fileId = getFileId(objFolder, objSheet, title);
   
-  objBlob = UrlFetchApp.fetch('https://docs.google.com/spreadsheets/d/' + newSpreadSheet.getId() + 
-                                   '/export?format=xlsx&id=' + newSpreadSheet.getId(), 
-                                   {headers: {'Authorization': 'Bearer ' +  
-                                              ScriptApp.getOAuthToken() }
-                                   }).getAs('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  
-  fileId = objFolder.createFile(objBlob).getId();  
-    
-  objFile = DriveApp.getFileById(newSpreadSheet.getId());
-  DriveApp.removeFile(objFile);
-  
-  objFile = DriveApp.getFileById(fileId);
-  objFile.setName(title);
-  
-  //sendMail(fileId, title, "Reporte de Actividades.");    
+  sendMail(fileId, title, "Reporte de Actividades.");  
+  clearReport(2);  
+}
+
+function sendMail(fileId, subject, body){
+  GmailApp.sendEmail("irvinponceperez@gmail.com, ariasam@gmail.com, abrahan@gmail.com", subject, body, {attachments: DriveApp.getFileById(fileId)});
 }
 
 function getFileId(objFolder, objSheet, title){
