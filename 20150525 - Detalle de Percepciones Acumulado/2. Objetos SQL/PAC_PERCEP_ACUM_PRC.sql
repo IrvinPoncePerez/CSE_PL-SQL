@@ -53,6 +53,7 @@ IS
                SUM(PREMIO_PUNTUALIDAD)   AS PREMIO_PUNTUALIDAD,  
                SUM(PREMIO_PUNTUALIDAD_EXE) AS PREMIO_PUNTUALIDAD_EXE,
                SUM(BONO_PRODUCTIVIDAD)   AS BONO_PRODUCTIVIDAD,  
+               SUM(GRATIFICACION)        AS GRATIFICACION,
                SUM(AYUDA_ESCOLAR)        AS AYUDA_ESCOLAR,       
                SUM(INDEMNIZACION)        AS INDEMNIZACION,
                SUM(GRATIFICACION_ESPECIAL) AS GRATIFICACION_ESPECIAL,
@@ -144,6 +145,7 @@ IS
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P022_PREMIO_PUNTUALIDAD',  'Pay Value'),   '0')    AS  PREMIO_PUNTUALIDAD,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EXEMPT_VALUE(PAA.ASSIGNMENT_ACTION_ID,     'P022_PREMIO_PUNTUALIDAD',  'Pay Value',    'TOPE'), '0')   AS  PREMIO_PUNTUALIDAD_EXE,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P023_BONO_PRODUCTIVIDAD',  'Pay Value'),   '0')    AS  BONO_PRODUCTIVIDAD,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P024_GRATIFICACION',       'Pay Value'),   '0')    AS  GRATIFICACION,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P025_AYUDA_ESCOLAR',       'Pay Value'),   '0')    AS  AYUDA_ESCOLAR,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P026_INDEMNIZACION',       'Pay Value'),   '0')    AS  INDEMNIZACION,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P027_GRATIFIC_ESP',        'Pay Value'),   '0')    AS  GRATIFICACION_ESPECIAL, --P027_GRATIFICACION_ESP
@@ -410,6 +412,7 @@ BEGIN
                     'PREMIO PUNTUALIDAD,'       ||
                     'PREMIO PUNTUALIDAD EXCENTO IMSS,' ||
                     'BONO PRODUCTIVIDAD,'       ||
+                    'GRATIFICACION,'            ||
                     'AYUDA ESCOLAR,'            ||
                     'INDEMNIZACION,'            ||
                     'GRATIFICACION ESPECIAL,'   ||
@@ -493,6 +496,7 @@ BEGIN
                                DETAIL(rowIndex).PREMIO_PUNTUALIDAD      || ',' ||
                                DETAIL(rowIndex).PREMIO_PUNTUALIDAD_EXE  || ',' ||
                                DETAIL(rowIndex).BONO_PRODUCTIVIDAD      || ',' ||
+                               DETAIL(rowIndex).GRATIFICACION           || ',' ||
                                DETAIL(rowIndex).AYUDA_ESCOLAR           || ',' ||
                                DETAIL(rowIndex).INDEMNIZACION           || ',' ||
                                DETAIL(rowIndex).GRATIFICACION_ESPECIAL  || ',' ||
