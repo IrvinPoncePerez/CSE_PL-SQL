@@ -297,7 +297,7 @@ WHERE 1=1
      AND pa.payroll_id                                         =  :P_NOMINA
      AND to_char(ptp.end_date,'YYYY/MM/DD HH24:MI:SS')         =  :P_PERIODO 
      AND pac.consolidation_set_id                              = :P_JGOCONSL
---     AND pac.assignment_set_id                          = NVL(:P_JGOASIG,NVL(pac.assignment_set_id,0) )      
+     AND NVL(pac.assignment_set_id,0)                          = NVL(:P_JGOASIG,NVL(pac.assignment_set_id,0) )      
      AND peo.person_id                                         = NVL(:P_EMPLEADO,peo.person_id)
      AND hraou.name                                            = NVL(:P_DEPTO,hraou.name)      
     order by hraou.name, to_number(peo.employee_number)
