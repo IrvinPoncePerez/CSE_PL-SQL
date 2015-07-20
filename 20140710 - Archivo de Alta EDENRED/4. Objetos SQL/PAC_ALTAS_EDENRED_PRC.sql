@@ -198,16 +198,28 @@ BEGIN
             FOR detail IN DETAIL_LIST LOOP
                             
                 UTL_FILE.PUT_LINE(var_file,
-                                    TRIM(RPAD(detail.NUM_CUENTA, 16, ' '))  || ',' ||      --Campo 8: Número de Tarjeta:
-                                    TRIM(var_campo9)                        || ',' ||      --Campo 9: Valor constante = 'T', requerido
-                                    TRIM(RPAD(detail.NUM_EMPLEADO, 10, ' '))|| ',' ||      --Campo 10: Id de empleado
-                                    TRIM(RPAD(detail.AP_PATERNO, 20, ' '))  || ',' ||      --Campo 11: Apellido Paterno, requerido. Longitud limitada a 20 posiciones.
-                                    TRIM(RPAD(detail.AP_MATERNO, 20, ' '))  || ',' ||      --Campo 12: Apellido Materno, requerido. Longitud limitada a 20 posiciones.
-                                    TRIM(RPAD(detail.NOMBRES, 20, ' '))     || ',' ||      --Campo 13: Nombres, requerido. Longitud limitada a 10 posiciones.
-                                    TRIM(RPAD(detail.RFC, 13, ' '))         || ',' ||      --Campo 14: RFC Trabajador. Longitud limitada a 13 posiciones. 
-                                    TRIM(RPAD(detail.CURP, 18, ' '))        || ',' ||      --Campo 15: CURP. Longitud limitada a 18 posiciones, tipo alfanumérico.
-                                    TRIM(detail.NUM_SEGURO)                 || ','         --Campo 16: NSS del Empleado. Longitud limitada a 11 posiciones. 
+                                    TO_CHAR(TRIM(RPAD(detail.NUM_CUENTA, 16, ' ')))  || ',' ||      --Campo 8: Número de Tarjeta:
+                                    TO_CHAR(TRIM(var_campo9))                        || ',' ||      --Campo 9: Valor constante = 'T', requerido
+                                    TO_CHAR(TRIM(RPAD(detail.NUM_EMPLEADO, 10, ' ')))|| ',' ||      --Campo 10: Id de empleado
+                                    TO_CHAR(TRIM(RPAD(detail.AP_PATERNO, 20, ' ')))  || ',' ||      --Campo 11: Apellido Paterno, requerido. Longitud limitada a 20 posiciones.
+                                    TO_CHAR(TRIM(RPAD(detail.AP_MATERNO, 20, ' ')))  || ',' ||      --Campo 12: Apellido Materno, requerido. Longitud limitada a 20 posiciones.
+                                    TO_CHAR(TRIM(RPAD(detail.NOMBRES, 20, ' ')))     || ',' ||      --Campo 13: Nombres, requerido. Longitud limitada a 10 posiciones.
+                                    TO_CHAR(TRIM(RPAD(detail.RFC, 13, ' ')))         || ',' ||      --Campo 14: RFC Trabajador. Longitud limitada a 13 posiciones. 
+                                    TO_CHAR(TRIM(RPAD(detail.CURP, 18, ' ')))        || ',' ||      --Campo 15: CURP. Longitud limitada a 18 posiciones, tipo alfanumérico.
+                                    TO_CHAR(TRIM(detail.NUM_SEGURO))                 || ','         --Campo 16: NSS del Empleado. Longitud limitada a 11 posiciones. 
                                   );  
+                                  
+                 FND_FILE.PUT_LINE(FND_FILE.LOG,
+                                    TO_CHAR(TRIM(RPAD(detail.NUM_CUENTA, 16, ' ')))  || ',' ||      --Campo 8: Número de Tarjeta:
+                                    TO_CHAR(TRIM(var_campo9))                        || ',' ||      --Campo 9: Valor constante = 'T', requerido
+                                    TO_CHAR(TRIM(RPAD(detail.NUM_EMPLEADO, 10, ' ')))|| ',' ||      --Campo 10: Id de empleado
+                                    TO_CHAR(TRIM(RPAD(detail.AP_PATERNO, 20, ' ')))  || ',' ||      --Campo 11: Apellido Paterno, requerido. Longitud limitada a 20 posiciones.
+                                    TO_CHAR(TRIM(RPAD(detail.AP_MATERNO, 20, ' ')))  || ',' ||      --Campo 12: Apellido Materno, requerido. Longitud limitada a 20 posiciones.
+                                    TO_CHAR(TRIM(RPAD(detail.NOMBRES, 20, ' ')))     || ',' ||      --Campo 13: Nombres, requerido. Longitud limitada a 10 posiciones.
+                                    TO_CHAR(TRIM(RPAD(detail.RFC, 13, ' ')))         || ',' ||      --Campo 14: RFC Trabajador. Longitud limitada a 13 posiciones. 
+                                    TO_CHAR(TRIM(RPAD(detail.CURP, 18, ' ')))        || ',' ||      --Campo 15: CURP. Longitud limitada a 18 posiciones, tipo alfanumérico.
+                                    TO_CHAR(TRIM(detail.NUM_SEGURO))                 || ','         --Campo 16: NSS del Empleado. Longitud limitada a 11 posiciones. 
+                                  );                   
                         
             END LOOP;
                     
