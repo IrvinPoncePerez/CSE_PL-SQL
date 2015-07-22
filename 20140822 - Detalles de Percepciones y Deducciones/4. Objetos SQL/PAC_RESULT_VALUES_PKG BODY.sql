@@ -99,7 +99,7 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
         result_value    VARCHAR2(200);
     BEGIN
         SELECT 
-            TO_CHAR(PRRV.RESULT_VALUE)
+            TO_CHAR(SUM(PRRV.RESULT_VALUE))
           INTO
             result_value
           FROM PAY_RUN_RESULTS              PRR,
@@ -138,7 +138,7 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
         result_value    VARCHAR2(200);
     BEGIN
          SELECT 
-                TO_CHAR(PRRV.RESULT_VALUE)
+                TO_CHAR(SUM(PRRV.RESULT_VALUE))
            INTO
                 result_value
            FROM PAY_RUN_RESULTS          PRR,

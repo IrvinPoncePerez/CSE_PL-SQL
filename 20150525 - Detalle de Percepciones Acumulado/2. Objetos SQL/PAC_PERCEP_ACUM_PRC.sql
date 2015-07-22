@@ -298,8 +298,8 @@ IS
          GROUP BY CLAVE_NOMINA,
                   PAAF.PERSON_ID,
                   PERSON_ID,
-                  DETAIL.ASSIGNMENT_ID,
-                  DETAIL.SALARIO_DIARIO_INTEGRADO
+                  DETAIL.ASSIGNMENT_ID
+--                  DETAIL.SALARIO_DIARIO_INTEGRADO
 --                  DETAIL.SUELDO_DIARIO
          ORDER BY CLAVE_NOMINA,                      
                   TO_NUMBER(NUMERO_EMPLEADO);       
