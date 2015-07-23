@@ -138,6 +138,43 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
         result_value    VARCHAR2(200);
     BEGIN
          SELECT 
+                TO_CHAR(PRRV.RESULT_VALUE)
+           INTO
+                result_value
+           FROM PAY_RUN_RESULTS          PRR,
+                PAY_ELEMENT_TYPES_F      PETF,
+                PAY_RUN_RESULT_VALUES    PRRV,
+                PAY_INPUT_VALUES_F       PIVF
+          WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+            AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+            AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+            AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+            AND SYSDATE <= PETF.EFFECTIVE_END_DATE
+            AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
+            AND PETF.ELEMENT_NAME = P_ELEMENT_NAME
+            AND PIVF.NAME = P_INPUT_VALUE_NAME;
+            
+--            AND ROWNUM = 1;
+           
+        RETURN result_value;
+        
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RETURN NULL;        
+              WHEN OTHERS THEN
+        dbms_output.put_line('**Error en la función GET_OTHER_VALUE, assignment_action_id = ' || P_ASSIGNMENT_ACTION_ID || ', element_name=' || P_ELEMENT_NAME || ', input_value_name=' || P_INPUT_VALUE_NAME || '. ' || SQLERRM);
+        FND_FILE.put_line(FND_FILE.LOG, '**Error en la función GET_OTHER_VALUE, assignment_action_id = ' || P_ASSIGNMENT_ACTION_ID || ', element_name=' || P_ELEMENT_NAME || ', input_value_name=' || P_INPUT_VALUE_NAME || '. ' || SQLERRM);
+    END;   
+    
+    
+    FUNCTION GET_OTHER_SUM_VALUE (
+            P_ASSIGNMENT_ACTION_ID    NUMBER,
+            P_ELEMENT_NAME            VARCHAR2,
+            P_INPUT_VALUE_NAME        VARCHAR2)
+    RETURN VARCHAR2
+    IS
+        result_value    VARCHAR2(200);
+    BEGIN
+         SELECT 
                 TO_CHAR(SUM(PRRV.RESULT_VALUE))
            INTO
                 result_value

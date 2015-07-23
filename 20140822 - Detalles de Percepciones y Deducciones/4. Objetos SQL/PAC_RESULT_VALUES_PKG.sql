@@ -146,6 +146,12 @@ CREATE OR REPLACE PACKAGE PAC_RESULT_VALUES_PKG AS
              P_ELEMENT_NAME            VARCHAR2,
              P_INPUT_VALUE_NAME        VARCHAR2)
       RETURN VARCHAR2;
+      
+    FUNCTION GET_OTHER_SUM_VALUE (
+             P_ASSIGNMENT_ACTION_ID    NUMBER,
+             P_ELEMENT_NAME            VARCHAR2,
+             P_INPUT_VALUE_NAME        VARCHAR2)
+      RETURN VARCHAR2;
         
     
     /*

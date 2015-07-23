@@ -32,6 +32,7 @@
                SUM(PREMIO_PUNTUALIDAD)   AS PREMIO_PUNTUALIDAD,  
                SUM(PREMIO_PUNTUALIDAD_EXE) AS PREMIO_PUNTUALIDAD_EXE,
                SUM(BONO_PRODUCTIVIDAD)   AS BONO_PRODUCTIVIDAD,  
+               SUM(GRATIFICACION)        AS GRATIFICACION,
                SUM(AYUDA_ESCOLAR)        AS AYUDA_ESCOLAR,       
                SUM(INDEMNIZACION)        AS INDEMNIZACION,
                SUM(GRATIFICACION_ESPECIAL) AS GRATIFICACION_ESPECIAL,
@@ -57,6 +58,8 @@
                SUM(FONDO_AHO_TR)         AS FONDO_AHO_TR,       
                SUM(FONDO_AHO_EM)         AS FONDO_AHO_EM,       
                SUM(ISR_GRAVADO)          AS ISR_GRAVADO,
+               SUM(SUBSIDIO_SEGUN_TABLA) AS SUBSIDIO_SEGUN_TABLA,
+               SUM(ISR_SEGUN_TABLA)      AS ISR_SEGUN_TABLA,
                SUM(DIAS_PAGADOS)         AS DIAS_PAGADOS
           FROM (SELECT DISTINCT
                        PPA.PAYROLL_ACTION_ID,
@@ -123,7 +126,7 @@
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P022_PREMIO_PUNTUALIDAD',  'Pay Value'),   '0')    AS  PREMIO_PUNTUALIDAD,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EXEMPT_VALUE(PAA.ASSIGNMENT_ACTION_ID,     'P022_PREMIO_PUNTUALIDAD',  'Pay Value',    'TOPE'), '0')   AS  PREMIO_PUNTUALIDAD_EXE,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P023_BONO_PRODUCTIVIDAD',  'Pay Value'),   '0')    AS  BONO_PRODUCTIVIDAD,
-                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P024_GRATIFICACION',  'Pay Value'),   '0')         AS  GRATIFICACION,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P024_GRATIFICACION',       'Pay Value'),   '0')    AS  GRATIFICACION,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P025_AYUDA_ESCOLAR',       'Pay Value'),   '0')    AS  AYUDA_ESCOLAR,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P026_INDEMNIZACION',       'Pay Value'),   '0')    AS  INDEMNIZACION,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P027_GRATIFIC_ESP',        'Pay Value'),   '0')    AS  GRATIFICACION_ESPECIAL, --P027_GRATIFICACION_ESP
@@ -185,6 +188,8 @@
 --                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D087_FINAN_OPTICA',        'Pay Value'),   '0')    AS  OPTICA,
 --                       NVL(PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'I003_INFONAVIT PATRONAL',  'Pay Value'),   '0')    AS  INFONAVIT_PATRONAL,
 --                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D092_ISPT ANUAL A CARGO',  'Pay Value'),   '0')    AS  ISPT_ANUAL_CARGO,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR Subsidy for Employment', 'ISR Subsidy for Employment'),   '0')    AS   SUBSIDIO_SEGUN_TABLA,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR',                        'ISR Calculated'),   '0')    AS   ISR_SEGUN_TABLA,  
 --                       ---------------------------------------------------------------------------------------
                        (
                         SELECT 
@@ -276,9 +281,8 @@
          GROUP BY CLAVE_NOMINA,
                   PAAF.PERSON_ID,
                   PERSON_ID,
-                  DETAIL.ASSIGNMENT_ID,
-                  DETAIL.SALARIO_DIARIO_INTEGRADO
+                  DETAIL.ASSIGNMENT_ID
+--                  DETAIL.SALARIO_DIARIO_INTEGRADO
 --                  DETAIL.SUELDO_DIARIO
          ORDER BY CLAVE_NOMINA,                      
-                  TO_NUMBER(NUMERO_EMPLEADO);       
-                    
+                  TO_NUMBER(NUMERO_EMPLEADO);   

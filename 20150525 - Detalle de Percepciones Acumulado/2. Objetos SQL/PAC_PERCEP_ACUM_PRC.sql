@@ -79,6 +79,8 @@ IS
                SUM(FONDO_AHO_TR)         AS FONDO_AHO_TR,       
                SUM(FONDO_AHO_EM)         AS FONDO_AHO_EM,       
                SUM(ISR_GRAVADO)          AS ISR_GRAVADO,
+               SUM(SUBSIDIO_SEGUN_TABLA) AS SUBSIDIO_SEGUN_TABLA,
+               SUM(ISR_SEGUN_TABLA)      AS ISR_SEGUN_TABLA,
                SUM(DIAS_PAGADOS)         AS DIAS_PAGADOS
           FROM (SELECT DISTINCT
                        PPA.PAYROLL_ACTION_ID,
@@ -207,6 +209,8 @@ IS
 --                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D087_FINAN_OPTICA',        'Pay Value'),   '0')    AS  OPTICA,
 --                       NVL(PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'I003_INFONAVIT PATRONAL',  'Pay Value'),   '0')    AS  INFONAVIT_PATRONAL,
 --                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D092_ISPT ANUAL A CARGO',  'Pay Value'),   '0')    AS  ISPT_ANUAL_CARGO,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR Subsidy for Employment', 'ISR Subsidy for Employment'),   '0')    AS   SUBSIDIO_SEGUN_TABLA,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR',                        'ISR Calculated'),   '0')    AS   ISR_SEGUN_TABLA,  
 --                       ---------------------------------------------------------------------------------------
                        (
                         SELECT 
@@ -438,6 +442,8 @@ BEGIN
                     'FONDO AHORRO TRABAJADOR,'  ||
                     'FONDO AHORRO RETENCION EMPRESA,' ||
                     'TOTAL GRAVADO ISR,'        ||
+                    'ISR SEGUN TABLA,'          ||
+                    'SUBSIDIO SEGUN TABLA,'     ||
                     'DIAS PAGADOS';
         UTL_FILE.PUT_LINE(var_file, var_data);
     
@@ -522,6 +528,8 @@ BEGIN
                                DETAIL(rowIndex).FONDO_AHO_TR            || ',' ||
                                DETAIL(rowIndex).FONDO_AHO_EM            || ',' ||
                                DETAIL(rowIndex).ISR_GRAVADO             || ',' ||
+                               DETAIL(rowIndex).ISR_SEGUN_TABLA         || ',' ||
+                               DETAIL(rowIndex).SUBSIDIO_SEGUN_TABLA    || ',' ||
                                DETAIL(rowIndex).DIAS_PAGADOS            || ',';
                 
                 UTL_FILE.PUT_LINE(var_file, var_data);
