@@ -1,5 +1,8 @@
         SELECT CLAVE_NOMINA,       
---               DATE_EARNED,            
+               DATE_EARNED,      
+               ASSIGNMENT_ACTION_ID,   
+               RUN_TYPE_ID_PAA,
+--               RUN_TYPE_ID_PTF,   
                PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID)                               AS  "NUMERO_EMPLEADO",
                PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
                PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PERSON_ID)                              AS  RFC,
@@ -77,7 +80,9 @@
                        PTP.START_DATE,
                        PTP.END_DATE,
                        PPA.DATE_EARNED,
-                       PTF.RUN_TYPE_NAME,
+--                       PTF.RUN_TYPE_NAME,
+                       PAA.RUN_TYPE_ID  AS  RUN_TYPE_ID_PAA,
+--                       PTF.RUN_TYPE_ID  AS  RUN_TYPE_ID_PTF,
                        (SELECT meaning 
                           FROM HR_LOOKUPS 
                          WHERE LOOKUP_TYPE = 'ACTION_TYPE'
@@ -263,24 +268,25 @@
                   FROM PAY_PAYROLL_ACTIONS          PPA,
                        PER_TIME_PERIODS             PTP,
                        PAY_ASSIGNMENT_ACTIONS       PAA,
-                       PAY_PAYROLLS_F               PPF,
-                       PAY_RUN_TYPES_F              PTF
-                 WHERE PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
+                       PAY_PAYROLLS_F               PPF
+--                       PAY_RUN_TYPES_F              PTF
+                 WHERE 1 = 1
+                   AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
                    AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
                    AND PPA.PAYROLL_ID = PPF.PAYROLL_ID 
-                   AND PAA.RUN_TYPE_ID = PTF.RUN_TYPE_ID
+--                   AND PAA.RUN_TYPE_ID = PTF.RUN_TYPE_ID
                     ----------Parametros de Ejecucion-----------------
                    AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = :P_COMPANY_ID    
                    AND PPA.PAYROLL_ID = NVL(:P_PAYROLL_ID,  PPA.PAYROLL_ID)
                    AND PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
                    AND PPA.CONSOLIDATION_SET_ID = NVL(:P_CONSOLIDATION_SET_ID, PPA.CONSOLIDATION_SET_ID)
                    AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')
---                   AND PPA.ACTION_TYPE IN ('B')             
                    AND PTP.PERIOD_NAME LIKE '%' || :P_YEAR || '%'
---                   AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
+                   AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
                    AND (EXTRACT(MONTH FROM PTP.END_DATE) >= :P_START_MONTH
                     AND EXTRACT(MONTH FROM PTP.END_DATE) <= :P_END_MONTH)
                    AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
+
                    ------------------------------------------------------  
                  GROUP BY PAA.ASSIGNMENT_ID,
                           PPF.ATTRIBUTE1,
@@ -293,14 +299,17 @@
                           PPA.EFFECTIVE_DATE,
                           PTP.START_DATE,
                           PTP.END_DATE,
-                          PTF.RUN_TYPE_NAME,
+--                          PTF.RUN_TYPE_NAME,
                           PPA.ACTION_TYPE,
                           PPA.DATE_EARNED,
-                          PAA.TAX_UNIT_ID
+                          PAA.TAX_UNIT_ID,
+                          PAA.RUN_TYPE_ID
+--                          PTF.RUN_TYPE_ID
                       )  DETAIL,
                          PAY_CONSOLIDATION_SETS     PCS,
                          PER_ALL_ASSIGNMENTS_F      PAAF
          WHERE 1 = 1
+           AND PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID) IN ('1310', '1564')
            AND PCS.CONSOLIDATION_SET_ID = DETAIL.CONSOLIDATION_SET_ID
            AND PAAF.ASSIGNMENT_ID = DETAIL.ASSIGNMENT_ID
            AND PAAF.PAYROLL_ID = DETAIL.PAYROLL_ID
@@ -308,8 +317,11 @@
          GROUP BY CLAVE_NOMINA,
                   PAAF.PERSON_ID,
                   PERSON_ID,
-                  DETAIL.ASSIGNMENT_ID
---                  DETAIL.DATE_EARNED
+                  DETAIL.ASSIGNMENT_ID,
+                  DETAIL.DATE_EARNED,
+                  DETAIL.ASSIGNMENT_ACTION_ID,
+                  RUN_TYPE_ID_PAA
+--                  RUN_TYPE_ID_PTF
 --                  DETAIL.SALARIO_DIARIO_INTEGRADO
 --                  DETAIL.SUELDO_DIARIO
          ORDER BY CLAVE_NOMINA,                      
