@@ -1,4 +1,5 @@
-        SELECT CLAVE_NOMINA,                   
+        SELECT CLAVE_NOMINA,       
+--               DATE_EARNED,            
                PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID)                               AS  "NUMERO_EMPLEADO",
                PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
                PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PERSON_ID)                              AS  RFC,
@@ -60,8 +61,13 @@
                SUM(ISR_GRAVADO)          AS ISR_GRAVADO,
                SUM(SUBSIDIO_SEGUN_TABLA) AS SUBSIDIO_SEGUN_TABLA,
                SUM(ISR_SEGUN_TABLA)      AS ISR_SEGUN_TABLA,
+               SUM(AJUSTE_ISPT)          AS AJUSTE_ISPT,
+               SUM(AJUSTE_SUBSIDIO_EMPLEO)      AS AJUSTE_SUBSIDIO_EMPLEO,
+               SUM(AJUSTE_ISR_SEGUN_TABLA)      AS AJUSTE_ISR_SEGUN_TABLA,
+               SUM(AJUSTE_SUBSIDIO_SEGUN_TABLA) AS AJUSTE_SUBSIDIO_SEGUN_TABLA, 
                SUM(DIAS_PAGADOS)         AS DIAS_PAGADOS
           FROM (SELECT DISTINCT
+                       PAA.TAX_UNIT_ID,
                        PPA.PAYROLL_ACTION_ID,
                        PAA.ASSIGNMENT_ID,
                        PAA.ASSIGNMENT_ACTION_ID,
@@ -70,6 +76,7 @@
                        PPA.EFFECTIVE_DATE,
                        PTP.START_DATE,
                        PTP.END_DATE,
+                       PPA.DATE_EARNED,
                        PTF.RUN_TYPE_NAME,
                        (SELECT meaning 
                           FROM HR_LOOKUPS 
@@ -189,7 +196,24 @@
 --                       NVL(PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'I003_INFONAVIT PATRONAL',  'Pay Value'),   '0')    AS  INFONAVIT_PATRONAL,
 --                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D092_ISPT ANUAL A CARGO',  'Pay Value'),   '0')    AS  ISPT_ANUAL_CARGO,
                        NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR Subsidy for Employment', 'ISR Subsidy for Employment'),   '0')    AS   SUBSIDIO_SEGUN_TABLA,
-                       NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR',                        'ISR Calculated'),   '0')    AS   ISR_SEGUN_TABLA,  
+                       NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR',                        'ISR Calculated'),   '0')                AS   ISR_SEGUN_TABLA,
+                       
+                       NVL(PAC_RESULT_VALUES_PKG.GET_BALANCE(PAA.ASSIGNMENT_ACTION_ID, 
+                                                             PPA.DATE_EARNED,
+                                                             'ISR Tax Balance Adjustments',
+                                                             'ISR Withheld') ,   '0')                  AS   AJUSTE_ISPT,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_BALANCE(PAA.ASSIGNMENT_ACTION_ID, 
+                                                             PPA.DATE_EARNED,
+                                                             'ISR Tax Balance Adjustments',
+                                                             'ISR Subsidy for Employment Paid'),   '0') AS   AJUSTE_SUBSIDIO_EMPLEO,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_BALANCE(PAA.ASSIGNMENT_ACTION_ID, 
+                                                             PPA.DATE_EARNED,
+                                                             'ISR Tax Balance Adjustments',
+                                                             'ISR Calculated'),   '0')                AS   AJUSTE_ISR_SEGUN_TABLA,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_BALANCE(PAA.ASSIGNMENT_ACTION_ID, 
+                                                             PPA.DATE_EARNED,
+                                                             'ISR Tax Balance Adjustments',
+                                                             'ISR Subsidy for Employment'),   '0')    AS   AJUSTE_SUBSIDIO_SEGUN_TABLA,  
 --                       ---------------------------------------------------------------------------------------
                        (
                         SELECT 
@@ -250,7 +274,8 @@
                    AND PPA.PAYROLL_ID = NVL(:P_PAYROLL_ID,  PPA.PAYROLL_ID)
                    AND PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
                    AND PPA.CONSOLIDATION_SET_ID = NVL(:P_CONSOLIDATION_SET_ID, PPA.CONSOLIDATION_SET_ID)
-                   AND PPA.ACTION_TYPE IN ('Q', 'R')             
+                   AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')
+--                   AND PPA.ACTION_TYPE IN ('B')             
                    AND PTP.PERIOD_NAME LIKE '%' || :P_YEAR || '%'
 --                   AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
                    AND (EXTRACT(MONTH FROM PTP.END_DATE) >= :P_START_MONTH
@@ -269,7 +294,9 @@
                           PTP.START_DATE,
                           PTP.END_DATE,
                           PTF.RUN_TYPE_NAME,
-                          PPA.ACTION_TYPE
+                          PPA.ACTION_TYPE,
+                          PPA.DATE_EARNED,
+                          PAA.TAX_UNIT_ID
                       )  DETAIL,
                          PAY_CONSOLIDATION_SETS     PCS,
                          PER_ALL_ASSIGNMENTS_F      PAAF
@@ -282,6 +309,7 @@
                   PAAF.PERSON_ID,
                   PERSON_ID,
                   DETAIL.ASSIGNMENT_ID
+--                  DETAIL.DATE_EARNED
 --                  DETAIL.SALARIO_DIARIO_INTEGRADO
 --                  DETAIL.SUELDO_DIARIO
          ORDER BY CLAVE_NOMINA,                      

@@ -352,6 +352,30 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
         FND_FILE.put_line(FND_FILE.LOG, '**Error en la función GET_DATA_MOVEMENT. (' || P_PERSON_ID || ',' || SQLERRM);
       END;
       
+      
+      FUNCTION GET_BALANCE(P_ASSIGNMENT_ACTION_ID    NUMBER,
+                           P_DATE_EARNED             DATE,
+                           P_ELEMENT_NAME            VARCHAR2,
+                           P_ENTRY_NAME              VARCHAR2)
+        RETURN NUMBER
+        IS 
+            var_result_value    NUMBER;
+        BEGIN
+                
+            SELECT PEEV.ENTRY_VALUE
+              INTO var_result_value  
+              FROM apps.PAY_ELEMENT_ENTRIES_V PEEV 
+             WHERE 1 = 1
+               AND PEEV.ELEMENT_NAME = P_ELEMENT_NAME
+               AND PEEV.NAME = P_ENTRY_NAME
+               AND PEEV.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID;
+--               AND PEEV.PEE_EFFECTIVE_END_DATE = P_DATE_EARNED;
+
+            
+            RETURN var_result_value;
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            RETURN 0;
+        END;
 
     
         

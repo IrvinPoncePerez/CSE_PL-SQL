@@ -11,6 +11,6 @@ IS
              RETURN VARCHAR2;
              
     FUNCTION GET_PICTURE(P_EMPLOYEE_NUMBER  NUMBER)
-             RETURN BLOB;
+             RETURN BLOB;         
 
 END PAC_HR_APPLICATION_ANDROID_PKG;

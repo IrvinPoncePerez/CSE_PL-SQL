@@ -23,21 +23,24 @@ IS
     IS
         var_department  VARCHAR2(1000) := '';    
     BEGIN
-        SELECT DISTINCT
-               HOU.NAME
+    
+        SELECT HOU.NAME
           INTO var_department
-          FROM HR_ORGANIZATION_UNITS        HOU,
-               PER_ALL_ASSIGNMENTS_F        PAAF,
-               PER_ALL_PEOPLE_F             PAPF
+          FROM APPS.PER_PEOPLE_F             PPF,    
+               APPS.PER_ALL_ASSIGNMENTS_F    PAAF,
+               HR.HR_ALL_ORGANIZATION_UNITS    HOU
          WHERE 1 = 1
-           AND HOU.ORGANIZATION_ID = PAAF.ORGANIZATION_ID
-           AND PAAF.PERSON_ID = PAPF.PERSON_ID
+           AND PPF.PERSON_ID = PAAF.PERSON_ID
+           AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
            AND SYSDATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
-           AND SYSDATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
-           AND PAPF.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+           AND PAAF.ORGANIZATION_ID = HOU.ORGANIZATION_ID
+           AND PPF.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
            AND ROWNUM = 1;
+--        var_department := P_EMPLOYEE_NUMBER;
            
         RETURN var_department;
+    EXCEPTION WHEN OTHERS THEN
+        RETURN SQLERRM;
     END;
              
     FUNCTION GET_JOB(P_EMPLOYEE_NUMBER  NUMBER)
@@ -45,28 +48,42 @@ IS
     IS
         var_job  VARCHAR2(1000) := '';
     BEGIN
-        SELECT DISTINCT
-               HAPD.NAME
+   
+        SELECT HAPD.NAME
           INTO var_job
-          FROM HR_ALL_POSITIONS_D           HAPD,
-               PER_ALL_ASSIGNMENTS_F        PAAF,
-               PER_ALL_PEOPLE_F             PAPF
+          FROM APPS.PER_ALL_PEOPLE_F             PAPF,
+               APPS.PER_ALL_ASSIGNMENTS_F        PAAF, 
+               APPS.HR_ALL_POSITIONS_F          HAPD       
          WHERE 1 = 1
-           AND HAPD.POSITION_ID = PAAF.POSITION_ID
-           AND PAAF.PERSON_ID = PAPF.PERSON_ID
+           AND PAPF.PERSON_ID = PAAF.PERSON_ID
            AND SYSDATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
            AND SYSDATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
            AND PAPF.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+           AND HAPD.POSITION_ID = PAAF.POSITION_ID
            AND ROWNUM = 1;
-    
+--        var_job := P_EMPLOYEE_NUMBER;
+
         RETURN var_job;
+    EXCEPTION WHEN OTHERS THEN
+        RETURN SQLERRM;
     END;
              
     FUNCTION GET_PICTURE(P_EMPLOYEE_NUMBER  NUMBER)
              RETURN BLOB
     IS
+        var_image   BLOB;
     BEGIN
-        RETURN NULL;
+        SELECT PI.IMAGE
+          INTO var_image
+          FROM PER_PEOPLE_F     PPF,
+               PER_IMAGES       PI
+         WHERE 1 = 1
+           AND PPF.PERSON_ID = PI.PARENT_ID
+           AND PI.TABLE_NAME = 'PER_PEOPLE_F'
+           AND PPF.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+           AND ROWNUM = 1;
+           
+        RETURN var_image;  
     END;
 
 END PAC_HR_APPLICATION_ANDROID_PKG;

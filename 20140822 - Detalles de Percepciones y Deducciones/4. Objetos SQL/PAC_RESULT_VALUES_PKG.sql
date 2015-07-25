@@ -189,5 +189,11 @@ CREATE OR REPLACE PACKAGE PAC_RESULT_VALUES_PKG AS
              P_PERSON_ID      NUMBER)
       RETURN DATE;
       
+      
+    FUNCTION GET_BALANCE(P_ASSIGNMENT_ACTION_ID    NUMBER,
+                           P_DATE_EARNED             DATE,
+                           P_ELEMENT_NAME            VARCHAR2,
+                           P_ENTRY_NAME              VARCHAR2)
+        RETURN NUMBER;   
 
 END PAC_RESULT_VALUES_PKG;
