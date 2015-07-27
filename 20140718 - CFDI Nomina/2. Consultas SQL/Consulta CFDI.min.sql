@@ -145,7 +145,7 @@
                AND (EXTRACT(YEAR FROM PTP.END_DATE) = :P_YEAR 
                 AND EXTRACT(MONTH FROM PTP.END_DATE) = :P_MONTH)
                AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
---               AND PAA.RUN_TYPE_ID = NVL(:P_RUN_TYPE_ID, PAA.RUN_TYPE_ID)
+--               AND PAA.RUN_TYPE_ID = NVL(P_RUN_TYPE_ID, PAA.RUN_TYPE_ID)
                AND PPA.EFFECTIVE_DATE BETWEEN PTP.START_DATE AND PTP.END_DATE
                AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID   
                AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
@@ -197,5 +197,3 @@
                       PTP.END_DATE
              ORDER BY PPF.PAYROLL_NAME,
                       PAPF.EMPLOYEE_NUMBER;
-                      
-                      

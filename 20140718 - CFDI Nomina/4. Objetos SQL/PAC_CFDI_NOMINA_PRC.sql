@@ -255,7 +255,7 @@ BEGIN
             var_file_name := var_file_name || 'PAC_';
         END IF;
         
-        var_file_name := var_file_name || REPLACE(P_PERIOD_NAME, ' ', '_') || '_';
+        var_file_name := var_file_name || REPLACE(NVL(P_PERIOD_NAME,P_MONTH || '_' || P_YEAR), ' ', '_') || '_';
         var_file_name := var_file_name || REPLACE(var_consolidation_name, 'Ó', 'O');
         
 --        IF var_run_type_name LIKE 'Standard' THEN
