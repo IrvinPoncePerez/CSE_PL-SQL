@@ -362,14 +362,31 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
             var_result_value    NUMBER;
         BEGIN
                 
-            SELECT PEEV.ENTRY_VALUE
-              INTO var_result_value  
-              FROM apps.PAY_ELEMENT_ENTRIES_V PEEV 
-             WHERE 1 = 1
-               AND PEEV.ELEMENT_NAME = P_ELEMENT_NAME
-               AND PEEV.NAME = P_ENTRY_NAME
-               AND PEEV.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-               AND PEEV.PEE_EFFECTIVE_END_DATE = P_DATE_EARNED;
+            SELECT PEV.SCREEN_ENTRY_VALUE
+              INTO var_result_value
+              FROM PAY_INPUT_VALUES_F INV,
+                   PAY_ELEMENT_ENTRY_VALUES_F PEV,
+                   PAY_ELEMENT_TYPES_F PET,
+                   PAY_ELEMENT_LINKS_F PEL,
+                   PAY_ELEMENT_ENTRIES_F PEE
+                WHERE 1 = 1
+                  AND INV.INPUT_VALUE_ID = PEV.INPUT_VALUE_ID
+                  AND PEE.EFFECTIVE_START_DATE BETWEEN INV.EFFECTIVE_START_DATE
+                                                   AND INV.EFFECTIVE_END_DATE
+                  AND PEV.ELEMENT_ENTRY_ID = PEE.ELEMENT_ENTRY_ID
+                  AND PEE.EFFECTIVE_START_DATE BETWEEN PEV.EFFECTIVE_START_DATE
+                                                   AND PEV.EFFECTIVE_END_DATE
+                  AND PET.ELEMENT_TYPE_ID = PEL.ELEMENT_TYPE_ID
+                  AND PEE.EFFECTIVE_START_DATE BETWEEN PET.EFFECTIVE_START_DATE
+                                                   AND PET.EFFECTIVE_END_DATE
+                  AND PEL.ELEMENT_LINK_ID = PEE.ELEMENT_LINK_ID
+                  AND PEE.EFFECTIVE_START_DATE BETWEEN PEL.EFFECTIVE_START_DATE
+                                                   AND PEL.EFFECTIVE_END_DATE
+                  AND PEE.ENTRY_TYPE = 'B'
+                  AND PET.ELEMENT_NAME = P_ELEMENT_NAME
+                  AND INV.NAME = P_ENTRY_NAME
+                  AND PEV.EFFECTIVE_END_DATE = P_DATE_EARNED
+                  AND PEE.CREATOR_ID = P_ASSIGNMENT_ACTION_ID;
 
             
             RETURN var_result_value;
