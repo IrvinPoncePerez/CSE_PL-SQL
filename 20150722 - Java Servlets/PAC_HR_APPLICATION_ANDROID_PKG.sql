@@ -13,8 +13,7 @@ IS
     FUNCTION GET_PICTURE(P_EMPLOYEE_NUMBER  NUMBER)
              RETURN BLOB;       
              
-    FUNCTION SET_PICTURE(P_EMPLOYEE_NUMBER   VARCHAR2, 
-                         P_EMPLOYEE_PICTURE  CLOB)
+    FUNCTION SET_PICTURE(P_EMPLOYEE_NUMBER   VARCHAR2)
              RETURN VARCHAR2;
                          
 

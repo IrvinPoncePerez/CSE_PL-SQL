@@ -86,8 +86,7 @@ IS
         RETURN var_image;  
     END;
     
-    FUNCTION SET_PICTURE(P_EMPLOYEE_NUMBER  VARCHAR2, 
-                         P_EMPLOYEE_PICTURE CLOB)
+    FUNCTION SET_PICTURE(P_EMPLOYEE_NUMBER  VARCHAR2)
              RETURN VARCHAR2
     IS 
     
@@ -95,8 +94,10 @@ IS
         var_person_id   NUMBER;     
         
         l_dir       VARCHAR2(10) := 'IMAGES';
-        l_file      VARCHAR2(20) := '';
+        l_file      VARCHAR2(20) := P_EMPLOYEE_NUMBER || '.jpg';
         l_len       NUMBER;
+        l_blob      BLOB;
+        l_bfile     BFILE;
         
     BEGIN
     
@@ -112,18 +113,7 @@ IS
         EXCEPTION WHEN OTHERS THEN
             var_result := 'false';
         END;
-        
-        
-        BEGIN
-        
             
-            null;
-            
-        
-        EXCEPTION WHEN OTHERS THEN
-            var_result := sqlerrm;
-        END;
-        
         
         BEGIN
         
@@ -144,17 +134,31 @@ IS
 --            DBMS_LOB.loadfromfile(l_blob, l_bfile, DBMS_LOB.getlength(l_bfile));
 --            DBMS_LOB.FREETEMPORARY(l_blob);
 --            DBMS_LOB.fileclose(l_bfile);
+
+            INSERT INTO PAC_PER_IMAGES_TB
+                        (
+                            PERSON_ID,
+                            EMPLOYEE_NUMBER, 
+                            EMPLOYEE_PICTURE
+                        ) 
+                 VALUES
+                        (
+                            var_person_id,
+                            P_EMPLOYEE_NUMBER,
+                            EMPTY_BLOB()
+                        )
+                 RETURN EMPLOYEE_PICTURE INTO l_blob;
             
+            l_bfile := BFILENAME(l_dir, l_file);
+            DBMS_LOB.fileopen(l_bfile, DBMS_LOB.file_readonly);
+            DBMS_LOB.loadfromfile(l_blob, l_bfile, DBMS_LOB.getlength(l_bfile));
+            DBMS_LOB.fileclose(l_bfile);
             
-            null;
+            var_result := 'true';
                                
         EXCEPTION WHEN OTHERS THEN
             var_result := 'false';
         END;
-
---        IF (var_person_id IS NOT NULL) THEN
---            var_result := 'true';
---        END IF;
         
     
         RETURN var_result;
