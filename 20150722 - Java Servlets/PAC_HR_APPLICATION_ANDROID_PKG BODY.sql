@@ -85,5 +85,79 @@ IS
            
         RETURN var_image;  
     END;
+    
+    FUNCTION SET_PICTURE(P_EMPLOYEE_NUMBER  VARCHAR2, 
+                         P_EMPLOYEE_PICTURE CLOB)
+             RETURN VARCHAR2
+    IS 
+    
+        var_result      VARCHAR2(1000) := 'false';
+        var_person_id   NUMBER;     
+        
+        l_dir       VARCHAR2(10) := 'IMAGES';
+        l_file      VARCHAR2(20) := '';
+        l_len       NUMBER;
+        
+    BEGIN
+    
+        BEGIN
+        
+            SELECT DISTINCT
+                   PPF.PERSON_ID
+              INTO var_person_id
+              FROM PER_PEOPLE_F     PPF
+             WHERE 1 = 1
+               AND PPF.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER;
+        
+        EXCEPTION WHEN OTHERS THEN
+            var_result := 'false';
+        END;
+        
+        
+        BEGIN
+        
+            
+            null;
+            
+        
+        EXCEPTION WHEN OTHERS THEN
+            var_result := sqlerrm;
+        END;
+        
+        
+        BEGIN
+        
+            
+--            INSERT INTO APPS.PER_IMAGES (IMAGE_ID,
+--                                         PARENT_ID,
+--                                         TABLE_NAME,
+--                                         IMAGE)
+--                 VALUES (PER_IMAGES_S.NEXTVAL,
+--                         var_person_id,
+--                         'PER_PEOPLE_F',
+--                         EMPTY_BLOB())
+--                 RETURN IMAGE INTO l_blob;
+--                 
+--                 
+--            l_bfile := BFILENAME(l_dir, l_file);
+--            DBMS_LOB.fileopen(l_bfile, DBMS_LOB.file_readonly);
+--            DBMS_LOB.loadfromfile(l_blob, l_bfile, DBMS_LOB.getlength(l_bfile));
+--            DBMS_LOB.FREETEMPORARY(l_blob);
+--            DBMS_LOB.fileclose(l_bfile);
+            
+            
+            null;
+                               
+        EXCEPTION WHEN OTHERS THEN
+            var_result := 'false';
+        END;
+
+--        IF (var_person_id IS NOT NULL) THEN
+--            var_result := 'true';
+--        END IF;
+        
+    
+        RETURN var_result;
+    END;
 
 END PAC_HR_APPLICATION_ANDROID_PKG;

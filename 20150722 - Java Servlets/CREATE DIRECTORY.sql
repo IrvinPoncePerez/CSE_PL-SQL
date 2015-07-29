@@ -1,0 +1,6 @@
+BEGIN
+
+EXECUTE IMMEDIATE 'CREATE DIRECTORY IMAGES AS ''/var/tmp/CARGAS/IMAGES''';
+COMMIT;
+
+END;                        
