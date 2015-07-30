@@ -71,18 +71,47 @@ IS
     FUNCTION GET_PICTURE(P_EMPLOYEE_NUMBER  NUMBER)
              RETURN BLOB
     IS
+        l_exists    NUMBER(1);
         var_image   BLOB;
     BEGIN
-        SELECT PI.IMAGE
-          INTO var_image
-          FROM PER_PEOPLE_F     PPF,
-               PER_IMAGES       PI
-         WHERE 1 = 1
-           AND PPF.PERSON_ID = PI.PARENT_ID
-           AND PI.TABLE_NAME = 'PER_PEOPLE_F'
-           AND PPF.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
-           AND ROWNUM = 1;
-           
+    
+    
+        SELECT CASE WHEN EXISTS(
+                                SELECT PPIT.EMPLOYEE_PICTURE
+                                  FROM PAC_PER_IMAGES_TB    PPIT
+                                 WHERE 1 = 1
+                                   AND PPIT.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+                               )
+                    THEN 1
+                    ELSE 0
+               END
+          INTO l_exists
+          FROM DUAL;
+    
+    
+    
+        IF (l_exists = 1) THEN
+            
+            SELECT PPIT.EMPLOYEE_PICTURE
+              INTO var_image
+              FROM PAC_PER_IMAGES_TB PPIT
+             WHERE 1 = 1
+               AND PPIT.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER;
+        
+        ELSE
+        
+            SELECT PI.IMAGE
+              INTO var_image
+              FROM PER_PEOPLE_F     PPF,
+                   PER_IMAGES       PI
+             WHERE 1 = 1
+               AND PPF.PERSON_ID = PI.PARENT_ID
+               AND PI.TABLE_NAME = 'PER_PEOPLE_F'
+               AND PPF.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+               AND ROWNUM = 1;
+        
+        END IF;
+              
         RETURN var_image;  
     END;
     
@@ -117,6 +146,8 @@ IS
         
         BEGIN
         
+            EXECUTE IMMEDIATE ('DELETE FROM PAC_PER_IMAGES_TB WHERE EMPLOYEE_NUMBER = ' || P_EMPLOYEE_NUMBER);
+        
             
 --            INSERT INTO APPS.PER_IMAGES (IMAGE_ID,
 --                                         PARENT_ID,
@@ -132,7 +163,6 @@ IS
 --            l_bfile := BFILENAME(l_dir, l_file);
 --            DBMS_LOB.fileopen(l_bfile, DBMS_LOB.file_readonly);
 --            DBMS_LOB.loadfromfile(l_blob, l_bfile, DBMS_LOB.getlength(l_bfile));
---            DBMS_LOB.FREETEMPORARY(l_blob);
 --            DBMS_LOB.fileclose(l_bfile);
 
             INSERT INTO PAC_PER_IMAGES_TB
@@ -153,6 +183,8 @@ IS
             DBMS_LOB.fileopen(l_bfile, DBMS_LOB.file_readonly);
             DBMS_LOB.loadfromfile(l_blob, l_bfile, DBMS_LOB.getlength(l_bfile));
             DBMS_LOB.fileclose(l_bfile);
+            
+            COMMIT;
             
             var_result := 'true';
                                
