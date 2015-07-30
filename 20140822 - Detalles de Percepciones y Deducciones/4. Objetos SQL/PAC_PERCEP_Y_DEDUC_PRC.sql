@@ -319,7 +319,13 @@ IS
                         SUM(FONDO_AHO_EMP)        + 
                         SUM(IMPUESTO_ESTATAL)     +
                         SUM(IMSS_PATRONAL)        +
-                        SUM(INFONAVIT_PATRONAL)) * PORCENTAJE) AS PORCENTAJE_UTILIDAD
+                        SUM(INFONAVIT_PATRONAL)) * PORCENTAJE) AS PORCENTAJE_UTILIDAD,
+                           SUM(SUBSIDIO_SEGUN_TABLA) AS SUBSIDIO_SEGUN_TABLA,
+                           SUM(ISR_SEGUN_TABLA)      AS ISR_SEGUN_TABLA,
+                           SUM(AJUSTE_ISPT)          AS AJUSTE_ISPT,
+                           SUM(AJUSTE_SUBSIDIO_EMPLEO)      AS AJUSTE_SUBSIDIO_EMPLEO,
+                           SUM(AJUSTE_ISR_SEGUN_TABLA)      AS AJUSTE_ISR_SEGUN_TABLA,
+                           SUM(AJUSTE_SUBSIDIO_SEGUN_TABLA) AS AJUSTE_SUBSIDIO_SEGUN_TABLA
               FROM (SELECT DISTINCT
                            PPA.PAYROLL_ACTION_ID,
                            PAA.ASSIGNMENT_ID,
@@ -447,6 +453,26 @@ IS
                            NVL(PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'I003_INFONAVIT PATRONAL',  'Pay Value'),   '0')    AS  INFONAVIT_PATRONAL,
                            NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D092_ISPT ANUAL A CARGO',  'Pay Value'),   '0')    AS  ISPT_ANUAL_CARGO,
                            ---------------------------------------------------------------------------------------
+                           NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR Subsidy for Employment', 'ISR Subsidy for Employment'),   '0')    AS   SUBSIDIO_SEGUN_TABLA,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR',                        'ISR Calculated'),   '0')                AS   ISR_SEGUN_TABLA,
+                           
+                           NVL(PAC_RESULT_VALUES_PKG.GET_BALANCE(PAA.ASSIGNMENT_ACTION_ID, 
+                                                                 PPA.DATE_EARNED,
+                                                                 'ISR Tax Balance Adjustments',
+                                                                 'ISR Withheld') ,   '0')                  AS   AJUSTE_ISPT,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_BALANCE(PAA.ASSIGNMENT_ACTION_ID, 
+                                                                 PPA.DATE_EARNED,
+                                                                 'ISR Tax Balance Adjustments',
+                                                                 'ISR Subsidy for Employment Paid'),   '0') AS   AJUSTE_SUBSIDIO_EMPLEO,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_BALANCE(PAA.ASSIGNMENT_ACTION_ID, 
+                                                                 PPA.DATE_EARNED,
+                                                                 'ISR Tax Balance Adjustments',
+                                                                 'ISR Calculated'),   '0')                AS   AJUSTE_ISR_SEGUN_TABLA,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_BALANCE(PAA.ASSIGNMENT_ACTION_ID, 
+                                                                 PPA.DATE_EARNED,
+                                                                 'ISR Tax Balance Adjustments',
+                                                                 'ISR Subsidy for Employment'),   '0')    AS   AJUSTE_SUBSIDIO_SEGUN_TABLA,
+                           ---------------------------------------------------------------------------------------
                            (
                             SELECT 
                                 SUM(PRRV.RESULT_VALUE)
@@ -524,7 +550,8 @@ IS
                               PTP.START_DATE,
                               PTP.END_DATE,
                               PTF.RUN_TYPE_NAME,
-                              PPA.ACTION_TYPE
+                              PPA.ACTION_TYPE,
+                              PPA.DATE_EARNED
                           )  DETAIL,
                              PAY_CONSOLIDATION_SETS     PCS,
                              PER_ALL_ASSIGNMENTS_F      PAAF
@@ -563,6 +590,7 @@ IS
                        END_DATE
              ORDER BY  6,        --Nombre
                        11;       --Numero de Nomina
+
 
                          
                    
@@ -755,7 +783,14 @@ BEGIN
                     'COSTO POR SUELDOS,'        ||
                     'COSTO BONOS DE DESPENSA,'  ||
                     'COSTO DE FONDO DE AHORRO,' ||
-                    'PORCENTAJE DE UTILIDAD A CSE,';
+                    'PORCENTAJE DE UTILIDAD A CSE,'   ||
+                    'ISR SEGUN TABLA,'          ||
+                    'SUBSIDIO SEGUN TABLA,'     ||
+                    'AJUSTE ISPT,'              ||
+                    'AJUSTE SUBSIDIO PARA EL EMPLEO, '||
+                    'AJUSTE ISR SEGUN TABLA,'   ||
+                    'AJUSTE SUBSIDIO SEGUN TABLA,';
+                    
         UTL_FILE.PUT_LINE(var_file, var_data);
     
     EXCEPTION WHEN OTHERS THEN
@@ -894,7 +929,13 @@ BEGIN
                                DETAIL(rowIndex).COSTO_SUELDOS           || ',' ||
                                DETAIL(rowIndex).COSTO_DESPENSA          || ',' ||
                                DETAIL(rowIndex).COSTO_FONDO_AHORRO      || ',' ||
-                               DETAIL(rowIndex).PORCENTAJE_UTILIDAD     || ',' ;
+                               DETAIL(rowIndex).PORCENTAJE_UTILIDAD     || ',' ||
+                               DETAIL(rowIndex).ISR_SEGUN_TABLA         || ',' ||
+                               DETAIL(rowIndex).SUBSIDIO_SEGUN_TABLA    || ',' ||
+                               DETAIL(rowIndex).AJUSTE_ISPT             || ',' ||
+                               DETAIL(rowIndex).AJUSTE_SUBSIDIO_EMPLEO  || ',' ||
+                               DETAIL(rowIndex).AJUSTE_ISR_SEGUN_TABLA  || ',' ||
+                               DETAIL(rowIndex).AJUSTE_SUBSIDIO_SEGUN_TABLA || ',';
                 
                 UTL_FILE.PUT_LINE(var_file, var_data);
                 
