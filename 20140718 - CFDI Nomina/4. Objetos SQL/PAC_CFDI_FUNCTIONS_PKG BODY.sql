@@ -318,8 +318,10 @@ CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
          
          
          CASE
-            WHEN var_nom_descri LIKE 'GRATIFICACION_MAYO' THEN
+            WHEN var_nom_descri LIKE 'GRATIFICACION_MAYO' OR var_nom_descri LIKE 'GRATIFICACIÓN' THEN
                 var_nom_descri := 'GRATIFICACION MARZO';
+            WHEN var_nom_descri LIKE 'GRATIFICACION_MAYO_PTU' THEN
+                var_nom_descri := 'GRATIFICACION MAYO PTU';
             WHEN var_nom_descri LIKE '%AHORRO%' THEN 
                 var_nom_descri := 'FONDO DE AHORRO';
             WHEN var_nom_descri LIKE '%ORDINARIA%' THEN 
