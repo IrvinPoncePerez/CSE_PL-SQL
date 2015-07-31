@@ -11,7 +11,7 @@
                    ANIO,
                    MES,
                    NUM_NOMINA,
-                   (ACTION_TYPE || ' - ' || RUN_TYPE_NAME)                                          AS  TIPO_EJECUCION,
+--                   (ACTION_TYPE || ' - ' || RUN_TYPE_NAME)                                          AS  TIPO_EJECUCION,
                    PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(DETAIL.ASSIGNMENT_ID)                   AS  REG_PATRONAL,
                    PCS.CONSOLIDATION_SET_NAME   AS  JUEGO_CONSOLIDACION,
                    PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PERSON_ID)                        AS  EFFECTIVE_START_DATE,
@@ -313,7 +313,7 @@
                            PPA.EFFECTIVE_DATE,
                            PTP.START_DATE,
                            PTP.END_DATE,
-                           PTF.RUN_TYPE_NAME,
+--                           PTF.RUN_TYPE_NAME,
                            (SELECT meaning 
                               FROM HR_LOOKUPS 
                              WHERE LOOKUP_TYPE = 'ACTION_TYPE'
@@ -499,18 +499,18 @@
                       FROM PAY_PAYROLL_ACTIONS          PPA,
                            PER_TIME_PERIODS             PTP,
                            PAY_ASSIGNMENT_ACTIONS       PAA,
-                           PAY_PAYROLLS_F               PPF,
-                           PAY_RUN_TYPES_F              PTF
+                           PAY_PAYROLLS_F               PPF
+--                           PAY_RUN_TYPES_F              PTF
                      WHERE PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
                        AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
                        AND PPA.PAYROLL_ID = PPF.PAYROLL_ID 
-                       AND PAA.RUN_TYPE_ID = PTF.RUN_TYPE_ID
+--                       AND PAA.RUN_TYPE_ID = PTF.RUN_TYPE_ID
                         ----------Parametros de Ejecucion-----------------
                        AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = :P_COMPANY_ID    
                        AND PPA.PAYROLL_ID = NVL(:P_PAYROLL_ID,  PPA.PAYROLL_ID)
                        AND PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
                        AND PPA.CONSOLIDATION_SET_ID = NVL(:P_CONSOLIDATION_SET_ID, PPA.CONSOLIDATION_SET_ID)
-                       AND PPA.ACTION_TYPE IN ('Q', 'R')             
+                       AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')             
                        AND PTP.PERIOD_NAME LIKE '%' || :P_YEAR || '%'
                        AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
                        AND (EXTRACT(MONTH FROM PTP.END_DATE) >= :P_START_MONTH
@@ -527,7 +527,7 @@
                               PPA.EFFECTIVE_DATE,
                               PTP.START_DATE,
                               PTP.END_DATE,
-                              PTF.RUN_TYPE_NAME,
+--                              PTF.RUN_TYPE_NAME,
                               PPA.ACTION_TYPE,
                               PPA.DATE_EARNED
                           )  DETAIL,
@@ -563,7 +563,7 @@
                        PAAF.POSITION_ID,
                        PAAF.PERSON_ID,
                        ACTION_TYPE,
-                       RUN_TYPE_NAME,
+--                       RUN_TYPE_NAME,
                        START_DATE,
                        END_DATE
              ORDER BY  6,        --Nombre
