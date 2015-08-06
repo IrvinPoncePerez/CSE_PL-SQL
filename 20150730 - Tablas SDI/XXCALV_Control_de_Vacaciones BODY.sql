@@ -612,8 +612,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                             ,NVL(PP7.ATTRIBUTE28, 'N')        REQUIERE_APROBACION
                             ,PP7.ATTRIBUTE29                  FECHA_CONTROL_VACACIONES
                             ,NVL(PP7.ATTRIBUTE30, 'N')        CAPTURA_VACACIONES
-                            ,TRUNC(PP7.HIRE_DATE)             HIRE_DATE
-                            ,TRUNC(MONTHS_BETWEEN(SYSDATE, PP7.HIRE_DATE)/12)
+                            --,TRUNC(PP7.HIRE_DATE)             HIRE_DATE
+                            ,TRUNC(get_Hire_Date(PP7.PERSON_ID)) HIRE_DATE
+                            --,TRUNC(MONTHS_BETWEEN(SYSDATE, PP7.HIRE_DATE)/12)
+                            ,TRUNC(MONTHS_BETWEEN(SYSDATE, get_Hire_Date(PP7.PERSON_ID))/12)
                                                               ANTIGUEDAD_ACT
                         FROM PER_PEOPLE_V7     PP7
                        WHERE 1 = 1
@@ -1962,7 +1964,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                       ,PP7.BUSINESS_GROUP_ID
                       ,NVL(PP7.ATTRIBUTE28, 'N')        REQUIERE_APROBACION
                       ,PP7.ATTRIBUTE29                  FECHA_CONTROL_VACACIONES
-                      ,TRUNC(MONTHS_BETWEEN(SYSDATE, PP7.HIRE_DATE)/12)
+                      --,TRUNC(MONTHS_BETWEEN(SYSDATE, PP7.HIRE_DATE)/12)
+                      ,TRUNC(MONTHS_BETWEEN(SYSDATE, get_Hire_Date(PP7.PERSON_ID))/12)
                                                         ANIO_ANTIGUEDAD
                   FROM PER_PEOPLE_V7     PP7
                  WHERE 1 = 1
@@ -2406,11 +2409,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                               ,PP7.BUSINESS_GROUP_ID
                               ,NVL(PP7.ATTRIBUTE28, 'N')        REQUIERE_APROBACION
                               ,PP7.ATTRIBUTE29                  FECHA_CONTROL_VACACIONES
-                              ,TRUNC(PP7.HIRE_DATE)             HIRE_DATE
-                              ,TRUNC(MONTHS_BETWEEN(SYSDATE, PP7.HIRE_DATE)/12)
+                              --,TRUNC(PP7.HIRE_DATE)             HIRE_DATE
+                              ,TRUNC(get_Hire_Date(PP7.PERSON_ID)) HIRE_DATE
+                              --,TRUNC(MONTHS_BETWEEN(SYSDATE, PP7.HIRE_DATE)/12)
+                              ,TRUNC(MONTHS_BETWEEN(SYSDATE, get_Hire_Date(PP7.PERSON_ID))/12)
                                                                 ANTIGUEDAD_NUE
                               ,TRUNC(MONTHS_BETWEEN(NVL2(PP7.ATTRIBUTE29, TO_DATE(PP7.ATTRIBUTE29, 'YYYY/MM/DD HH24:MI:SS')
-                                                                        , PP7.HIRE_DATE), PP7.HIRE_DATE)/12)
+                              --                                          , PP7.HIRE_DATE), PP7.HIRE_DATE)/12)
+                                                                        , get_Hire_Date(PP7.PERSON_ID)), get_Hire_Date(PP7.PERSON_ID))/12)
                                                                 ANTIGUEDAD_ANT
                           FROM PER_PEOPLE_V7     PP7
                          WHERE 1 = 1
@@ -2686,5 +2692,37 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
       retcode := 2;
       RETURN;
   END Verifica_Cambios_Fecha;
+  
+  
+  FUNCTION get_Hire_Date(p_person_id   IN NUMBER)
+  RETURN DATE
+  IS
+    var_hire_date   DATE;
+  BEGIN
+  
+  
+    SELECT NVL(PPS.ADJUSTED_SVC_DATE, PER.ORIGINAL_DATE_OF_HIRE)
+      INTO var_hire_date
+      FROM PER_PERIODS_OF_SERVICE PPS,
+           PER_PEOPLE_F PER
+     WHERE 1 = 1
+       AND PPS.PERSON_ID(+) = PER.PERSON_ID
+       AND (   (PER.EMPLOYEE_NUMBER IS NULL)
+            OR (    PER.EMPLOYEE_NUMBER IS NOT NULL
+                AND PPS.DATE_START = (SELECT MAX (PPS1.DATE_START)
+                                        FROM PER_PERIODS_OF_SERVICE PPS1
+                                       WHERE PPS1.PERSON_ID = PER.PERSON_ID)
+               )
+           )
+       AND PER.EFFECTIVE_START_DATE = (SELECT MAX (PER1.EFFECTIVE_START_DATE)
+                                         FROM PER_PEOPLE_F PER1
+                                        WHERE PER1.PERSON_ID = PER.PERSON_ID)
+       AND PER.PERSON_ID = p_person_id;
+       
+    RETURN var_hire_date;
+       
+  END get_Hire_Date;
+  
+  
 END XXCALV_Control_de_Vacaciones;
 /

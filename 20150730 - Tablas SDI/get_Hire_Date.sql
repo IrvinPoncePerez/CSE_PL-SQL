@@ -1,0 +1,21 @@
+SELECT NVL(PPS.ADJUSTED_SVC_DATE, PER.ORIGINAL_DATE_OF_HIRE)
+  FROM PER_PERIODS_OF_SERVICE PPS,
+       PER_PEOPLE_F PER
+ WHERE 1 = 1
+   AND PPS.PERSON_ID(+) = PER.PERSON_ID
+   AND (   (PER.EMPLOYEE_NUMBER IS NULL)
+        OR (    PER.EMPLOYEE_NUMBER IS NOT NULL
+            AND PPS.DATE_START = (SELECT MAX (PPS1.DATE_START)
+                                    FROM PER_PERIODS_OF_SERVICE PPS1
+                                   WHERE PPS1.PERSON_ID = PER.PERSON_ID)
+           )
+       )
+   AND PER.EFFECTIVE_START_DATE = (SELECT MAX (PER1.EFFECTIVE_START_DATE)
+                                     FROM PER_PEOPLE_F PER1
+                                    WHERE PER1.PERSON_ID = PER.PERSON_ID)
+   AND PER.PERSON_ID = :P_PERSON_ID
+                         
+  
+  
+  
+  
