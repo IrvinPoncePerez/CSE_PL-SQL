@@ -1,14 +1,11 @@
+DROP TABLE PAC_VISITS_CONTROL_TB;
+COMMIT;
+
 CREATE TABLE PAC_VISITS_CONTROL_TB (
-    VISITOR_ID                          NUMBER          NOT NULL,
     VISITOR_DAY_ID                      NUMBER          NOT NULL,
     VISITOR_NAME                        VARCHAR2(100),
     VISITOR_COMPANY                     VARCHAR2(100),
-    FLAG_IFE_CARD                       VARCHAR2(1),
-    FLAG_DRIVER_LICENSE                 VARCHAR2(1),
-    FLAG_PASSPORT                       VARCHAR2(1),
-    FLAG_PROFESSIONAL_CERTIFICATE       VARCHAR2(1),
-    FLAG_MILITARY_SERVICE_CARD          VARCHAR2(1),
-    FLAG_OTHER_IDENTIFICATION           VARCHAR2(1),
+    IDENTIFICATION_TYPE                 VARCHAR2(100),
     OTHER_IDENTIFICATION_NAME           VARCHAR2(50),
     REASON_VISIT                        VARCHAR2(100),
     ASSOCIATE_PERSON_ID                 NUMBER,
