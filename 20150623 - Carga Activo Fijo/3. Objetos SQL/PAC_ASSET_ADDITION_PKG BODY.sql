@@ -336,7 +336,7 @@ IS
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Descripción : ' || P_DESCRIPTION);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Etiqueta : ' || P_TAG_NUMBER);
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Serie : ' || P_SERIAL_NUMBER);
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Dirección : ' || P_LOCATION);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Dirección : *' || P_LOCATION || '*');
             RETURN;
         END;
         
