@@ -58,11 +58,11 @@ IS
 BEGIN
      
 
-            BEGIN 
-                EXECUTE IMMEDIATE 'ALTER SESSION SET nls_language =''LATIN AMERICAN SPANISH''';
-                INSERT INTO fnd_sessions (SESSION_ID, EFFECTIVE_DATE)
-                VALUES (USERENV ('SESSIONID'), TRUNC (SYSDATE));
-            END; 
+--            BEGIN 
+--                EXECUTE IMMEDIATE 'ALTER SESSION SET nls_language =''LATIN AMERICAN SPANISH''';
+--                INSERT INTO fnd_sessions (SESSION_ID, EFFECTIVE_DATE)
+--                VALUES (USERENV ('SESSIONID'), TRUNC (SYSDATE));
+--            END; 
             
         dbms_output.put_line('P_EMPRESA : '  || P_EMPRESA);
         dbms_output.put_line('P_PERIODO : '  || P_PERIODO);
