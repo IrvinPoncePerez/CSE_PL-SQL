@@ -52,10 +52,12 @@
                 HOUV.NAME                                                                       AS  NOM_DEPTO,
                 HAPD.NAME                                                                       AS  NOM_PUESTO, 
                 (CASE
-                    WHEN :P_PERIOD_TYPE = 'Week' OR :P_PERIOD_TYPE = 'Semana' THEN
+                    WHEN PPF.PAYROLL_NAME LIKE '%SEM%' THEN
                          'SEMANAL'
-                    ELSE
+                    WHEN PPF.PAYROLL_NAME LIKE '%QUIN%' THEN
                          'QUINCENAL'
+                    ELSE
+                         ''
                  END)                                                                           AS  NOM_FORPAG,
                 PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
                 APPS.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)               AS  NOM_REGPAT,
