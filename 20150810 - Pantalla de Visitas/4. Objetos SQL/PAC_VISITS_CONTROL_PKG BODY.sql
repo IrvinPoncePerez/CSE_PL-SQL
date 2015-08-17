@@ -15,6 +15,8 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     TIME_TIMER := CREATE_TIMER('TIME_TIMER',   BY_1_SEC,  REPEAT);
     QUERY_TIMER := CREATE_TIMER('QUERY_TIMER', BY_60_SEC, REPEAT);
     
+    :SYSTEM.MESSAGE_LEVEL := 25;
+    
   END ON_WHEN_NEW_FORM_INSTANCE;
   
   
@@ -23,8 +25,8 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     TIME_TIMER    TIMER;
     QUERY_TIMER   TIMER;    
     
-    var_date VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440,'dd/mm/yyyy'); --:SYSTEM.CURRENT_DATETIME; 
-    var_time VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440,'HH24:MI:SS'); --:SYSTEM.CURRENT_DATETIME; 
+    var_date VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440,'dd/mm/yyyy'); 
+    var_time VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440,'HH24:MI:SS'); 
   
   BEGIN
     
@@ -40,7 +42,7 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     
     IF NOT ID_NULL(QUERY_TIMER) AND get_application_property(TIMER_NAME) = 'QUERY_TIMER' THEN
       
-      GO_BLOCK('PAC_VISITS_VIEW_TB');
+      GO_ITEM('PAC_VISITS_VIEW_TB.VISITOR_DAY_ID');
       EXECUTE_QUERY;
       
     END IF;
@@ -83,7 +85,11 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
   BEGIN
     
     app_item_property.set_property('PAC_VISITS_CONTROL_TB.OTHER_IDENTIFICATION_NAME', ENABLED, PROPERTY_OFF);
-    app_item_property.set_property('CONTROL.BTN_PRINT', ENABLED, PROPERTY_OFF);
+    IF :PAC_VISITS_CONTROL_TB.ATTRIBUTE3 = 'Y' THEN
+      app_item_property.set_property('CONTROL.BTN_PRINT', ENABLED, PROPERTY_ON);
+    ELSE
+      app_item_property.set_property('CONTROL.BTN_PRINT', ENABLED, PROPERTY_OFF);
+    END IF;
     
   END ON_WHEN_NEW_RECORD_INSTANCE;
   
@@ -97,82 +103,114 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     
   BEGIN
     
-    CREATE_FOLIO;
+    IF VALIDATE_DATA() = TRUE THEN 
     
-    INSERT INTO PAC_VISITS_CONTROL_TB (
-                                  VISITOR_DAY_ID,
-                                  VISITOR_NAME,
-                                  VISITOR_COMPANY,
-                                  IDENTIFICATION_TYPE,
-                                  OTHER_IDENTIFICATION_NAME,
-                                  REASON_VISIT,
-                                  ASSOCIATE_PERSON_ID,
-                                  ASSOCIATE_DEPARTMENT_ID,
-                                  REGISTRATION_TIME_STAMP,
-                                  REGISTRATION_DATE,
-                                  REGISTRATION_TIME,
-                                  CHECK_IN,
-                                  CHECK_OUT,
-                                  VISITOR_LENGTH_STAY,
-                                  ATTRIBUTE1,
-                                  ATTRIBUTE2,
-                                  ATTRIBUTE3,
-                                  ATTRIBUTE4,
-                                  ATTRIBUTE5,
-                                  ATTRIBUTE6,
-                                  ATTRIBUTE7,
-                                  ATTRIBUTE8,
-                                  ATTRIBUTE9,
-                                  CREATED_BY,
-                                  CREATION_DATE,
-                                  LAST_UPDATED_BY,
-                                  LAST_UPDATE_DATE,
-                                  LAST_UPDATE_LOGIN
-                                       )
-                               VALUES (
-                                  :PAC_VISITS_CONTROL_TB.VISITOR_DAY_ID,
-                                  :PAC_VISITS_CONTROL_TB.VISITOR_NAME,
-                                  :PAC_VISITS_CONTROL_TB.VISITOR_COMPANY,
-                                  :PAC_VISITS_CONTROL_TB.IDENTIFICATION_TYPE,
-                                  :PAC_VISITS_CONTROL_TB.OTHER_IDENTIFICATION_NAME,
-                                  :PAC_VISITS_CONTROL_TB.REASON_VISIT,
-                                  :PAC_VISITS_CONTROL_TB.ASSOCIATE_PERSON_ID,
-                                  :PAC_VISITS_CONTROL_TB.ASSOCIATE_DEPARTMENT_ID,
-                                  var_time_stamp,
-                                  var_date,
-                                  var_time,
-                                  :PAC_VISITS_CONTROL_TB.CHECK_IN,
-                                  :PAC_VISITS_CONTROL_TB.CHECK_OUT,
-                                  :PAC_VISITS_CONTROL_TB.VISITOR_LENGTH_STAY,
-                                  :PAC_VISITS_CONTROL_TB.ATTRIBUTE1,
-                                  :PAC_VISITS_CONTROL_TB.ATTRIBUTE2,
-                                  'Y',
-                                  :PAC_VISITS_CONTROL_TB.ATTRIBUTE4,
-                                  :PAC_VISITS_CONTROL_TB.ATTRIBUTE5,
-                                  :PAC_VISITS_CONTROL_TB.ATTRIBUTE6,
-                                  :PAC_VISITS_CONTROL_TB.ATTRIBUTE7,
-                                  :PAC_VISITS_CONTROL_TB.ATTRIBUTE8,
-                                  :PAC_VISITS_CONTROL_TB.ATTRIBUTE9,
-                                  FND_GLOBAL.USER_ID,
-                                  SYSDATE,
-                                  FND_GLOBAL.USER_ID,
-                                  SYSDATE,
-                                  FND_GLOBAL.USER_ID
-                                       );
-                                       
-    app_item_property.set_property('CONTROL.BTN_PRINT', ENABLED, PROPERTY_ON);
+      CREATE_FOLIO;
     
-  EXCEPTION WHEN OTHERS THEN
-    set_alert_property('ERROR_MSG', alert_message_text, 'ON_SAVE_PROCEDURE INSERT: ' || SQLERRM);
-    var_alert_number := show_alert('ERROR_MSG');
-    RAISE FORM_TRIGGER_FAILURE; 
+      INSERT INTO PAC_VISITS_CONTROL_TB (
+                                    VISITOR_DAY_ID,
+                                    VISITOR_NAME,
+                                    VISITOR_COMPANY,
+                                    IDENTIFICATION_TYPE,
+                                    OTHER_IDENTIFICATION_NAME,
+                                    REASON_VISIT,
+                                    ASSOCIATE_PERSON_ID,
+                                    ASSOCIATE_DEPARTMENT_ID,
+                                    REGISTRATION_TIME_STAMP,
+                                    REGISTRATION_DATE,
+                                    REGISTRATION_TIME,
+                                    CHECK_IN,
+                                    CHECK_OUT,
+                                    VISITOR_LENGTH_STAY,
+                                    ATTRIBUTE1,
+                                    ATTRIBUTE2,
+                                    ATTRIBUTE3,
+                                    ATTRIBUTE4,
+                                    ATTRIBUTE5,
+                                    ATTRIBUTE6,
+                                    ATTRIBUTE7,
+                                    ATTRIBUTE8,
+                                    ATTRIBUTE9,
+                                    CREATED_BY,
+                                    CREATION_DATE,
+                                    LAST_UPDATED_BY,
+                                    LAST_UPDATE_DATE,
+                                    LAST_UPDATE_LOGIN
+                                         )
+                                 VALUES (
+                                    :PAC_VISITS_CONTROL_TB.VISITOR_DAY_ID,
+                                    :PAC_VISITS_CONTROL_TB.VISITOR_NAME,
+                                    :PAC_VISITS_CONTROL_TB.VISITOR_COMPANY,
+                                    :PAC_VISITS_CONTROL_TB.IDENTIFICATION_TYPE,
+                                    :PAC_VISITS_CONTROL_TB.OTHER_IDENTIFICATION_NAME,
+                                    :PAC_VISITS_CONTROL_TB.REASON_VISIT,
+                                    :PAC_VISITS_CONTROL_TB.ASSOCIATE_PERSON_ID,
+                                    :PAC_VISITS_CONTROL_TB.ASSOCIATE_DEPARTMENT_ID,
+                                    var_time_stamp,
+                                    var_date,
+                                    var_time,
+                                    :PAC_VISITS_CONTROL_TB.CHECK_IN,
+                                    :PAC_VISITS_CONTROL_TB.CHECK_OUT,
+                                    :PAC_VISITS_CONTROL_TB.VISITOR_LENGTH_STAY,
+                                    :PAC_VISITS_CONTROL_TB.ATTRIBUTE1,
+                                    :PAC_VISITS_CONTROL_TB.ATTRIBUTE2,
+                                    'Y',
+                                    :PAC_VISITS_CONTROL_TB.ATTRIBUTE4,
+                                    :PAC_VISITS_CONTROL_TB.ATTRIBUTE5,
+                                    :PAC_VISITS_CONTROL_TB.ATTRIBUTE6,
+                                    :PAC_VISITS_CONTROL_TB.ATTRIBUTE7,
+                                    :PAC_VISITS_CONTROL_TB.ATTRIBUTE8,
+                                    :PAC_VISITS_CONTROL_TB.ATTRIBUTE9,
+                                    FND_GLOBAL.USER_ID,
+                                    SYSDATE,
+                                    FND_GLOBAL.USER_ID,
+                                    SYSDATE,
+                                    FND_GLOBAL.USER_ID
+                                         );  
+      
+    END IF;     
+    
   END ON_INSERT;
-  
-  
-  PROCEDURE ON_PRE_INSERT IS
+             
+           
+  FUNCTION VALIDATE_DATA RETURN BOOLEAN IS
   BEGIN
-    FND_STANDARD.SET_WHO;
-  END ON_PRE_INSERT;
+    
+    IF :PAC_VISITS_CONTROL_TB.VISITOR_NAME    IS NULL THEN RETURN FALSE; END IF;
+    IF :PAC_VISITS_CONTROL_TB.VISITOR_COMPANY IS NULL THEN RETURN FALSE; END IF;
+    
+    RETURN TRUE;
+    
+  END VALIDATE_DATA;
+  
+  
+  PROCEDURE ON_WHEN_TAB_PAGE_CHANGED IS
+    TAB_PAGE  VARCHAR(100);
+  BEGIN
+    TAB_PAGE := GET_CANVAS_PROPERTY('PAC_VISITS_CONTROL', TOPMOST_TAB_PAGE);
+    
+    IF    TAB_PAGE = 'PAGE_VISITS_CONTROL' THEN
+      
+      GO_ITEM('PAC_VISITS_CONTROL_TB.VISITOR_NAME');
+      
+    ELSIF TAB_PAGE = 'PAGE_VISITS_VIEW' THEN  
+      
+      GO_ITEM('PAC_VISITS_VIEW_TB.VISITOR_DAY_ID');
+      
+    END IF;
+  END ON_WHEN_TAB_PAGE_CHANGED;
+  
+  
+  PROCEDURE CHECK_STATUS IS
+  BEGIN
+    
+    IF :PAC_VISITS_CONTROL_TB.ATTRIBUTE3 = 'Y' THEN
+      app_item_property.set_property('CONTROL.BTN_PRINT', ENABLED, PROPERTY_ON);
+    ELSE
+      app_item_property.set_property('CONTROL.BTN_PRINT', ENABLED, PROPERTY_OFF);
+    END IF; 
+    
+  END CHECK_STATUS;
   
   
 END;
