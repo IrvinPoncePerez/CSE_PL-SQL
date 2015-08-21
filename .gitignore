@@ -36,7 +36,7 @@ $RECYCLE.BIN/
 *.gsheet
 *.gform
 *.bmp
-
+*.jar
 
 # Windows shortcuts
 *.lnk
