@@ -54,21 +54,37 @@ IS
 --                                            detail.LOCATION          );
         
             ADD_ASSET_ADDITION(
-                P_DESCRIPTION       => detail.DESCRIPTION,
-                P_TAG_NUMBER        => detail.TAG_NUMBER,
-                P_SERIAL_NUMBER     => detail.SERIAL_NUMBER,
-                P_UNITS             => detail.UNITS,
-                P_CATEGORY          => detail.CATEGORY,
-                P_COST              => detail.COST,
-                P_VENDOR_NAME       => detail.VENDOR_NAME,
-                P_INVOICE_NUMBER    => detail.INVOICE_NUMBER,
-                P_BOOK_CODE         => detail.BOOK_CODE,
-                P_DATE_IN_SERVICE   => detail.DATE_IN_SERVICE,
-                P_DEPRECIATE_METHOD => detail.DEPRECIATE_METHOD,
-                P_PRORATE_CODE      => detail.PRORATE_CODE,
-                P_CODE_COMBINATION  => detail.CODE_COMBINATION,
-                P_LOCATION          => detail.LOCATION
+                P_DESCRIPTION       => REPLACE(REPLACE(TRIM(detail.DESCRIPTION), CHR(10), ''), CHR(13), ''),
+                P_TAG_NUMBER        => REPLACE(REPLACE(TRIM(detail.TAG_NUMBER), CHR(10), ''), CHR(13), ''),
+                P_SERIAL_NUMBER     => REPLACE(REPLACE(TRIM(detail.SERIAL_NUMBER), CHR(10), ''), CHR(13), ''),
+                P_UNITS             => REPLACE(REPLACE(TRIM(detail.UNITS), CHR(10), ''), CHR(13), ''),
+                P_CATEGORY          => REPLACE(REPLACE(TRIM(detail.CATEGORY), CHR(10), ''), CHR(13), ''),
+                P_COST              => REPLACE(REPLACE(TRIM(detail.COST), CHR(10), ''), CHR(13), ''),
+                P_VENDOR_NAME       => REPLACE(REPLACE(TRIM(detail.VENDOR_NAME), CHR(10), ''), CHR(13), ''),
+                P_INVOICE_NUMBER    => REPLACE(REPLACE(TRIM(detail.INVOICE_NUMBER), CHR(10), ''), CHR(13), ''),
+                P_BOOK_CODE         => REPLACE(REPLACE(TRIM(detail.BOOK_CODE), CHR(10), ''), CHR(13), ''),
+                P_DATE_IN_SERVICE   => REPLACE(REPLACE(TRIM(detail.DATE_IN_SERVICE), CHR(10), ''), CHR(13), ''),
+                P_DEPRECIATE_METHOD => REPLACE(REPLACE(TRIM(detail.DEPRECIATE_METHOD), CHR(10), ''), CHR(13), ''),
+                P_PRORATE_CODE      => REPLACE(REPLACE(TRIM(detail.PRORATE_CODE), CHR(10), ''), CHR(13), ''),
+                P_CODE_COMBINATION  => REPLACE(REPLACE(TRIM(detail.CODE_COMBINATION), CHR(10), ''), CHR(13), ''),
+                P_LOCATION          => REPLACE(REPLACE(TRIM(detail.LOCATION), CHR(10), ''), CHR(13), '')
             );
+
+--            FND_FILE.PUT_LINE(FND_FILE.LOG, '---' ||
+--                                detail.DESCRIPTION|| '**' ||
+--                                detail.TAG_NUMBER|| '**' ||
+--                                detail.SERIAL_NUMBER|| '**' ||
+--                                detail.UNITS|| '**' ||
+--                                detail.CATEGORY|| '**' ||
+--                                detail.COST|| '**' ||
+--                                detail.VENDOR_NAME|| '**' ||
+--                                detail.INVOICE_NUMBER|| '**' ||
+--                                detail.BOOK_CODE|| '**' ||
+--                                detail.DATE_IN_SERVICE|| '**' ||
+--                                detail.DEPRECIATE_METHOD|| '**' ||
+--                                detail.PRORATE_CODE|| '**' ||
+--                                detail.CODE_COMBINATION|| '**' ||
+--                                REPLACE(REPLACE(detail.LOCATION, chr(10), ''), chr(13), '') || '---');
             
             
             
@@ -319,17 +335,22 @@ IS
             var_location    VARCHAR2(100);
         BEGIN  
         
-            var_segment1 := TRIM(SUBSTR(P_LOCATION, 0, INSTR(P_LOCATION, '.') - 1));
-            var_location := TRIM(REPLACE(P_LOCATION, SUBSTR(P_LOCATION, 0, INSTR(P_LOCATION, '.')), ''));
-            var_segment2 := TRIM(SUBSTR(var_location, 0, INSTR(var_location, '.') - 1));
-            var_segment3 := TRIM(REPLACE(var_location, SUBSTR(var_location, 0, INSTR(var_location, '.')), ''));
+--            var_segment1 := TRIM(SUBSTR(P_LOCATION, 0, INSTR(P_LOCATION, '.') - 1));
+--            var_location := TRIM(REPLACE(P_LOCATION, SUBSTR(P_LOCATION, 0, INSTR(P_LOCATION, '.')), ''));
+--            var_segment2 := TRIM(SUBSTR(var_location, 0, INSTR(var_location, '.') - 1));
+--            var_segment3 := TRIM(REPLACE(var_location, SUBSTR(var_location, 0, INSTR(var_location, '.')), ''));
             
+--            SELECT FL.LOCATION_ID
+--              INTO var_location_id
+--              FROM FA_LOCATIONS FL
+--             WHERE SEGMENT1 = var_segment1
+--               AND SEGMENT2 = var_segment2
+--               AND SEGMENT3 = SUBSTR(var_segment3, 0, 4);
+
             SELECT FL.LOCATION_ID
               INTO var_location_id
               FROM FA_LOCATIONS FL
-             WHERE SEGMENT1 = var_segment1
-               AND SEGMENT2 = var_segment2
-               AND SEGMENT3 = SUBSTR(var_segment3, 0, 4);
+             WHERE (SEGMENT1 || '.' || SEGMENT2 || '.' || SEGMENT3) LIKE P_LOCATION;
         
         EXCEPTION WHEN OTHERS THEN
             FND_FILE.PUT_LINE(FND_FILE.LOG, '* * * ERROR * * *: Al consultar la dirección de asignación.' || SQLERRM);
