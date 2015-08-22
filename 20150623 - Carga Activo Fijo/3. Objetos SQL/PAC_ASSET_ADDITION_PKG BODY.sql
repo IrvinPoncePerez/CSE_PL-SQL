@@ -367,8 +367,7 @@ IS
         l_asset_dist_tbl(1)                 :=  l_asset_dist_rec;
         
     
-       
-    
+
         fa_addition_pub.do_addition(
            p_api_version             => 1.0,
            p_init_msg_list           => FND_API.G_FALSE,
@@ -390,6 +389,8 @@ IS
            px_asset_dist_tbl         => l_asset_dist_tbl,
            px_inv_tbl                => l_inv_tbl
           );
+        
+                  
           
           
        l_mesg_count := fnd_msg_pub.count_msg;
@@ -397,13 +398,36 @@ IS
        if l_mesg_count > 0 then
 
           l_mesg := chr(10) || substr(fnd_msg_pub.get(fnd_msg_pub.G_FIRST, fnd_api.G_FALSE),1, 250);
-          FND_FILE.PUT_LINE(FND_FILE.LOG, l_mesg);
+          
+          IF l_mesg LIKE '%ORA-01400%CURRENT_UNITS%' THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: No se definio el número de unidades.');
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Descripción : ' || P_DESCRIPTION);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Etiqueta : ' || P_TAG_NUMBER);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Serie : ' || P_SERIAL_NUMBER);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Unidades : ' || P_UNITS);
+          ELSIF l_mesg LIKE '%The tag number%already exists%' OR l_mesg LIKE '%El número de etiqueta%ya existe%' THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Número de etiqueta repetido.');
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Descripción : ' || P_DESCRIPTION);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Etiqueta : ' || P_TAG_NUMBER);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Serie : ' || P_SERIAL_NUMBER);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Etiqueta Repetida : ' || P_TAG_NUMBER);
+          ELSIF l_mesg LIKE '%FA_CATEGORY_BOOK_DEFAULTS%' THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG , '* * * ERROR * * *: Al consultar la categoría.');
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Descripción : ' || P_DESCRIPTION);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Etiqueta : ' || P_TAG_NUMBER);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Número Serie : ' || P_SERIAL_NUMBER);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Categoría : ' || P_CATEGORY);
+          ELSE 
+            
+          
+              FND_FILE.PUT_LINE(FND_FILE.LOG, l_mesg);
 
-          for i in 1..(l_mesg_count - 1) loop
-             l_mesg := substr(fnd_msg_pub.get(fnd_msg_pub.G_NEXT, fnd_api.G_FALSE), 1, 250);
-
-             FND_FILE.PUT_LINE(FND_FILE.LOG, l_mesg);
-          end loop;
+              for i in 1..(l_mesg_count - 1) loop
+                 l_mesg := substr(fnd_msg_pub.get(fnd_msg_pub.G_NEXT, fnd_api.G_FALSE), 1, 250);
+                 FND_FILE.PUT_LINE(FND_FILE.LOG, l_mesg);
+              end loop;
+              
+          END IF;
 
           fnd_msg_pub.delete_msg();
 
