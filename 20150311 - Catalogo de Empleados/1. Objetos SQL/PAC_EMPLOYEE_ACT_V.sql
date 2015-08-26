@@ -211,27 +211,7 @@ AS
                          pac_hr_pay_pkg.get_actual_termination_date
                                                  (pa.assignment_id)
                                                                    fecha_baja,
-                         NVL
-                            (DECODE
-                                ((pac_pay_mx_ff_udfs.get_idw
-                                                    (pa.assignment_id,
-                                                     TO_NUMBER (hsck.segment1),
-                                                     per.effective_start_date,
-                                                     'REPORT'
-                                                    )
-                                 ),
-                                 '0', pac_hr_pay_pkg.get_diary_salary
-                                                                (per.person_id),
-                                 (pac_pay_mx_ff_udfs.get_idw
-                                                    (pa.assignment_id,
-                                                     TO_NUMBER (hsck.segment1),
-                                                     per.effective_start_date,
-                                                     'REPORT'
-                                                    )
-                                 )
-                                ),
-                             '0'
-                            ) s_d_i,
+                         pac_hr_pay_pkg.get_diary_salary(per.person_id) s_d_i,
                          
                          --  datos de  pa
                          pac_hr_pay_pkg.get_employer_name
