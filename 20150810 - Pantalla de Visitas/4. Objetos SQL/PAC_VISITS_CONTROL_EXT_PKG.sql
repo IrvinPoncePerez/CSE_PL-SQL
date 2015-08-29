@@ -13,11 +13,6 @@ CREATE OR REPLACE PACKAGE PAC_VISITS_CONTROL_EXT_PKG IS
     
     PROCEDURE  PRINT_LABEL(
                     ERRBUF                  OUT VARCHAR2,       
-                    RETCODE                 OUT VARCHAR2,
-                    P_FOLIO                 VARCHAR2,
-                    P_VISITS_NAME           VARCHAR2,
-                    P_VISITS_COMPANY        VARCHAR2,
-                    P_ASSOCIATE_PERSON      VARCHAR2,
-                    P_ASSOCIATE_DEPARTMENT  VARCHAR2);    
+                    RETCODE                 OUT VARCHAR2);    
                     
 END PAC_VISITS_CONTROL_EXT_PKG;
