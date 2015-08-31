@@ -181,29 +181,60 @@ CREATE OR REPLACE PACKAGE BODY PAC_VISITS_CONTROL_EXT_PKG IS
     
     PROCEDURE  PRINT_LABEL(
                     ERRBUF                  OUT VARCHAR2,       
-                    RETCODE                 OUT VARCHAR2) IS
+                    RETCODE                 OUT VARCHAR2,
+                    P_FOLIO                 VARCHAR2,
+                    P_DATE                  VARCHAR2,
+                    P_HOUR                  VARCHAR2,
+                    P_VISITOR_NAME          VARCHAR2,
+                    P_VISITOR_COMPANY       VARCHAR2,
+                    P_ASSOCIATE_PERSON      VARCHAR2,
+                    P_ASSOCIATE_DEPARTMENT  VARCHAR2) IS
     BEGIN
-        
-        XXCALV_UTILS_PKG.XXCALV_VOUT('^XA');
-        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO450,30^ADN,20,13^FD15-SEP-2015^FS');           -- Print P_DATE
-        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO450,47^ADN,20,13^FD11:30:20 AM^FS');           -- Print P_HOUR
-        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,100^GB550,0,3,^FS');                        -- Print Line
-        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,110^ADN,25,15^FDVISITANTE:^FS');            -- Print Label  VISITANTE        
-        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO55,127^ADN,30,20^FDNOMBRE VISITANTE^FS');      -- Print P_VISITOR_NAME
-        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO55,157^ADN,30,20^FDCOMPAÑIA VISITANTE^FS');    -- Print P_VISITOR_COMPANY
-        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,187^ADN,25,15^FDASOCIADO:^FS');             -- Print Label  ASOCIADO
-        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO55,204^ADN,30,20^FDNOMBRE ASOCIADO^FS');       -- Print P_ASSOCIATE_PERSON
-        
+    
         
 
---        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO50,50^B3N,N,100,Y,N^FDV150916001^FS');
-        
+    
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^XA');
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO460,30^ADN,20,13^FD'||P_DATE||'^FS');                                  -- Print P_DATE
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO450,47^ADN,20,13^FD'||P_HOUR||'^FS');                                  -- Print P_HOUR
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO372,70^ADN,25,15^FD'||P_FOLIO||'^FS');                                 -- Print P_FOLIO
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,100^GB550,0,3,^FS');                                                -- Print Line
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,110^ADN,25,15^FDVISITANTE:^FS');                                    -- Print Label  VISITANTE
+--        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,125^GB230,0,3,^FS');                                                  -- Print Line        
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO55,140^ADN,30,20^FH^FD'||ACUTE_REPLACE(P_VISITOR_NAME)||'^FS');        -- Print P_VISITOR_NAME
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO55,170^ADN,25,15^FH^FD'||ACUTE_REPLACE(P_VISITOR_COMPANY)||'^FS');     -- Print P_VISITOR_COMPANY
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,205^ADN,25,15^FDASOCIADO:^FS');                                     -- Print Label  ASOCIADO
+--        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,220^GB205,0,3,^FS');                                                  -- Print Line
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO55,233^ADN,30,20^FH^FD'||ACUTE_REPLACE(P_ASSOCIATE_PERSON)||'^FS');    -- Print P_ASSOCIATE_PERSON
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO55,263^ADN,25,15^FH^FD'||ACUTE_REPLACE(P_ASSOCIATE_DEPARTMENT)||'^FS');-- Print P_ASSOCIATE_DEPARTMENT
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO125,300^B3N,N,70,Y,N^FDV'||P_FOLIO||'^FS');                            -- Print P_FOLIO
         XXCALV_UTILS_PKG.XXCALV_VOUT('^XZ');
+        
                 
     EXCEPTION WHEN OTHERS THEN
         XXCALV_UTILS_PKG.XXCALV_VOUT('Existio un Error en la Ejecucion de la Etiqueta: '||sqlerrm);
         XXCALV_UTILS_PKG.XXCALV_VLOG('Existio un Error en la Ejecucion de la Etiqueta: '||sqlerrm);
     END PRINT_LABEL;
+    
+    
+    FUNCTION   ACUTE_REPLACE(
+                    P_STRING      VARCHAR2) RETURN VARCHAR2
+    IS
+        var_result      VARCHAR2(50) := '';
+    BEGIN
+        
+        var_result := P_STRING;
+        var_result := REPLACE(var_result, 'Á', 'A');
+        var_result := REPLACE(var_result, 'É', 'E');
+        var_result := REPLACE(var_result, 'Í', 'I');
+        var_result := REPLACE(var_result, 'Ó', 'O');
+        var_result := REPLACE(var_result, 'Ú', 'U');
+        var_result := REPLACE(var_result, 'Ñ', 'N');
+        var_result := REPLACE(var_result, '(', '_28');
+        var_result := REPLACE(var_result, ')', '_29');
+    
+        RETURN var_result;
+    END ACUTE_REPLACE;
     
 
 END PAC_VISITS_CONTROL_EXT_PKG;

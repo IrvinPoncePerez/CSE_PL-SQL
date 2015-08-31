@@ -26,7 +26,7 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     QUERY_TIMER   TIMER;    
     
     var_date VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440,'dd/mm/yyyy'); 
-    var_time VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440,'HH24:MI:SS'); 
+    var_time VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440,'HH12:MI:SS'); 
   
   BEGIN
     
@@ -94,13 +94,17 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     var_alert_number    NUMBER;
     var_time_stamp      VARCHAR2(50) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440, 'dd/mm/yyyy hh12:mm:ss pm');
     var_date            VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440, 'dd/mm/yyyy'); 
-    var_time            VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440, 'HH24:MI:SS');
+    var_time            VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440, 'HH12:MI:SS PM');
     
   BEGIN
     
     IF VALIDATE_DATA() = TRUE THEN 
     
       CREATE_FOLIO;
+      
+      :PAC_VISITS_CONTROL_TB.REGISTRATION_TIME_STAMP := var_time_stamp;
+      :PAC_VISITS_CONTROL_TB.REGISTRATION_DATE := var_date;
+      :PAC_VISITS_CONTROL_TB.REGISTRATION_TIME := var_time;
     
       INSERT INTO PAC_VISITS_CONTROL_TB (
                                     VISITOR_DAY_ID,
@@ -141,9 +145,9 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
                                     :PAC_VISITS_CONTROL_TB.REASON_VISIT,
                                     :PAC_VISITS_CONTROL_TB.ASSOCIATE_PERSON_ID,
                                     :PAC_VISITS_CONTROL_TB.ASSOCIATE_DEPARTMENT_ID,
-                                    var_time_stamp,
-                                    var_date,
-                                    var_time,
+                                    :PAC_VISITS_CONTROL_TB.REGISTRATION_TIME_STAMP,
+                                    :PAC_VISITS_CONTROL_TB.REGISTRATION_DATE,
+                                    :PAC_VISITS_CONTROL_TB.REGISTRATION_TIME,
                                     :PAC_VISITS_CONTROL_TB.CHECK_IN,
                                     :PAC_VISITS_CONTROL_TB.CHECK_OUT,
                                     :PAC_VISITS_CONTROL_TB.VISITOR_LENGTH_STAY,
@@ -205,7 +209,90 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
       END IF;
     END IF;
     
+    PRINT_LABEL;
+    
   END ON_WHEN_BUTTON_PRESSED;
+  
+  
+  PROCEDURE PRINT_LABEL IS
+    l_request_id          NUMBER;
+    l_set_print           BOOLEAN;
+    l_commit_result       BOOLEAN;
+    l_concurrent_name     VARCHAR2(30) := 'PAC_PRINT_VISIT_LABEL';
+    l_printer_name        VARCHAR2(30);
+    l_output_print_style  VARCHAR2(30);
+    l_procedencia         VARCHAR2(30);  
+  
+    --Obtener nombre de la impresora y estilo de impresion del concurrente
+    CURSOR c_conc(p_concurrent_name VARCHAR2) IS
+        SELECT cp.printer_name,  cp.output_print_style
+          FROM fnd_concurrent_programs  cp
+         WHERE cp.concurrent_program_name = p_concurrent_name
+           AND cp.print_flag = 'Y'
+           AND cp.enabled_flag = 'Y';
+  
+    P_FOLIO                 VARCHAR2(50);
+    P_DATE                  VARCHAR2(50);
+    P_HOUR                  VARCHAR2(50);
+    P_VISITOR_NAME          VARCHAR2(50);
+    P_VISITOR_COMPANY       VARCHAR2(50);
+    P_ASSOCIATE_PERSON      VARCHAR2(50);
+    P_ASSOCIATE_DEPARTMENT  VARCHAR2(50);
+     
+  
+  BEGIN       
+    IF VALIDATE_DATA() THEN
+          OPEN c_conc(l_concurrent_name);
+          FETCH c_conc INTO l_printer_name, l_output_print_style;
+          CLOSE c_conc;
+          
+          --Set Values
+          P_FOLIO                := :PAC_VISITS_CONTROL_TB.VISITOR_DAY_ID;
+          P_DATE                 := :PAC_VISITS_CONTROL_TB.REGISTRATION_DATE;
+          P_HOUR                 := :PAC_VISITS_CONTROL_TB.REGISTRATION_TIME;
+          P_VISITOR_NAME         := :PAC_VISITS_CONTROL_TB.VISITOR_NAME;
+          P_VISITOR_COMPANY      := :PAC_VISITS_CONTROL_TB.VISITOR_COMPANY;
+          P_ASSOCIATE_PERSON     := :PAC_VISITS_CONTROL_TB.ATTRIBUTE1;
+          P_ASSOCIATE_DEPARTMENT := :PAC_VISITS_CONTROL_TB.ATTRIBUTE2;
+                    
+  
+          --Set de impresion
+          l_set_print  :=  fnd_request.set_print_options(l_printer_name,
+                                                         l_output_print_style,
+                                                         1,
+                                                         TRUE,
+                                                         'N');
+                                                        
+          --Ejecucion de concurrente de impresion
+          l_request_id :=  apps.fnd_request.submit_request('PER',
+                                                           l_concurrent_name,
+                                                           '',
+                                                           SYSDATE,
+                                                           FALSE,
+                                                           P_FOLIO,
+                                                           P_DATE,
+                                                           P_HOUR,
+                                                           P_VISITOR_NAME,
+                                                           P_VISITOR_COMPANY,
+                                                           P_ASSOCIATE_PERSON,
+                                                           P_ASSOCIATE_DEPARTMENT);
+                                                                   
+          IF (l_request_id = 0) THEN
+            bell;
+            FND_MESSAGE.Set_Name('FND','Error al ejecutar concurrente de etiquetas.');
+            FND_MESSAGE.Error;
+          ELSE
+            --Commit_Form;
+            --COMMIT;  --Salvar ejecucion de concurrente
+            l_commit_result := APP_FORM.QuietCommit;
+          END IF;
+    END IF;
+  EXCEPTION 
+    WHEN OTHERS THEN 
+      bell;
+      FND_MESSAGE.Set_Name('FND','Error al imprimir etiqueta.');
+      FND_MESSAGE.Error;   
+  END PRINT_LABEL;
   
   
 END;
