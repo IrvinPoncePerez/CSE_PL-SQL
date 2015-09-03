@@ -293,6 +293,6 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
       FND_MESSAGE.Set_Name('FND','Error al imprimir etiqueta.');
       FND_MESSAGE.Error;   
   END PRINT_LABEL;
-  
+    
   
 END;

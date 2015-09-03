@@ -90,7 +90,8 @@ PACKAGE BODY PAC_VISITS_VIEW_PKG IS
     P_ASSOCIATE_DEPARTMENT	VARCHAR2(50);
 		 
 	
-	BEGIN	      
+	BEGIN	     
+		IF :PAC_VISITS_VIEW_TB.VISITOR_DAY_ID IS NOT NULL THEN 
 		      OPEN c_conc(l_concurrent_name);
 		      FETCH c_conc INTO l_printer_name, l_output_print_style;
 		      CLOSE c_conc;
@@ -135,6 +136,7 @@ PACKAGE BODY PAC_VISITS_VIEW_PKG IS
 	          --COMMIT;  --Salvar ejecucion de concurrente
 	          l_commit_result := APP_FORM.QuietCommit;
 	        END IF;
+	  	END IF;
 	EXCEPTION 
 	  WHEN OTHERS THEN 
 	    bell;
