@@ -3,18 +3,12 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
   PROCEDURE ON_WHEN_NEW_FORM_INSTANCE IS
     
     TIME_TIMER    TIMER;
-    QUERY_TIMER   TIMER;
-    
     BY_1_SEC    CONSTANT  NUMBER := 1000;
-    BY_60_SEC   CONSTANT  NUMBER := 60000;
     
   BEGIN
     
     READ_IMAGE_FILE('$PER_TOP/forms/US/PAC_TIME_CLOCK.BMP','bmp','PAC_LOGO');
-    
     TIME_TIMER := CREATE_TIMER('TIME_TIMER',   BY_1_SEC,  REPEAT);
-    QUERY_TIMER := CREATE_TIMER('QUERY_TIMER', BY_60_SEC, REPEAT);
-    
     :SYSTEM.MESSAGE_LEVEL := 25;
     
   END ON_WHEN_NEW_FORM_INSTANCE;
@@ -23,7 +17,6 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
   PROCEDURE ON_WHEN_TIMER_EXPIRED IS
   
     TIME_TIMER    TIMER;
-    QUERY_TIMER   TIMER;    
     
     var_date VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440,'dd/mm/yyyy'); 
     var_time VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440,'HH12:MI:SS'); 
@@ -31,20 +24,12 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
   BEGIN
     
     TIME_TIMER := find_timer('TIME_TIMER');
-    QUERY_TIMER := find_timer('QUERY_TIMER');
     
     IF NOT ID_NULL(TIME_TIMER) AND get_application_property(TIMER_NAME) = 'TIME_TIMER' THEN
       
       :CONTROL.TXT_DATE := var_date;
       :CONTROL.TXT_HOUR := SUBSTR(var_time, INSTR(var_time,' ') + 1);
     
-    END IF;
-    
-    IF NOT ID_NULL(QUERY_TIMER) AND get_application_property(TIMER_NAME) = 'QUERY_TIMER' THEN
-      
-      GO_ITEM('PAC_VISITS_VIEW_TB.VISITOR_DAY_ID');
-      EXECUTE_QUERY;
-      
     END IF;
     
   END ON_WHEN_TIMER_EXPIRED;
@@ -95,6 +80,7 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     var_time_stamp      VARCHAR2(50) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440, 'dd/mm/yyyy hh12:mm:ss pm');
     var_date            VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440, 'dd/mm/yyyy'); 
     var_time            VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440, 'HH12:MI:SS PM');
+    var_check_in        VARCHAR2(30) := TO_CHAR(SYSDATE + PAC_GET_TVALUE/1440, 'HH24:MM:SS');
     
   BEGIN
     
@@ -105,6 +91,9 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
       :PAC_VISITS_CONTROL_TB.REGISTRATION_TIME_STAMP := var_time_stamp;
       :PAC_VISITS_CONTROL_TB.REGISTRATION_DATE := var_date;
       :PAC_VISITS_CONTROL_TB.REGISTRATION_TIME := var_time;
+      :PAC_VISITS_CONTROL_TB.CHECK_IN := var_check_in;
+      :PAC_VISITS_CONTROL_TB.ATTRIBUTE3 := 'Y';
+      :PAC_VISITS_CONTROL_TB.ATTRIBUTE4 := PAC_VISITS_CONTROL_EXT_PKG.GET_SEQUENCE;
     
       INSERT INTO PAC_VISITS_CONTROL_TB (
                                     VISITOR_DAY_ID,
@@ -153,7 +142,7 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
                                     :PAC_VISITS_CONTROL_TB.VISITOR_LENGTH_STAY,
                                     :PAC_VISITS_CONTROL_TB.ATTRIBUTE1,
                                     :PAC_VISITS_CONTROL_TB.ATTRIBUTE2,
-                                    'Y',
+                                    :PAC_VISITS_CONTROL_TB.ATTRIBUTE3,
                                     :PAC_VISITS_CONTROL_TB.ATTRIBUTE4,
                                     :PAC_VISITS_CONTROL_TB.ATTRIBUTE5,
                                     :PAC_VISITS_CONTROL_TB.ATTRIBUTE6,
@@ -166,7 +155,9 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
                                     SYSDATE,
                                     FND_GLOBAL.USER_ID
                                          );  
-      
+                                         
+      COMMIT;
+                                              
     END IF;     
     
   END ON_INSERT;
@@ -195,6 +186,7 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     ELSIF TAB_PAGE = 'PAGE_VISITS_VIEW' THEN  
       
       GO_ITEM('PAC_VISITS_VIEW_TB.VISITOR_DAY_ID');
+      EXECUTE_QUERY;
       
     END IF;
   END ON_WHEN_TAB_PAGE_CHANGED;  
@@ -238,7 +230,7 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     P_VISITOR_COMPANY       VARCHAR2(50);
     P_ASSOCIATE_PERSON      VARCHAR2(50);
     P_ASSOCIATE_DEPARTMENT  VARCHAR2(50);
-     
+    P_SEQUENCE              VARCHAR2(10);
   
   BEGIN       
     IF VALIDATE_DATA() THEN
@@ -254,6 +246,7 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
           P_VISITOR_COMPANY      := :PAC_VISITS_CONTROL_TB.VISITOR_COMPANY;
           P_ASSOCIATE_PERSON     := :PAC_VISITS_CONTROL_TB.ATTRIBUTE1;
           P_ASSOCIATE_DEPARTMENT := :PAC_VISITS_CONTROL_TB.ATTRIBUTE2;
+          P_SEQUENCE             := :PAC_VISITS_CONTROL_TB.ATTRIBUTE4;
                     
   
           --Set de impresion
@@ -275,7 +268,8 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
                                                            P_VISITOR_NAME,
                                                            P_VISITOR_COMPANY,
                                                            P_ASSOCIATE_PERSON,
-                                                           P_ASSOCIATE_DEPARTMENT);
+                                                           P_ASSOCIATE_DEPARTMENT,
+                                                           P_SEQUENCE);
                                                                    
           IF (l_request_id = 0) THEN
             bell;
@@ -289,10 +283,18 @@ PACKAGE BODY PAC_VISITS_CONTROL_PKG IS
     END IF;
   EXCEPTION 
     WHEN OTHERS THEN 
-      bell;
-      FND_MESSAGE.Set_Name('FND','Error al imprimir etiqueta.');
-      FND_MESSAGE.Error;   
+      --bell;
+      --FND_MESSAGE.Set_Name('FND','Error al imprimir etiqueta.');
+      --FND_MESSAGE.Error;   
+      NULL;
   END PRINT_LABEL;
-    
+  
+  
+  PROCEDURE ON_WHEN_IMAGE_PRESSED IS
+  BEGIN
+      GO_ITEM('PAC_VISITS_VIEW_TB.VISITOR_DAY_ID');
+      EXECUTE_QUERY;
+  END ON_WHEN_IMAGE_PRESSED;
+  
   
 END;

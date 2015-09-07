@@ -188,7 +188,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_VISITS_CONTROL_EXT_PKG IS
                     P_VISITOR_NAME          VARCHAR2,
                     P_VISITOR_COMPANY       VARCHAR2,
                     P_ASSOCIATE_PERSON      VARCHAR2,
-                    P_ASSOCIATE_DEPARTMENT  VARCHAR2) IS
+                    P_ASSOCIATE_DEPARTMENT  VARCHAR2,
+                    P_SEQUENCE              VARCHAR2) IS
     BEGIN
     
         
@@ -198,6 +199,7 @@ CREATE OR REPLACE PACKAGE BODY PAC_VISITS_CONTROL_EXT_PKG IS
         XXCALV_UTILS_PKG.XXCALV_VOUT('^FO460,30^ADN,20,13^FD'||P_DATE||'^FS');                                  -- Print P_DATE
         XXCALV_UTILS_PKG.XXCALV_VOUT('^FO450,47^ADN,20,13^FD'||P_HOUR||'^FS');                                  -- Print P_HOUR
         XXCALV_UTILS_PKG.XXCALV_VOUT('^FO372,70^ADN,25,15^FD'||P_FOLIO||'^FS');                                 -- Print P_FOLIO
+        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO265,30^ADN,40,30^FD'||P_SEQUENCE||'^FS');                              -- Print P_SEQUENCE
         XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,100^GB550,0,3,^FS');                                                -- Print Line
         XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,110^ADN,25,15^FDVISITANTE:^FS');                                    -- Print Label  VISITANTE
 --        XXCALV_UTILS_PKG.XXCALV_VOUT('^FO30,125^GB230,0,3,^FS');                                                  -- Print Line        
@@ -235,6 +237,40 @@ CREATE OR REPLACE PACKAGE BODY PAC_VISITS_CONTROL_EXT_PKG IS
     
         RETURN var_result;
     END ACUTE_REPLACE;
+    
+    
+    FUNCTION    GET_SEQUENCE                RETURN VARCHAR2
+    IS
+        var_result  VARCHAR2(10);
+    BEGIN
+    
+        BEGIN
+        
+            SELECT PAC_VISITS_CONTROL_SEQ.nextval
+              INTO var_result 
+              FROM dual;
+                                                              
+        END;
+          
+        
+        IF var_result = 30 THEN
+            EXECUTE IMMEDIATE 'DROP SEQUENCE APPS.PAC_VISITS_CONTROL_SEQ';
+
+            EXECUTE IMMEDIATE 'CREATE SEQUENCE APPS.PAC_VISITS_CONTROL_SEQ ' ||
+                              'START WITH 1 ' ||
+                              'MAXVALUE 30 ' ||
+                              'MINVALUE 1 ' ||
+                              'NOCYCLE ' ||
+                              'NOCACHE ' ||
+                              'NOORDER';
+        END IF;
+        
+        
+        var_result := TRIM(TO_CHAR(var_result, '00'));
+        
+    
+        RETURN var_result;
+    END GET_SEQUENCE; 
     
 
 END PAC_VISITS_CONTROL_EXT_PKG;

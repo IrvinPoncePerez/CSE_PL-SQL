@@ -20,10 +20,15 @@ CREATE OR REPLACE PACKAGE PAC_VISITS_CONTROL_EXT_PKG IS
                     P_VISITOR_NAME          VARCHAR2,
                     P_VISITOR_COMPANY       VARCHAR2,
                     P_ASSOCIATE_PERSON      VARCHAR2,
-                    P_ASSOCIATE_DEPARTMENT  VARCHAR2);    
+                    P_ASSOCIATE_DEPARTMENT  VARCHAR2,
+                    P_SEQUENCE              VARCHAR2);    
     
     FUNCTION   ACUTE_REPLACE(
                     P_STRING      VARCHAR2) RETURN VARCHAR2;
+                    
+                    
+    FUNCTION   GET_SEQUENCE               RETURN VARCHAR2;
+                    
         
                     
 END PAC_VISITS_CONTROL_EXT_PKG;
