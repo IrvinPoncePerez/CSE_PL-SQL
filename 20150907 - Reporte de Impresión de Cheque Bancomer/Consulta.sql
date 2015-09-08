@@ -23,7 +23,6 @@ SELECT
                      ,NULL
                      ,PAC_GET_FULL_VENDOR_NAME(ac.VENDOR_ID)
                      ,XXCALV_NOMBRE_PROV (AIA.ATTRIBUTE2))) Proveedor,
-      --ac.amount,    --27/DIC/2010 JRCA  
       DECODE(cba.currency_code
              ,'MXN'
              ,NVL(ac.base_amount,ac.amount)
@@ -51,28 +50,25 @@ SELECT
     AND ac.vendor_id = ap.vendor_id
     AND ac.STATUS_LOOKUP_CODE != 'VOIDED'
     AND ac.BANK_ACCOUNT_NAME = cba.BANK_ACCOUNT_NAME
+    AND cba.BANK_ACCOUNT_NAME = NVL(:P_ACCOUNT_NAME, cba.BANK_ACCOUNT_NAME)
     AND aia.invoice_id = aip.invoice_id
     AND ac.check_id = aip.check_id
     AND AC.CREATED_BY = usr.user_id
-    AND ac.BANK_ACCOUNT_NAME LIKE '%BANCOMER%'                      --JRCA 10/DIC/2010
+    AND UPPER(ac.BANK_ACCOUNT_NAME) LIKE '%BANCOMER%'                     
     AND ac.check_number >= :P_CHECK_NUMBER
     AND ac.check_number <= :P_CHECK_NUMBER2
      AND ac.org_id   = :p_org_id              
-     --= FND_PROFILE.VALUE('ORG_ID')     --JRCA 10/DIC/2010
-    --and ac.currency_code          = 'MXN'
     AND ac.payment_method_code    = 'CHECK'
 GROUP BY ac.check_id,
          ac.check_number,
          ac.check_date,
          ac.vendor_id,
           ac.org_id,
---         ac.vendor_name,
          AIA.ATTRIBUTE1,
          AIA.ATTRIBUTE2,
          ac.amount,      
          ac.base_amount,
          APPS.XXCALV_UTILS_PKG.XXCALV_GET_DESCRIPCION_FACTURA(ac.check_id),
-         --ac.BANK_ACCOUNT_NAME,
          cba.BANK_ACCOUNT_NUM,
          cba.currency_code,
          USR.USER_NAME   
