@@ -51,7 +51,6 @@ DEFAULT FOR Futuro3             IS 0
 
 DEFAULT FOR mesg                           is 'NOT ENTERED'
 DEFAULT FOR mesg1                          is 'NOT ENTERED'
-DEFAULT FOR mesg2                          is 'NOT ENTERED'
 
 /* ===== Inputs Section Begin ===== */
 
@@ -113,19 +112,6 @@ CONTADOR1 = 0
 
 ) 
 
-/*************************************/
-IF (Futuro3 > 0 AND (trunc(dedn_amt, 0) + Futuro3 + 1) > Total_Owed) THEN (
-  dedn_amt = Total_Owed - Futuro3
-) 
-
-mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
-        ' trunc = ' + to_char(trunc(dedn_amt, 0) + Futuro3 + 1) +
-        ' dedn_amt = ' + to_char(dedn_amt) +
-        ' Total_Owed = ' + to_char(Total_Owed) +
-        ' D079_FINAN_CALZADO_IND_ACCRUED_ENTRY_ITD = ' + to_char(D079_FINAN_CALZADO_IND_ACCRUED_ENTRY_ITD)
-
-/*************************************/         
-
 /* ====  Entry ITD Check Begin ==== */
 
    IF ( D079_FINAN_CALZADO_IND_ACCRUED_ENTRY_ITD = 0 AND
@@ -177,7 +163,6 @@ mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
          to_arrears   = 0
          to_not_taken = 0
          dedn_amt     = dedn_amt
-         mesg2 = mesg2 + '*1*' + to_char(dedn_amt)
       )
       ELSE
       (
@@ -186,14 +171,12 @@ mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
             to_arrears   = 0
             to_not_taken = dedn_amt - net_amount
             dedn_amt     = net_amount
-            mesg2 = mesg2 + '*2*' + to_char(dedn_amt)
          )
          ELSE
          (
             to_arrears   = 0
             to_not_taken = dedn_amt
             dedn_amt     = 0
-            mesg2 = mesg2 + '*3*' + to_char(dedn_amt)
          )
       )
    )
@@ -204,7 +187,6 @@ mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
          to_arrears   = dedn_amt
          to_not_taken = dedn_amt
          dedn_amt     = 0
-         mesg2 = mesg2 + '*4*' + to_char(dedn_amt)
       )
       ELSE
       (
@@ -215,7 +197,6 @@ mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
             to_arrears   = -1 * D079_FINAN_CALZADO_IND_ARREARS_ASG_GRE_ITD
             to_not_taken = 0
             dedn_amt     = total_dedn
-            mesg2 = mesg2 + '*5*' + to_char(dedn_amt)
          )
          ELSE
          (
@@ -234,7 +215,6 @@ mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
                )
 
                dedn_amt     = net_amount
-               mesg2 = mesg2 + '*6*' + to_char(dedn_amt)
             )
             ELSE
             (
@@ -243,14 +223,12 @@ mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
                   to_arrears   = 0
                   to_not_taken = 0
                   dedn_amt     = dedn_amt
-                  mesg2 = mesg2 + '*7*' + to_char(dedn_amt)
                )
                ELSE
                (
                   to_arrears   = dedn_amt
                   to_not_taken = dedn_amt
                   dedn_amt     = 0
-                  mesg2 = mesg2 + '*8*' + to_char(dedn_amt)
                )
             )
          )
@@ -265,17 +243,16 @@ mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
 
    IF Total_Owed WAS NOT DEFAULTED THEN
    (
-      total_accrued  = dedn_amt + Futuro3
+      total_accrued  = dedn_amt + D079_FINAN_CALZADO_IND_ACCRUED_ENTRY_ITD
 
       IF total_accrued  >= Total_Owed THEN
       (
-         dedn_amt = Total_Owed - Futuro3
-         mesg2 = mesg2 + '*9*' + to_char(dedn_amt) 
+         dedn_amt = Total_Owed - D079_FINAN_CALZADO_IND_ACCRUED_ENTRY_ITD
 
           /* The total has been reached - the return will stop the entry under
              these conditions.  Also, zero out Accrued balance.  */
 
-          to_total_owed = -1 * Futuro3
+          to_total_owed = -1 * D079_FINAN_CALZADO_IND_ACCRUED_ENTRY_ITD
           STOP_ENTRY = 'Y'
 
           mesg = GET_MESG('PAY','PAY_MX_STOPPED_ENTRY',
@@ -289,12 +266,10 @@ mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
 	   If (EMP_TERM_DATE >= PAY_PROC_PERIOD_START_DATE AND EMP_TERM_DATE <= PAY_PROC_PERIOD_END_DATE) and ( mSaldoRestante > 0 ) Then
 	   (
 			dedn_amt = dedn_amt + mSaldoRestante
-      mesg2 = mesg2 + '*10*' + to_char(dedn_amt)
 			If net_amount <= mSaldoRestante Then
 			(
 				SaldoSinCobrar 	= dedn_amt - net_amount
 				dedn_amt 		= net_amount
-        mesg2 = mesg2 + '*11*' + to_char(dedn_amt)
 			)
 			mSaldoRestante = Total_Owed - dedn_amt
 			to_total_owed = -1 * Total_Owed
@@ -310,7 +285,6 @@ mesg2 = ' Futuro3 = ' + to_char(Futuro3) +
 
 SALDO_ACUMULADO = trunc(Futuro3, 2) + trunc(dedn_amt, 2)
 dedn_amt = trunc(dedn_amt, 2)
-mesg2 = mesg2 + '*12*' + to_char(dedn_amt)
 
 IF SALDO_ACUMULADO > 0 /*(D079_FINAN_CALZADO_IND_ACCRUED_ASG_GRE_ITD <> 0 )*/ THEN
 	(
@@ -342,7 +316,6 @@ IF SALDO_ACUMULADO = 0 /*(D079_FINAN_CALZADO_IND_ACCRUED_ASG_GRE_ITD = 0)*/ THEN
 		  CONTADOR1,
 		  VALIDADOR1,
 		  SaldoAnterior,
-      SALDO_ACUMULADO,
-      mesg2
+      SALDO_ACUMULADO
 
 /* End Formula Text */
