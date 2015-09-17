@@ -198,8 +198,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
     EXCEPTION WHEN NO_DATA_FOUND THEN
         RETURN NULL;        
               WHEN OTHERS THEN
-        dbms_output.put_line('**Error en la función GET_OTHER_VALUE, assignment_action_id = ' || P_ASSIGNMENT_ACTION_ID || ', element_name=' || P_ELEMENT_NAME || ', input_value_name=' || P_INPUT_VALUE_NAME || '. ' || SQLERRM);
-        FND_FILE.put_line(FND_FILE.LOG, '**Error en la función GET_OTHER_VALUE, assignment_action_id = ' || P_ASSIGNMENT_ACTION_ID || ', element_name=' || P_ELEMENT_NAME || ', input_value_name=' || P_INPUT_VALUE_NAME || '. ' || SQLERRM);
+        dbms_output.put_line('**Error en la función GET_OTHER_SUM_VALUE, assignment_action_id = ' || P_ASSIGNMENT_ACTION_ID || ', element_name=' || P_ELEMENT_NAME || ', input_value_name=' || P_INPUT_VALUE_NAME || '. ' || SQLERRM);
+        FND_FILE.put_line(FND_FILE.LOG, '**Error en la función GET_OTHER_SUM_VALUE, assignment_action_id = ' || P_ASSIGNMENT_ACTION_ID || ', element_name=' || P_ELEMENT_NAME || ', input_value_name=' || P_INPUT_VALUE_NAME || '. ' || SQLERRM);
     END;    
     
     
@@ -271,7 +271,7 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
       BEGIN
       
           CASE WHEN P_TYPE = 'A' THEN
-                  SELECT 
+                  SELECT DISTINCT
                     ('A  ' || MAX(PPTU.EFFECTIVE_START_DATE))
                     INTO var_data
                     FROM PER_PERSON_TYPE_USAGES_F   PPTU,
@@ -282,7 +282,7 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
                      AND PPTU.EFFECTIVE_START_DATE BETWEEN P_START_DATE AND P_END_DATE;
                    
                WHEN P_TYPE = 'B' THEN
-                  SELECT 
+                  SELECT DISTINCT
                     ('B  ' || MAX(PPOS.ACTUAL_TERMINATION_DATE))
                     INTO var_data
                     FROM PER_PERSON_TYPE_USAGES_F   PPTU,
@@ -322,8 +322,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
       EXCEPTION WHEN NO_DATA_FOUND THEN
         RETURN NULL;        
               WHEN OTHERS THEN
-        dbms_output.put_line('**Error en la función GET_DATA_MOVEMENT. (' || P_PERSON_ID || ',' || P_TYPE || ',' || P_START_DATE || ',' || P_END_DATE || ')' || SQLERRM);
-        FND_FILE.put_line(FND_FILE.LOG, '**Error en la función GET_DATA_MOVEMENT. (' || P_PERSON_ID || ',' || P_TYPE || ',' || P_START_DATE || ',' || P_END_DATE || ')' || SQLERRM);
+        dbms_output.put_line('**Error en la funcion GET_DATA_MOVEMENT. (' || P_PERSON_ID || ',' || P_TYPE || ',' || P_START_DATE || ',' || P_END_DATE || ')' || SQLERRM);
+        FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_DATA_MOVEMENT. (' || P_PERSON_ID || ',' || P_TYPE || ',' || P_START_DATE || ',' || P_END_DATE || ')' || SQLERRM);
       END;
       
       
@@ -335,7 +335,7 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
       BEGIN
       
       
-            SELECT PAPF.EFFECTIVE_START_DATE
+            SELECT MAX(PAPF.EFFECTIVE_START_DATE)
               INTO var_effective_start_date
               FROM PER_ALL_PEOPLE_F         PAPF 
              WHERE PAPF.PERSON_ID = P_PERSON_ID
@@ -348,8 +348,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
       EXCEPTION WHEN NO_DATA_FOUND THEN
         RETURN NULL;        
               WHEN OTHERS THEN
-        dbms_output.put_line('**Error en la función GET_DATA_MOVEMENT. (' || P_PERSON_ID || ',' || SQLERRM);
-        FND_FILE.put_line(FND_FILE.LOG, '**Error en la función GET_DATA_MOVEMENT. (' || P_PERSON_ID || ',' || SQLERRM);
+        dbms_output.put_line('**Error en la función GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
+        FND_FILE.put_line(FND_FILE.LOG, '**Error en la función GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
       END;
       
       
