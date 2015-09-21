@@ -46,7 +46,6 @@ DEFAULT FOR PERIODICIDAD 						IS 0
 DEFAULT FOR CONTADOR 							IS 0
 DEFAULT FOR Futuro3             IS 0
 
-
 /* ===== Input Value Defaults End ===== */
 
 DEFAULT FOR mesg                           is 'NOT ENTERED'
@@ -112,6 +111,12 @@ CONTADOR1 = 0
 
 ) 
 
+/*************************************  IPONCE  18-SEP-2015*/
+IF (Futuro3 > 0 AND (trunc(dedn_amt, 0) + Futuro3 + 1) > Total_Owed) THEN (
+  dedn_amt = Total_Owed - Futuro3
+) 
+/*************************************/    
+
 /* ====  Entry ITD Check Begin ==== */
 
    IF ( D077_EXEDENTE_ALIMENTOS_ACCRUED_ENTRY_ITD = 0 AND
@@ -147,7 +152,6 @@ CONTADOR1 = 0
    (
       IF insuff_funds_type = 'ERRA' THEN
       (
-
          mesg = GET_MESG('PAY','PAY_MX_INSUFF_FUNDS_FOR_DED')
          RETURN mesg
       )
@@ -191,7 +195,6 @@ CONTADOR1 = 0
       ELSE
       (
          total_dedn = dedn_amt + D077_EXEDENTE_ALIMENTOS_ARREARS_ASG_GRE_ITD
-
          IF ( net_amount >= total_dedn ) THEN
          (
             to_arrears   = -1 * D077_EXEDENTE_ALIMENTOS_ARREARS_ASG_GRE_ITD
@@ -243,16 +246,16 @@ CONTADOR1 = 0
 
    IF Total_Owed WAS NOT DEFAULTED THEN
    (
-      total_accrued  = dedn_amt + D077_EXEDENTE_ALIMENTOS_ACCRUED_ENTRY_ITD
+      total_accrued  = dedn_amt + Futuro3   /*IPONCE  18-SEP-2015*/
 
       IF total_accrued  >= Total_Owed THEN
       (
-         dedn_amt = Total_Owed - D077_EXEDENTE_ALIMENTOS_ACCRUED_ENTRY_ITD
+         dedn_amt = Total_Owed - Futuro3   /*IPONCE  18-SEP-2015*/
 
           /* The total has been reached - the return will stop the entry under
              these conditions.  Also, zero out Accrued balance.  */
 
-          to_total_owed = -1 * D077_EXEDENTE_ALIMENTOS_ACCRUED_ENTRY_ITD
+          to_total_owed = -1 * Futuro3   /*IPONCE  18-SEP-2015*/
           STOP_ENTRY = 'Y'
 
           mesg = GET_MESG('PAY','PAY_MX_STOPPED_ENTRY',
@@ -266,6 +269,7 @@ CONTADOR1 = 0
 	   If (EMP_TERM_DATE >= PAY_PROC_PERIOD_START_DATE AND EMP_TERM_DATE <= PAY_PROC_PERIOD_END_DATE) and ( mSaldoRestante > 0 ) Then
 	   (
 			dedn_amt = dedn_amt + mSaldoRestante
+      
 			If net_amount <= mSaldoRestante Then
 			(
 				SaldoSinCobrar 	= dedn_amt - net_amount

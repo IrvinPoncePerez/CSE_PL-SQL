@@ -44,7 +44,7 @@ DEFAULT FOR EMP_HIRE_DATE                 		is '0001/01/01 00:00:00' (DATE)
 DEFAULT FOR EMP_TERM_DATE                 		is '4000/01/01 00:00:00' (DATE)
 DEFAULT FOR PERIODICIDAD 						IS 0
 DEFAULT FOR CONTADOR 							IS 0
-
+DEFAULT FOR Futuro3             IS 0          /*IPONCE  28-MAY-2015*/
 
 /* ===== Input Value Defaults End ===== */
 
@@ -63,7 +63,7 @@ INPUTS ARE
 		,PERIODICIDAD
 		,CONTADOR
 		,VALIDADOR
-		
+		,Futuro3          /*IPONCE  28-MAY-2015*/
 /* ===== Inputs Section End ===== */
 
 /* ===== Latest balance creation begin ==== */
@@ -86,6 +86,9 @@ SaldoSinCobrar 		= 0
 PERIODICIDAD = PERIODICIDAD
 CONTADOR = CONTADOR
 
+
+
+
 CONTADOR1 = CONTADOR + 1 
 VALIDADOR1 = PERIODICIDAD - CONTADOR1
 VALIDADOR = VALIDADOR1
@@ -105,8 +108,14 @@ ELSE
 Amount= Amount / Periodos
 dedn_amt= Amount
 CONTADOR1 = 0 
+
 ) 
 
+/*************************************/   /*IPONCE  18-SEP-2015*/
+IF (Futuro3 > 0 AND (trunc(dedn_amt, 0) + Futuro3 + 1) > Total_Owed) THEN (
+  dedn_amt = Total_Owed - Futuro3
+) 
+/*************************************/  
 
 /* ====  Entry ITD Check Begin ==== */
 
@@ -143,7 +152,6 @@ CONTADOR1 = 0
    (
       IF insuff_funds_type = 'ERRA' THEN
       (
-
          mesg = GET_MESG('PAY','PAY_MX_INSUFF_FUNDS_FOR_DED')
          RETURN mesg
       )
@@ -187,7 +195,6 @@ CONTADOR1 = 0
       ELSE
       (
          total_dedn = dedn_amt + D089_COOPERACION_ARREARS_ASG_GRE_ITD
-
          IF ( net_amount >= total_dedn ) THEN
          (
             to_arrears   = -1 * D089_COOPERACION_ARREARS_ASG_GRE_ITD
@@ -239,31 +246,30 @@ CONTADOR1 = 0
 
    IF Total_Owed WAS NOT DEFAULTED THEN
    (
-      total_accrued  = dedn_amt + D089_COOPERACION_ACCRUED_ENTRY_ITD
+      total_accrued  = dedn_amt + Futuro3   /*IPONCE  18-SEP-2015*/
 
       IF total_accrued  >= Total_Owed THEN
       (
-         dedn_amt = Total_Owed - D089_COOPERACION_ACCRUED_ENTRY_ITD
+         dedn_amt = Total_Owed - Futuro3   /*IPONCE  18-SEP-2015*/
 
           /* The total has been reached - the return will stop the entry under
              these conditions.  Also, zero out Accrued balance.  */
 
-          to_total_owed = -1 * D089_COOPERACION_ACCRUED_ENTRY_ITD
+          to_total_owed = -1 * Futuro3   /*IPONCE  18-SEP-2015*/
           STOP_ENTRY = 'Y'
 
           mesg = GET_MESG('PAY','PAY_MX_STOPPED_ENTRY',
                                   'BASE_NAME','D089_COOPERACION')
        )
-   /*
-			Definimos comportamiento de este concepto para finiquítos
-		
-	   */
+
+   /*Definimos comportamiento de este concepto para finiquítos */
 	   
 	   mSaldoRestante = (Total_Owed - total_accrued)
 
 	   If (EMP_TERM_DATE >= PAY_PROC_PERIOD_START_DATE AND EMP_TERM_DATE <= PAY_PROC_PERIOD_END_DATE) and ( mSaldoRestante > 0 ) Then
 	   (
 			dedn_amt = dedn_amt + mSaldoRestante
+
 			If net_amount <= mSaldoRestante Then
 			(
 				SaldoSinCobrar 	= dedn_amt - net_amount
@@ -277,27 +283,27 @@ CONTADOR1 = 0
 			mesg = GET_MESG('PAY','PAY_MX_STOPPED_ENTRY',
                                   'BASE_NAME','D089_COOPERACION')
 
-	   )
-	   
-	  
+	   )	   
 	   
    )
 
-IF (D089_COOPERACION_ACCRUED_ASG_GRE_ITD <> 0 ) THEN
+SALDO_ACUMULADO = trunc(Futuro3, 2) + trunc(dedn_amt, 2)  /*IPONCE  28-MAY-2015*/
+dedn_amt = trunc(dedn_amt, 2)         /*IPONCE  28-MAY-2015*/
+
+IF SALDO_ACUMULADO > 0 /*(D089_COOPERACION_ACCRUED_ASG_GRE_ITD <> 0 )*/ THEN    /*IPONCE  28-MAY-2015*/
 	(
-	Saldo = D089_COOPERACION_ACCRUED_ASG_GRE_ITD + dedn_amt
+	Saldo = SALDO_ACUMULADO /*D089_COOPERACION_ACCRUED_ASG_GRE_ITD + dedn_amt*/ /*IPONCE 28-MAY-2015*/
 	SaldoRestante = Total_Owed - Saldo
 	SaldoAnterior = Saldo - dedn_amt
  
 	)
 
-IF (D089_COOPERACION_ACCRUED_ASG_GRE_ITD = 0) THEN
+IF SALDO_ACUMULADO =  0 /*(D089_COOPERACION_ACCRUED_ASG_GRE_ITD = 0)*/ THEN   /*IPONCE  28-MAY-2015*/
 	(
 	Saldo = dedn_amt
 	SaldoRestante = Total_Owed - Saldo
 	SaldoAnterior = 0
-	)
- 
+	) 
 /* ===== Stop Rule Section End ===== */
 
     RETURN dedn_amt,
@@ -313,6 +319,7 @@ IF (D089_COOPERACION_ACCRUED_ASG_GRE_ITD = 0) THEN
 		  SaldoRestante,
 		  CONTADOR1,
 		  VALIDADOR1,
-		  SaldoAnterior
+		  SaldoAnterior,
+      SALDO_ACUMULADO  /*IPONCE  28-MAY-2015*/
 
 /* End Formula Text */
