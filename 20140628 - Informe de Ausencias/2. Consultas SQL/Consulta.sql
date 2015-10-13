@@ -98,6 +98,7 @@ FROM(--------------------------------------------------------------------------
              OR PAAV.C_TYPE_DESC = 'PERMISO SIN GOCE DE SUELDO'
              OR PAAV.C_TYPE_DESC = 'PERMISO POR PATERNIDAD'
              OR PAAV.C_TYPE_DESC = 'SUSPENSIÓN') 
+           AND SYSDATE BETWEEN PAA.EFFECTIVE_START_DATE AND PAA.EFFECTIVE_END_DATE
          GROUP BY PPF.PERSON_ID,
                   PAPF.EMPLOYEE_NUMBER,
                   PAP.ATTRIBUTE1,
@@ -184,6 +185,7 @@ FROM(--------------------------------------------------------------------------
                  EXTRACT(YEAR FROM PDF.REGISTRATION_EXP_DATE) = :P_YEAR
              AND TO_CHAR(EXTRACT(MONTH FROM PDF.REGISTRATION_EXP_DATE)) LIKE (TO_CHAR(:P_MONTH) || '%')
                 ))
+           AND SYSDATE BETWEEN PAA.EFFECTIVE_START_DATE AND PAA.EFFECTIVE_END_DATE
          GROUP BY PPF.PERSON_ID,
                   PAPF.EMPLOYEE_NUMBER,
                   PAP.ATTRIBUTE1,
