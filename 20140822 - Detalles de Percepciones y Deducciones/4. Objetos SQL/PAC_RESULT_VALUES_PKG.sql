@@ -194,6 +194,10 @@ CREATE OR REPLACE PACKAGE PAC_RESULT_VALUES_PKG AS
                            P_DATE_EARNED             DATE,
                            P_ELEMENT_NAME            VARCHAR2,
                            P_ENTRY_NAME              VARCHAR2)
-        RETURN NUMBER;   
+      RETURN NUMBER;  
+        
+    FUNCTION GET_DESPENSA_EXEMPT(P_ASSIGNMENT_ACTION_ID     NUMBER,
+                                 P_DESPENSA_RESULT          NUMBER)
+      RETURN NUMBER;  
 
 END PAC_RESULT_VALUES_PKG;

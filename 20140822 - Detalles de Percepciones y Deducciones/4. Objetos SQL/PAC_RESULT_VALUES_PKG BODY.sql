@@ -391,6 +391,41 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
         EXCEPTION WHEN NO_DATA_FOUND THEN
             RETURN 0;
         END;
+        
+        
+      FUNCTION GET_DESPENSA_EXEMPT(P_ASSIGNMENT_ACTION_ID     NUMBER,
+                                   P_DESPENSA_RESULT          NUMBER)
+      RETURN NUMBER
+      IS
+            var_result              NUMBER := 0;
+            var_zone                VARCHAR(1) := 'A';
+            var_percent             NUMBER := 0.4;
+            var_days                NUMBER := 0;
+            var_min_wage            NUMBER := 0;
+            var_despensa_exempt     NUMBER := 0;
+            
+      BEGIN
+      
+        SELECT 
+               SUM(PRRV.RESULT_VALUE)
+          INTO var_days
+          FROM PAY_RUN_RESULTS          PRR,
+               PAY_ELEMENT_TYPES_F      PETF,
+               PAY_RUN_RESULT_VALUES    PRRV,
+               PAY_INPUT_VALUES_F       PIVF
+         WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+           AND (PETF.ELEMENT_NAME = 'P001_SUELDO NORMAL'
+             OR PETF.ELEMENT_NAME = 'P005_VACACIONES')
+           AND PIVF.NAME = 'Days';
+            
+        var_result := var_days;
+      
+        RETURN var_result;  
+      
+      END; 
 
     
         
