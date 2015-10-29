@@ -37,25 +37,25 @@ FROM(--------------------------------------------------------------------------
             PAAV.ABSENCE_ATTENDANCE_ID,
             (CASE 
                 WHEN PAAV.C_TYPE_DESC = 'AUSENCIA' THEN
-                    apps.PAC_GET_DISABILITIES_DAYS(PAAV.DATE_START, PAAV.DATE_END, :P_MONTH, :P_YEAR)
+                    PAC_GET_DISABILITIES_DAYS(PAAV.DATE_START, PAAV.DATE_END, :P_MONTH, :P_YEAR)
                 ELSE
                     0
              END)                                                                               AS ABSENCE_DAYS,
             (CASE 
                 WHEN PAAV.C_TYPE_DESC = 'PERMISO SIN GOCE DE SUELDO' THEN
-                    apps.PAC_GET_DISABILITIES_DAYS(PAAV.DATE_START, PAAV.DATE_END, :P_MONTH, :P_YEAR)
+                    PAC_GET_DISABILITIES_DAYS(PAAV.DATE_START, PAAV.DATE_END, :P_MONTH, :P_YEAR)
                 ELSE
                     0
              END)                                                                               AS PERMISSION_DAYS,
             (CASE 
                 WHEN PAAV.C_TYPE_DESC = 'PERMISO POR PATERNIDAD' THEN
-                    apps.PAC_GET_DISABILITIES_DAYS(PAAV.DATE_START, PAAV.DATE_END, :P_MONTH, :P_YEAR)
+                    PAC_GET_DISABILITIES_DAYS(PAAV.DATE_START, PAAV.DATE_END, :P_MONTH, :P_YEAR)
                 ELSE
                     0
              END)                                                                               AS PERMISSION_PATERNITY,
             (CASE 
                 WHEN PAAV.C_TYPE_DESC = 'SUSPENSIÓN' THEN
-                    apps.PAC_GET_DISABILITIES_DAYS(PAAV.DATE_START, PAAV.DATE_END, :P_MONTH, :P_YEAR)
+                    PAC_GET_DISABILITIES_DAYS(PAAV.DATE_START, PAAV.DATE_END, :P_MONTH, :P_YEAR)
                 ELSE
                     0
              END)                                                                               AS SUSPENSION_DAYS,
@@ -86,13 +86,8 @@ FROM(--------------------------------------------------------------------------
            AND PPF.REGISTERED_DISABLED_FLAG IS NULL
            AND PAAV.PERSON_ID = PPF.PERSON_ID
            AND EXTRACT(YEAR FROM PAAV.DATE_START) = :P_YEAR
-           AND ((
-                 EXTRACT(YEAR FROM PAAV.DATE_START) = :P_YEAR
-             AND TO_CHAR(EXTRACT(MONTH FROM PAAV.DATE_START)) LIKE (TO_CHAR(:P_MONTH) || '%')                      
-           ) OR (
-                 EXTRACT(YEAR FROM PAAV.DATE_END) = :P_YEAR
-             AND TO_CHAR(EXTRACT(MONTH FROM PAAV.DATE_END)) LIKE (TO_CHAR(:P_MONTH) || '%')
-                 ))
+           AND EXTRACT(YEAR FROM PAAV.DATE_START) = :P_YEAR 
+           AND TO_NUMBER(:P_MONTH) BETWEEN TO_NUMBER(EXTRACT(MONTH FROM PAAV.DATE_START)) AND TO_NUMBER(EXTRACT(MONTH FROM PAAV.DATE_END))
            AND (PAAV.C_TYPE_DESC = 'AUSENCIA'
              OR PAAV.C_TYPE_DESC = 'PERMISO SIN GOCE DE SUELDO'
              OR PAAV.C_TYPE_DESC = 'PERMISO POR PATERNIDAD'
@@ -177,13 +172,8 @@ FROM(--------------------------------------------------------------------------
            AND (PDF.CATEGORY = 'RT'
              OR PDF.CATEGORY = 'GRAL'
              OR PDF.CATEGORY = 'MAT')
-           AND ((
-                 EXTRACT(YEAR FROM PDF.REGISTRATION_DATE) = :P_YEAR
-             AND TO_CHAR(EXTRACT(MONTH FROM PDF.REGISTRATION_DATE)) LIKE (TO_CHAR(:P_MONTH) || '%')                      
-           ) OR (
-                 EXTRACT(YEAR FROM PDF.REGISTRATION_EXP_DATE) = :P_YEAR
-             AND TO_CHAR(EXTRACT(MONTH FROM PDF.REGISTRATION_EXP_DATE)) LIKE (TO_CHAR(:P_MONTH) || '%')
-                ))
+           AND EXTRACT(YEAR FROM PDF.REGISTRATION_DATE) = :P_YEAR 
+           AND TO_NUMBER(:P_MONTH) BETWEEN TO_NUMBER(EXTRACT(MONTH FROM PDF.REGISTRATION_DATE)) AND TO_NUMBER(EXTRACT(MONTH FROM PDF.REGISTRATION_EXP_DATE))
            AND SYSDATE BETWEEN PAA.EFFECTIVE_START_DATE AND PAA.EFFECTIVE_END_DATE
          GROUP BY PPF.PERSON_ID,
                   PAPF.EMPLOYEE_NUMBER,
@@ -207,6 +197,8 @@ LEFT JOIN PER_ABSENCE_ATTENDANCES_V     PAAV    ON  (INFORME.PERSON_ID = PAAV.PE
                                                  AND INFORME.ABSENCE_ATTENDANCE_ID = PAAV.ABSENCE_ATTENDANCE_ID)
 LEFT JOIN PER_DISABILITIES_F            PDF     ON  (INFORME.PERSON_ID = PDF.PERSON_ID
                                                  AND INFORME.DISABILITY_ID = PDF.DISABILITY_ID) 
+WHERE 1 = 1
+--  AND INFORME.PERSON_ID IN (11474, 3111, 1951, 1853, 3239, 2677, 2741)
 GROUP BY INFORME.PERSON_ID,
          INFORME.EMPLOYEE_NUMBER,
          INFORME.PAYROLL,
