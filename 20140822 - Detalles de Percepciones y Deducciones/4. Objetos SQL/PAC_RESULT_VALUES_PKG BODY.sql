@@ -339,9 +339,7 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
               INTO var_effective_start_date
               FROM PER_ALL_PEOPLE_F         PAPF 
              WHERE PAPF.PERSON_ID = P_PERSON_ID
-               AND PAPF.OBJECT_VERSION_NUMBER = (SELECT MAX(PF.OBJECT_VERSION_NUMBER)
-                                                   FROM PER_ALL_PEOPLE_F    PF
-                                                  WHERE PF.PERSON_ID = P_PERSON_ID);
+               AND SYSDATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE ;
       
       
             RETURN var_effective_start_date;
