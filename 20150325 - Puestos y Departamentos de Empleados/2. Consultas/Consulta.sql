@@ -34,18 +34,29 @@ SELECT DTL.PERIOD_TYPE,
                PPD.SEGMENT2                             AS  "POSITION_NUMBER",
                PPD.SEGMENT1                             AS  "POSITION_NAME",
                apps.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)  AS  "REG_PATRONAL",
-               NVL( ,PAPF.ORIGINAL_DATE_OF_HIRE)                AS  "EFFECTIVE_START_DATE",
+               NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE)            AS  "EFFECTIVE_START_DATE",
                PAPF.EFFECTIVE_END_DATE                  AS  "EFFECTIVE_END_DATE",
                PAPF.PERSON_ID
           FROM PAY_PAYROLLS_F           PPF,
                PER_ALL_ASSIGNMENTS_F    PAAF,
                PER_ALL_PEOPLE_F         PAPF,
+               PER_PERIODS_OF_SERVICE   PPOS,
                HR_ALL_POSITIONS_F       PAPO,
                PER_POSITION_DEFINITIONS PPD,
                PER_PERSON_TYPES         PPT
          WHERE 1 = 1
            AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
            AND PAPF.PERSON_ID = PAAF.PERSON_ID
+           AND PAPF.PERSON_ID = PPOS.PERSON_ID
+           AND (   (PAPF.EMPLOYEE_NUMBER IS NULL)
+                OR (    PAPF.EMPLOYEE_NUMBER IS NOT NULL
+                    AND PPOS.DATE_START =
+                          (SELECT MAX (PPS1.DATE_START)
+                             FROM PER_PERIODS_OF_SERVICE PPS1
+                            WHERE PPS1.PERSON_ID = PAPF.PERSON_ID
+                              AND PPS1.DATE_START <= PAPF.EFFECTIVE_END_DATE)
+                   )
+               )
            AND PAAF.EFFECTIVE_END_DATE = PAPF.EFFECTIVE_END_DATE
            AND PAPO.POSITION_ID = PAAF.POSITION_ID
            AND PAPO.POSITION_DEFINITION_ID = PPD.POSITION_DEFINITION_ID
