@@ -394,12 +394,13 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
         
         
       FUNCTION GET_DESPENSA_EXEMPT(P_ASSIGNMENT_ACTION_ID     NUMBER,
-                                   P_DESPENSA_RESULT          NUMBER)
+                                   P_DESPENSA_RESULT          NUMBER,
+                                   P_EFFECTIVE_DATE           DATE)
       RETURN NUMBER
       IS
             var_result              NUMBER := 0;
-            var_zone                VARCHAR(1) := 'A';
-            var_percent             NUMBER := 0.4;
+            var_econ_zone           VARCHAR(1) := 'A';
+            var_percent             NUMBER := 40/100;
             var_days                NUMBER := 0;
             var_min_wage            NUMBER := 0;
             var_despensa_exempt     NUMBER := 0;
@@ -407,7 +408,7 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
       BEGIN
       
         SELECT 
-               SUM(PRRV.RESULT_VALUE)
+               SUM(TRUNC(PRRV.RESULT_VALUE, 2))
           INTO var_days
           FROM PAY_RUN_RESULTS          PRR,
                PAY_ELEMENT_TYPES_F      PETF,
@@ -421,7 +422,21 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
              OR PETF.ELEMENT_NAME = 'P005_VACACIONES')
            AND PIVF.NAME = 'Days';
             
-        var_result := var_days;
+        var_min_wage := PAY_MX_UTILITY.GET_MIN_WAGE(p_ctx_date_earned => P_EFFECTIVE_DATE,
+                                                    p_tax_basis => 'NONE',
+                                                    p_econ_zone => var_econ_zone);
+
+        var_despensa_exempt := TRUNC(((var_min_wage * var_percent) * var_days), 2);
+        
+        
+        
+        IF P_DESPENSA_RESULT >= var_despensa_exempt THEN
+            var_result := var_despensa_exempt;
+        ELSE
+            var_result := P_DESPENSA_RESULT;
+        END IF;
+        
+        
       
         RETURN var_result;  
       

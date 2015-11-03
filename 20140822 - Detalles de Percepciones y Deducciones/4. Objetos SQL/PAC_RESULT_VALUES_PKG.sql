@@ -197,7 +197,8 @@ CREATE OR REPLACE PACKAGE PAC_RESULT_VALUES_PKG AS
       RETURN NUMBER;  
         
     FUNCTION GET_DESPENSA_EXEMPT(P_ASSIGNMENT_ACTION_ID     NUMBER,
-                                 P_DESPENSA_RESULT          NUMBER)
+                                 P_DESPENSA_RESULT          NUMBER,
+                                 P_EFFECTIVE_DATE           DATE)
       RETURN NUMBER;  
 
 END PAC_RESULT_VALUES_PKG;
