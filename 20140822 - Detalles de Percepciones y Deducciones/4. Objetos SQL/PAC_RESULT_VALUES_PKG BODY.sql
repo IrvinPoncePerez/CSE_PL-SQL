@@ -335,11 +335,21 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
       BEGIN
       
       
-            SELECT MAX(PAPF.EFFECTIVE_START_DATE)
+--            SELECT MAX(PAPF.EFFECTIVE_START_DATE)
+--              INTO var_effective_start_date
+--              FROM PER_ALL_PEOPLE_F         PAPF 
+--             WHERE PAPF.PERSON_ID = P_PERSON_ID
+--               AND SYSDATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE ;
+
+            SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE)
               INTO var_effective_start_date
-              FROM PER_ALL_PEOPLE_F         PAPF 
-             WHERE PAPF.PERSON_ID = P_PERSON_ID
-               AND SYSDATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE ;
+              FROM PER_PEOPLE_F             PPF,
+                   PER_PERIODS_OF_SERVICE   PPOS    
+             WHERE 1 = 1 
+               AND PPF.PERSON_ID = P_PERSON_ID
+               AND PPF.PERSON_ID = PPOS.PERSON_ID
+               AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+               AND PPOS.ACTUAL_TERMINATION_DATE IS NULL;
       
       
             RETURN var_effective_start_date;
@@ -395,7 +405,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
         
       FUNCTION GET_DESPENSA_EXEMPT(P_ASSIGNMENT_ACTION_ID     NUMBER,
                                    P_DESPENSA_RESULT          NUMBER,
-                                   P_EFFECTIVE_DATE           DATE)
+                                   P_EFFECTIVE_DATE           DATE,
+                                   P_PERIOD                   VARCHAR2)
       RETURN NUMBER
       IS
             var_result              NUMBER := 0;
@@ -407,20 +418,26 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
             
       BEGIN
       
-        SELECT 
-               SUM(TRUNC(PRRV.RESULT_VALUE, 2))
-          INTO var_days
-          FROM PAY_RUN_RESULTS          PRR,
-               PAY_ELEMENT_TYPES_F      PETF,
-               PAY_RUN_RESULT_VALUES    PRRV,
-               PAY_INPUT_VALUES_F       PIVF
-         WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
-           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
-           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
-           AND (PETF.ELEMENT_NAME = 'P001_SUELDO NORMAL'
-             OR PETF.ELEMENT_NAME = 'P005_VACACIONES')
-           AND PIVF.NAME = 'Days';
+--        SELECT 
+--               SUM(TRUNC(PRRV.RESULT_VALUE, 2))
+--          INTO var_days
+--          FROM PAY_RUN_RESULTS          PRR,
+--               PAY_ELEMENT_TYPES_F      PETF,
+--               PAY_RUN_RESULT_VALUES    PRRV,
+--               PAY_INPUT_VALUES_F       PIVF
+--         WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+--           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+--           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+--           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+--           AND (PETF.ELEMENT_NAME = 'P001_SUELDO NORMAL'
+--             OR PETF.ELEMENT_NAME = 'P005_VACACIONES')
+--           AND PIVF.NAME = 'Days';
+
+        IF    P_PERIOD IN ('Week','Semana') THEN
+            var_days := 7;
+        ELSIF P_PERIOD IN ('Semi-Month','Quincena') THEN
+            var_days := 15;
+        END IF;
             
         var_min_wage := PAY_MX_UTILITY.GET_MIN_WAGE(p_ctx_date_earned => P_EFFECTIVE_DATE,
                                                     p_tax_basis => 'NONE',
