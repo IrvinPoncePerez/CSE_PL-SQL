@@ -1,4 +1,5 @@
 CREATE TABLE PAC_CUSTOMER_GOALS_TB(
+    CUSTOMER_GOAL_ID    NUMBER,
     YEAR            NUMBER          NULL,
     MONTH           NUMBER          NULL,
     COUNTRY         VARCHAR2(5)     NULL,
