@@ -10,9 +10,9 @@ CREATE OR REPLACE PROCEDURE APPS.PAC_PERCEP_Y_DEDUC_PRC(
         P_CONSOLIDATION_SET_ID  VARCHAR2,
         P_PERIOD_NAME           VARCHAR2)
 IS
-    var_path        VARCHAR2(250) := 'PERCEPCION_DEDUCCION';
-    var_file_name   VARCHAR2(250) := 'DETALLE_PERCEP_Y_DEDUC.csv';
-    var_file        UTL_FILE.FILE_TYPE;
+--    var_path        VARCHAR2(250) := 'PERCEPCION_DEDUCCION';
+--    var_file_name   VARCHAR2(250) := 'DETALLE_PERCEP_Y_DEDUC.csv';
+--    var_file        UTL_FILE.FILE_TYPE;
     
     var_company_name                VARCHAR2(250);
     var_payroll_name                VARCHAR2(250);
@@ -624,18 +624,18 @@ BEGIN
     fnd_file.put_line(fnd_file.log,'P_PERIOD_NAME : '         || P_PERIOD_NAME);
     
      --Eliminacion y creacion del Archivo.
-    BEGIN
-    
-        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
-        UTL_FILE.FREMOVE(var_path, var_file_name);
-    EXCEPTION WHEN UTL_FILE.INVALID_OPERATION THEN
-        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
-              WHEN OTHERS THEN
-        dbms_output.put_line('**Error al Limpiar el Archivo. ' || SQLERRM);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo. ' || SQLERRM);
-    END;
-    
-    var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
+--    BEGIN
+--    
+--        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
+--        UTL_FILE.FREMOVE(var_path, var_file_name);
+--    EXCEPTION WHEN UTL_FILE.INVALID_OPERATION THEN
+--        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
+--              WHEN OTHERS THEN
+--        dbms_output.put_line('**Error al Limpiar el Archivo. ' || SQLERRM);
+--        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo. ' || SQLERRM);
+--    END;
+--    
+--    var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
     
     BEGIN
     
@@ -656,15 +656,15 @@ BEGIN
                var_consolidation_set_name
           FROM DUAL;
           
-          UTL_FILE.PUT_LINE(var_file, 'COMPAÑIA:,'    || var_company_name);
-          UTL_FILE.PUT_LINE(var_file, 'AÑO,'         || P_YEAR);
-          UTL_FILE.PUT_LINE(var_file, 'MES INICIAL:,' || P_START_MONTH);
-          UTL_FILE.PUT_LINE(var_file, 'MES FINAL:,'   || P_END_MONTH);
-          UTL_FILE.PUT_LINE(var_file, 'TIPO DE PERIODO:,'        || NVL(P_PERIOD_TYPE,              'TODOS'));
-          UTL_FILE.PUT_LINE(var_file, 'NOMINA:,'                 || NVL(var_payroll_name,           'TODAS'));
-          UTL_FILE.PUT_LINE(var_file, 'JUEGO DE CONSOLIDACION:,' || NVL(var_consolidation_set_name, 'TODOS'));
-          UTL_FILE.PUT_LINE(var_file, 'PERIODO:,'     || NVL(P_PERIOD_NAME, 'TODOS')); 
-          UTL_FILE.PUT_LINE(var_file, ',,');
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'COMPAÑIA:,'    || var_company_name);
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'AÑO,'         || P_YEAR);
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES INICIAL:,' || P_START_MONTH);
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES FINAL:,'   || P_END_MONTH);
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'TIPO DE PERIODO:,'        || NVL(P_PERIOD_TYPE,              'TODOS'));
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'NOMINA:,'                 || NVL(var_payroll_name,           'TODAS'));
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'JUEGO DE CONSOLIDACION:,' || NVL(var_consolidation_set_name, 'TODOS'));
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'PERIODO:,'     || NVL(P_PERIOD_NAME, 'TODOS')); 
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, ',,');
     
     EXCEPTION WHEN OTHERS THEN
         dbms_output.put_line('**Error al Generar el encabezado del documento. ' || SQLERRM);
@@ -795,7 +795,7 @@ BEGIN
                     'AJUSTE ISR SEGUN TABLA,'   ||
                     'AJUSTE SUBSIDIO SEGUN TABLA,';
                     
-        UTL_FILE.PUT_LINE(var_file, var_data);
+        /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
     
     EXCEPTION WHEN OTHERS THEN
         dbms_output.put_line('**Error al Generar el encabezado de la tabla de detalle. ' || SQLERRM);
@@ -940,7 +940,7 @@ BEGIN
                                DETAIL(rowIndex).AJUSTE_ISR_SEGUN_TABLA  || ',' ||
                                DETAIL(rowIndex).AJUSTE_SUBSIDIO_SEGUN_TABLA || ',';
                 
-                UTL_FILE.PUT_LINE(var_file, var_data);
+                /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
                 
             END LOOP;        
         

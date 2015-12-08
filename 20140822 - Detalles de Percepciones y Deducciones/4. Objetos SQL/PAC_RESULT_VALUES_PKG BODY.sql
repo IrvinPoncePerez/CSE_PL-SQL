@@ -353,11 +353,37 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
       
       
             RETURN var_effective_start_date;
-      EXCEPTION WHEN NO_DATA_FOUND THEN
-        RETURN NULL;        
-              WHEN OTHERS THEN
-        dbms_output.put_line('**Error en la función GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
-        FND_FILE.put_line(FND_FILE.LOG, '**Error en la función GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
+      EXCEPTION    
+        WHEN NO_DATA_FOUND THEN
+        BEGIN
+        
+            SELECT EFFECTIVE_DATE
+              INTO var_effective_start_date
+              FROM (SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE) AS EFFECTIVE_DATE
+                      FROM PER_PEOPLE_F             PPF,
+                           PER_PERIODS_OF_SERVICE   PPOS    
+                     WHERE 1 = 1 
+                       AND PPF.PERSON_ID = P_PERSON_ID
+                       AND PPF.PERSON_ID = PPOS.PERSON_ID
+                       AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                       AND PPOS.ACTUAL_TERMINATION_DATE IS NOT NULL
+                     ORDER BY PPOS.ACTUAL_TERMINATION_DATE DESC ) 
+             WHERE 1 = 1
+               AND ROWNUM = 1;
+               
+            RETURN var_effective_start_date;
+        EXCEPTION
+            WHEN OTHERS THEN
+            dbms_output.put_line('**Error en la funcion GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
+            FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
+            
+            RETURN NULL;
+        END;
+        WHEN OTHERS THEN
+            dbms_output.put_line('**Error en la funcion GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
+            FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
+            
+            RETURN NULL;
       END;
       
       
@@ -458,7 +484,72 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
         RETURN var_result;  
       
       END; 
-
+      
+      
+      FUNCTION GET_TYPE_MOVEMENT(P_PERSON_ID      NUMBER,
+                                 P_END_MONTH    NUMBER,
+                                 P_YEAR           NUMBER)
+      RETURN VARCHAR2
+      IS
+            var_result      VARCHAR2(5);
+            var_start_date  DATE    := TRUNC(TO_DATE('01/' || P_END_MONTH || '/' || P_YEAR, 'DD/MM/YYYY'), 'mm');
+            var_end_date    DATE    := TRUNC(LAST_DAY(TO_DATE('01/' || P_END_MONTH || '/' || P_YEAR, 'DD/MM/YYYY')));
+      BEGIN
+      
+           SELECT TYPE_MOVEMENT
+              INTO var_result
+              FROM (
+                    SELECT TYPE_MOVEMENT,
+                           EFFECTIVE_DATE
+                      FROM ( 
+                             SELECT PPTU.PERSON_ID                   AS "PERSON_ID",
+                                    'A'                              AS "TYPE_MOVEMENT",
+                                    PPTU.EFFECTIVE_START_DATE        AS "EFFECTIVE_DATE",
+                                    PPTU.EFFECTIVE_START_DATE,
+                                    PPTU.EFFECTIVE_END_DATE
+                               FROM PER_PERSON_TYPE_USAGES_F   PPTU,
+                                    PER_PERIODS_OF_SERVICE     PPOS
+                              WHERE PPTU.PERSON_ID = PPOS.PERSON_ID
+                                AND PPTU.EFFECTIVE_START_DATE = PPOS.DATE_START
+--                                AND PPOS.ACTUAL_TERMINATION_DATE IS NULL
+                                AND PPTU.PERSON_ID = P_PERSON_ID
+                                AND (   var_start_date BETWEEN PPTU.EFFECTIVE_START_DATE AND PPTU.EFFECTIVE_END_DATE
+                                     OR var_end_date BETWEEN PPTU.EFFECTIVE_START_DATE AND PPTU.EFFECTIVE_END_DATE) 
+                              UNION
+                             SELECT PPTU.PERSON_ID                   AS "PERSON_ID",
+                                    'B'                              AS "TYPE_MOVEMENT",
+                                    PPOS.ACTUAL_TERMINATION_DATE     AS "EFFECTIVE_DATE",
+                                    PPTU.EFFECTIVE_START_DATE,
+                                    PPTU.EFFECTIVE_END_DATE
+                               FROM PER_PERSON_TYPE_USAGES_F   PPTU,
+                                    PER_PERIODS_OF_SERVICE     PPOS
+                              WHERE PPTU.PERSON_ID = PPOS.PERSON_ID 
+                                AND PPTU.EFFECTIVE_START_DATE = PPOS.DATE_START
+                                AND PPOS.ACTUAL_TERMINATION_DATE IS NOT NULL
+                                AND PPTU.PERSON_ID = P_PERSON_ID
+                                AND var_end_date >= PPOS.ACTUAL_TERMINATION_DATE
+                            )            
+                     ORDER BY EFFECTIVE_DATE DESC
+                    )
+             WHERE 1 = 1
+               AND ROWNUM = 1;
+                        
+        IF    var_result = 'B' THEN 
+            var_result := 'CAN';
+        ELSIF var_result = 'A' THEN 
+            var_result := 'RE';
+        END IF;
+        
+        RETURN var_result;
+        
+      EXCEPTION WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE(' PERSON_ID : ' || P_PERSON_ID ||
+--                             ' P_YEAR : ' || P_YEAR ||      
+--                             ' P_START_MONTH : ' || P_START_MONTH || 
+--                             ' P_END_MONTH : ' || P_END_MONTH ||
+                             ' ** ' || SQLERRM);
+        RETURN 'RE';
+      END;
     
         
 END PAC_RESULT_VALUES_PKG;
