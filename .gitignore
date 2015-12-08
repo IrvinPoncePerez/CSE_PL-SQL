@@ -37,6 +37,7 @@ $RECYCLE.BIN/
 *.gform
 *.bmp
 *.jar
+*.tmp
 
 # Windows shortcuts
 *.lnk
