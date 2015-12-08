@@ -157,7 +157,7 @@ BEGIN
                         'UNIDAD MED FAM,'||
                         'SEGURO,'||
                         'FECHA ALTA CIA,'||
-                        'FECHA ALTA IMSS,'||
+--                        'FECHA ALTA IMSS,'||
                         'SUELDO BASE,'||
                         'S D I,'||
                         'REG PATRONAL,'||
@@ -256,7 +256,7 @@ BEGIN
                                                     DETAIL(rowIndex).UNI_MED_FAM                || ',' ||
                                                     DETAIL(rowIndex).SEGURO                     || ',' ||
                                                     DETAIL(rowIndex).FECHA_ALTA_CIA             || ',' ||
-                                                    DETAIL(rowIndex).FECHA_ALTA_IMSS            || ',' ||
+--                                                    DETAIL(rowIndex).FECHA_ALTA_IMSS            || ',' ||
                                                     DETAIL(rowIndex).SUELDO_BASE                || ',' ||
                                                     DETAIL(rowIndex).S_D_I                      || ',' ||
                                                     DETAIL(rowIndex).REG_PATRONAL               || ',' ||

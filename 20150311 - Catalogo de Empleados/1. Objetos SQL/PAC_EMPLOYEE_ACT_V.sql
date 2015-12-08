@@ -117,8 +117,18 @@ AS
                   ) no_targeta_desp,
           NVL (UPPER (desp.met_pago_desp), 'EFECTIVO') tp_pago_despensa,
           desp.banco_despensa metodo_pago_desp,
-          pago.n_cuenta_pago cuenta_pago, pago.banco_pago banco_pago,
-          pago.n_targ_pag targeta_pago,
+          REPLACE (REPLACE (pago.n_cuenta_pago, CHR (13), ''),
+                   CHR (10),
+                   ''
+                  ) cuenta_pago, 
+          REPLACE (REPLACE (pago.banco_pago, CHR (13), ''),
+                   CHR (10),
+                   ''
+                  ) banco_pago,
+          REPLACE (REPLACE (pago.n_targ_pag, CHR (13), ''),
+                   CHR (10),
+                   ''
+                  ) targeta_pago,
           NVL (UPPER (pago.tipo_pag), 'EFECTIVO') tipo_pago,
           pensio.n_cuenta_pension cuenta_pension_a, pensio.banco_pension,
           pensio.tipo_pension tipo_pago_pension,
