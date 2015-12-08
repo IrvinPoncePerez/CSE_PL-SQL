@@ -10,9 +10,9 @@ CREATE OR REPLACE PROCEDURE APPS.PAC_PERCEP_ACUM_PRC(
         P_CONSOLIDATION_SET_ID  VARCHAR2,
         P_PERSON_ID             VARCHAR2)
 IS
-    var_path        VARCHAR2(250) := 'PERCEPCION_DEDUCCION';
-    var_file_name   VARCHAR2(250) := 'DETALLE_PERCEP_ACUMULADO.csv';
-    var_file        UTL_FILE.FILE_TYPE;
+--    var_path        VARCHAR2(250) := 'PERCEPCION_DEDUCCION';
+--    var_file_name   VARCHAR2(250) := 'DETALLE_PERCEP_ACUMULADO.csv';
+--    var_file        UTL_FILE.FILE_TYPE;
     
     var_company_name                VARCHAR2(250);
     var_payroll_name                VARCHAR2(250);
@@ -20,12 +20,14 @@ IS
     var_data                        VARCHAR2(30000);
     
     CURSOR DETAIL_LIST IS
-        SELECT DETAIL.CLAVE_NOMINA,       
+        SELECT PAAF.PERSON_ID,
+               DETAIL.CLAVE_NOMINA,       
                PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID)                               AS  "NUMERO_EMPLEADO",
                PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
                PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PAAF.PERSON_ID)                         AS  RFC,
                PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PAAF.PERSON_ID)                   AS  EFFECTIVE_START_DATE,    
                PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(DETAIL.ASSIGNMENT_ID)                   AS  REG_PATRONAL,
+               PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, P_END_MONTH, P_YEAR)     AS TYPE_MOVEMENT,
                MAX(SUELDO_DIARIO)        AS SUELDO_DIARIO,
                MAX(SALARIO_DIARIO_INTEGRADO) AS SALARIO_DIARIO_INTEGRADO,            
                SUM(SUELDO_NORMAL)        AS SUELDO_NORMAL,      
@@ -165,10 +167,7 @@ IS
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P037_VACACIONES P',        'Pay Value'),   '0')    AS  VACACIONES_PAGADAS,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P038_BONO EXTRAORD',       'Pay Value'),   '0')    AS  BONO_EXTRAORDINARIO,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P039_DESPENSA',            'Pay Value'),   '0')    AS  DESPENSA,
-                       NVL(PAC_RESULT_VALUES_PKG.GET_DESPENSA_EXEMPT(PAA.ASSIGNMENT_ACTION_ID, 
-                                                                     PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    
-                                                                                                             'P039_DESPENSA',            
-                                                                                                             'Pay Value'), PPA.EFFECTIVE_DATE, PPF.PERIOD_TYPE),   '0')    AS  DESPENSA_EXE,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_DESPENSA_EXEMPT(PAA.ASSIGNMENT_ACTION_ID, PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P039_DESPENSA',            'Pay Value'), PPA.EFFECTIVE_DATE, PPF.PERIOD_TYPE),   '0')    AS  DESPENSA_EXE,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P043_FONDO AHORRO EMP',    'Pay Value'),   '0')    AS  FONDO_AHO_EMP,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P045_PERMISO X PATERNIDAD','Pay Value'),   '0')    AS  PERMISO_PATERNIDAD,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P046_BONO CUATRIMESTRAL',  'Pay Value'),   '0')    AS  BONO_CUATRIMESTRAL,
@@ -329,7 +328,7 @@ IS
                          PAY_CONSOLIDATION_SETS     PCS,
                          PER_ALL_ASSIGNMENTS_F      PAAF
          WHERE 1 = 1
---           AND PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID) IN ('1310', '1564')
+--           AND PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID) IN ('3661', '3673', '3674', '3690', '3681')
            AND PCS.CONSOLIDATION_SET_ID = DETAIL.CONSOLIDATION_SET_ID
            AND PAAF.ASSIGNMENT_ID = DETAIL.ASSIGNMENT_ID
            AND PAAF.PAYROLL_ID = DETAIL.PAYROLL_ID
@@ -344,6 +343,7 @@ IS
 --                  DETAIL.RUN_TYPE_ID
          ORDER BY DETAIL.CLAVE_NOMINA,                      
                   TO_NUMBER(NUMERO_EMPLEADO);                               
+                               
                                
     
            
@@ -374,18 +374,18 @@ BEGIN
     fnd_file.put_line(fnd_file.log,'P_CONSOLIDATION_SET_ID : ' || P_CONSOLIDATION_SET_ID);
     
      --Eliminacion y creacion del Archivo.
-    BEGIN
-    
-        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
-        UTL_FILE.FREMOVE(var_path, var_file_name);
-    EXCEPTION WHEN UTL_FILE.INVALID_OPERATION THEN
-        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
-              WHEN OTHERS THEN
-        dbms_output.put_line('**Error al Limpiar el Archivo. ' || SQLERRM);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo. ' || SQLERRM);
-    END;
-    
-    var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
+--    BEGIN
+--    
+--        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
+--        UTL_FILE.FREMOVE(var_path, var_file_name);
+--    EXCEPTION WHEN UTL_FILE.INVALID_OPERATION THEN
+--        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
+--              WHEN OTHERS THEN
+--        dbms_output.put_line('**Error al Limpiar el Archivo. ' || SQLERRM);
+--        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo. ' || SQLERRM);
+--    END;
+--    
+--    var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
     
     BEGIN
     
@@ -406,14 +406,14 @@ BEGIN
                var_consolidation_set_name
           FROM DUAL;
           
-          UTL_FILE.PUT_LINE(var_file, 'COMPAÑIA:,'    || var_company_name);
-          UTL_FILE.PUT_LINE(var_file, 'AÑO,'         || P_YEAR);
-          UTL_FILE.PUT_LINE(var_file, 'MES INICIAL:,' || P_START_MONTH);
-          UTL_FILE.PUT_LINE(var_file, 'MES FINAL:,'   || P_END_MONTH);
-          UTL_FILE.PUT_LINE(var_file, 'TIPO DE PERIODO:,'        || NVL(P_PERIOD_TYPE,              'TODOS'));
-          UTL_FILE.PUT_LINE(var_file, 'NOMINA:,'                 || NVL(var_payroll_name,           'TODAS'));
-          UTL_FILE.PUT_LINE(var_file, 'JUEGO DE CONSOLIDACION:,' || NVL(var_consolidation_set_name, 'TODOS')); 
-          UTL_FILE.PUT_LINE(var_file, ',,');
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'COMPAÑIA:,'               || var_company_name);
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'AÑO,'                     || P_YEAR);
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES INICIAL:,'            || P_START_MONTH);
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES FINAL:,'              || P_END_MONTH);
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'TIPO DE PERIODO:,'        || NVL(P_PERIOD_TYPE,              'TODOS'));
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'NOMINA:,'                 || NVL(var_payroll_name,           'TODAS'));
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'JUEGO DE CONSOLIDACION:,' || NVL(var_consolidation_set_name, 'TODOS')); 
+          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, ',,');
     
     EXCEPTION WHEN OTHERS THEN
         dbms_output.put_line('**Error al Generar el encabezado del documento. ' || SQLERRM);
@@ -428,6 +428,7 @@ BEGIN
                     'RFC,'                      ||
                     'FECHA DE INGRESO,'         ||
                     'REGISTRO PATRONAL,'        ||
+                    'TIPO DE MOVIMIENTO,'       ||
                     'SUELDO DIARIO BASE,'       ||
                     'SALARIO DIARIO INTEGRADO,' ||
                     'SUELDO NORMAL,'            ||
@@ -489,7 +490,7 @@ BEGIN
                     'AJUSTE ISR SEGUN TABLA,'   ||
                     'AJUSTE SUBSIDIO SEGUN TABLA,'    ||
                     'DIAS PAGADOS';
-        UTL_FILE.PUT_LINE(var_file, var_data);
+        /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
     
     EXCEPTION WHEN OTHERS THEN
         dbms_output.put_line('**Error al Generar el encabezado de la tabla de detalle. ' || SQLERRM);
@@ -518,6 +519,7 @@ BEGIN
                                DETAIL(rowIndex).RFC                     || ',' ||
                                DETAIL(rowIndex).EFFECTIVE_START_DATE    || ',' ||
                                DETAIL(rowIndex).REG_PATRONAL            || ',' ||
+                               DETAIL(rowIndex).TYPE_MOVEMENT           || ',' ||
                                DETAIL(rowIndex).SUELDO_DIARIO           || ',' ||
                                DETAIL(rowIndex).SALARIO_DIARIO_INTEGRADO|| ',' ||
                                DETAIL(rowIndex).SUELDO_NORMAL           || ',' ||
@@ -580,7 +582,7 @@ BEGIN
                                DETAIL(rowIndex).AJUSTE_SUBSIDIO_SEGUN_TABLA || ',' ||
                                DETAIL(rowIndex).DIAS_PAGADOS            || ',';
                 
-                UTL_FILE.PUT_LINE(var_file, var_data);
+                /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
                 
             END LOOP;        
         

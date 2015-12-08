@@ -1,9 +1,12 @@
-        SELECT DETAIL.CLAVE_NOMINA,       
+        SELECT PAAF.PERSON_ID,
+               DETAIL.PAYROLL_ACTION_ID,
+               DETAIL.CLAVE_NOMINA,       
                PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID)                               AS  "NUMERO_EMPLEADO",
                PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
                PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PAAF.PERSON_ID)                         AS  RFC,
                PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PAAF.PERSON_ID)                   AS  EFFECTIVE_START_DATE,    
                PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(DETAIL.ASSIGNMENT_ID)                   AS  REG_PATRONAL,
+               PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, :P_END_MONTH, :P_YEAR)     AS TYPE_MOVEMENT,
                MAX(SUELDO_DIARIO)        AS SUELDO_DIARIO,
                MAX(SALARIO_DIARIO_INTEGRADO) AS SALARIO_DIARIO_INTEGRADO,            
                SUM(SUELDO_NORMAL)        AS SUELDO_NORMAL,      
@@ -277,8 +280,8 @@
                    AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')
                    AND PTP.PERIOD_NAME LIKE '%' || :P_YEAR || '%'
 --                   AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
-                   AND (EXTRACT(MONTH FROM PTP.END_DATE) >= :P_START_MONTH
-                    AND EXTRACT(MONTH FROM PTP.END_DATE) <= :P_END_MONTH)
+                   AND (EXTRACT(MONTH FROM PPA.DATE_EARNED) >= :P_START_MONTH
+                    AND EXTRACT(MONTH FROM PPA.DATE_EARNED) <= :P_END_MONTH)
                    AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
 
                    ------------------------------------------------------  
@@ -304,7 +307,7 @@
                          PAY_CONSOLIDATION_SETS     PCS,
                          PER_ALL_ASSIGNMENTS_F      PAAF
          WHERE 1 = 1
---           AND PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID) IN ('1310', '1564')
+           AND PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID) IN ('2953', '3674', '3690' , '3766', '3918')
            AND PCS.CONSOLIDATION_SET_ID = DETAIL.CONSOLIDATION_SET_ID
            AND PAAF.ASSIGNMENT_ID = DETAIL.ASSIGNMENT_ID
            AND PAAF.PAYROLL_ID = DETAIL.PAYROLL_ID
@@ -312,7 +315,8 @@
            AND PAAF.PERSON_ID = NVL(:P_PERSON_ID, PAAF.PERSON_ID)
          GROUP BY DETAIL.CLAVE_NOMINA,
                   PAAF.PERSON_ID,
-                  DETAIL.ASSIGNMENT_ID
+                  DETAIL.ASSIGNMENT_ID,
+                  DETAIL.PAYROLL_ACTION_ID
 --                  DETAIL.DATE_EARNED,
 --                  DETAIL.ASSIGNMENT_ACTION_ID,
 --                  DETAIL.CONSOLIDATION_SET_ID,
