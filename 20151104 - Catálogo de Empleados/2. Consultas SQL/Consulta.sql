@@ -1,6 +1,7 @@
 SELECT PAPF.PERSON_ID,
        PAAF.ASSIGNMENT_ID,
        PEA_SDO.EXTERNAL_ACCOUNT_ID,
+       PPF.PAYROLL_ID,
        PPF.PERIOD_TYPE                                                              AS  "PERIOD_TYPE",
        PPF.PAYROLL_NAME                                                             AS  "PAYROLL_NAME",
        PAPF.EMPLOYEE_NUMBER                                                         AS  "EMPLOYEE_NUMBER",
@@ -70,6 +71,45 @@ SELECT PAPF.PERSON_ID,
        PAC_HR_PAY_PKG.GET_LOOKUP_MEANING('MX_BANK', PEA_SDO.SEGMENT1)               AS  "BANK",
        REPLACE(REPLACE(PEA_SDO.SEGMENT3, CHR(10), ''), CHR(13), '')                 AS  "ACCOUNT_SDO",
        REPLACE(REPLACE(PPPM_SDO.ATTRIBUTE1, CHR(10), ''), CHR(13), '')              AS  "CARD_SDO",
+       PAAF.ASS_ATTRIBUTE10                                                         AS  "AFORE",
+       PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
+                                                                                                PPF.PAYROLL_ID,
+                                                                                                :P_YEAR),
+                                             'D058_INFONAVIT',
+                                             'Credit Number')                       AS  "INFONAVIT_CREDIT_NUMBER",
+       (CASE 
+        WHEN PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
+                                                                                                      PPF.PAYROLL_ID,
+                                                                                                      :P_YEAR),
+                                                   'D058_INFONAVIT',
+                                                   'Discount Start Date') IS NOT NULL THEN
+            SUBSTR(PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
+                                                                                                            PPF.PAYROLL_ID,
+                                                                                                            :P_YEAR),
+                                                         'D058_INFONAVIT',
+                                                         'Discount Start Date'), 1, 11)
+        END)                                                                        AS  "INFONAVIT_START_DATE",
+       (CASE PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
+                                                                                                      PPF.PAYROLL_ID,
+                                                                                                      :P_YEAR),
+                                                   'D058_INFONAVIT',
+                                                   'Discount Type')
+             WHEN 'P' THEN '1'
+             WHEN 'C' THEN '2'
+             WHEN 'V' THEN '3'
+             ELSE PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
+                                                                                                           PPF.PAYROLL_ID,
+                                                                                                           :P_YEAR),  
+                                                        'D058_INFONAVIT',
+                                                        'Discount Type')
+        END)                                                                        AS  "INFONAVIT_DISCOUNT_TYPE",
+       PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
+                                                                                                PPF.PAYROLL_ID,
+                                                                                                :P_YEAR),
+                                             'D058_INFONAVIT',
+                                             'Discount Value')                      AS  "INFONAVIT_DISCOUNT_VALUE",
+       
+       
        
 
        UPPER(PPTT.USER_PERSON_TYPE)                                                 AS  "PERSON_TYPE"
@@ -89,7 +129,7 @@ SELECT PAPF.PERSON_ID,
        PAY_ORG_PAYMENT_METHODS_F            POPM_SDO,
        PAY_PAYMENT_TYPES_TL                 PPT_SDO,
        PAY_EXTERNAL_ACCOUNTS                PEA_SDO,
-       FND_LOOKUP_VALUES                    FLV_SDO        
+       FND_LOOKUP_VALUES                    FLV_SDO     
  WHERE 1 = 1
    AND FLV1.LOOKUP_TYPE = 'NOMINAS POR EMPLEADOR LEGAL'
    AND FLV1.LOOKUP_CODE = :P_COMPANY_ID
@@ -131,4 +171,8 @@ SELECT PAPF.PERSON_ID,
    AND SYSDATE BETWEEN POPM_DESP.EFFECTIVE_START_DATE AND POPM_DESP.EFFECTIVE_END_DATE
    AND SYSDATE BETWEEN PPPM_SDO.EFFECTIVE_START_DATE AND PPPM_SDO.EFFECTIVE_END_DATE
    AND SYSDATE BETWEEN POPM_SDO.EFFECTIVE_START_DATE AND POPM_SDO.EFFECTIVE_END_DATE   
+--   AND PAPF.PERSON_ID IN (78)
+ ORDER BY PERIOD_TYPE,
+          PAYROLL_NAME,
+          TO_NUMBER(EMPLOYEE_NUMBER);
    
