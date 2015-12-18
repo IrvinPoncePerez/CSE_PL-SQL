@@ -38,6 +38,8 @@ $RECYCLE.BIN/
 *.bmp
 *.jar
 *.tmp
+*.eap
+*.ppt
 
 # Windows shortcuts
 *.lnk
