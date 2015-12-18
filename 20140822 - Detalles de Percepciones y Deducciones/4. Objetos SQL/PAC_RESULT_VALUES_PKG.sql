@@ -75,6 +75,12 @@ CREATE OR REPLACE PACKAGE PAC_RESULT_VALUES_PKG AS
                                P_END_MONTH    NUMBER,
                                P_YEAR           NUMBER)
       RETURN VARCHAR2;
+      
+      
+    FUNCTION GET_MAX_ASSIGNMENT_ACTION_ID(P_ASSIGNMENT_ID        NUMBER,
+                                          P_PAYROLL_ID           NUMBER,
+                                          P_YEAR                 NUMBER)
+      RETURN NUMBER;
 
 
 END PAC_RESULT_VALUES_PKG;

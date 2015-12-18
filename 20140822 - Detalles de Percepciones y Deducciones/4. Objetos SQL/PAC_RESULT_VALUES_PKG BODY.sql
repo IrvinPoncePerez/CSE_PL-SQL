@@ -550,6 +550,40 @@ CREATE OR REPLACE PACKAGE BODY PAC_RESULT_VALUES_PKG AS
                              ' ** ' || SQLERRM);
         RETURN 'RE';
       END;
+      
+      
+      FUNCTION GET_MAX_ASSIGNMENT_ACTION_ID(P_ASSIGNMENT_ID        NUMBER,
+                                            P_PAYROLL_ID           NUMBER,
+                                            P_YEAR                 NUMBER)
+        RETURN NUMBER                                                        
+      IS
+      
+        var_assignment_action_id    NUMBER;
+      
+      BEGIN
+      
+        SELECT MAX(PAA.ASSIGNMENT_ACTION_ID)
+--               PRT.RUN_TYPE_NAME,
+--               PPA.DATE_EARNED
+          INTO var_assignment_action_id
+          FROM PAY_ASSIGNMENT_ACTIONS       PAA,
+               PAY_PAYROLL_ACTIONS          PPA,
+               PER_TIME_PERIODS             PTP,
+               PAY_RUN_TYPES_F              PRT
+         WHERE PAA.ASSIGNMENT_ID = P_ASSIGNMENT_ID
+           AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
+           AND PPA.PAYROLL_ID = P_PAYROLL_ID
+           AND PPA.ACTION_TYPE IN ('Q', 'R')
+           AND PPA.TIME_PERIOD_ID = PTP.TIME_PERIOD_ID
+           AND PAA.RUN_TYPE_ID = PRT.RUN_TYPE_ID
+           AND PRT.RUN_TYPE_NAME IN ('Standard') 
+           AND EXTRACT(YEAR FROM PPA.DATE_EARNED) = P_YEAR
+         ORDER BY PPA.DATE_EARNED DESC,
+                  PAA.ASSIGNMENT_ACTION_ID DESC;
+           
+        RETURN var_assignment_action_id;   
+      
+      END GET_MAX_ASSIGNMENT_ACTION_ID;
     
         
 END PAC_RESULT_VALUES_PKG;

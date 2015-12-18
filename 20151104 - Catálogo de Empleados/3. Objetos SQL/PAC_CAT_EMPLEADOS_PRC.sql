@@ -1,3 +1,19 @@
+CREATE OR REPLACE PROCEDURE PAC_CAT_EMPLEADOS_PRC(
+                P_ERRBUF    OUT NOCOPY  VARCHAR2,
+                P_RETCODE   OUT NOCOPY  VARCHAR2,
+                P_COMPANY_ID            VARCHAR2,
+                P_PERIOD_TYPE           VARCHAR2,
+                P_PAYROLL_ID            VARCHAR2,
+                P_PERSON_TYPE           VARCHAR2,
+                P_YEAR                  VARCHAR2)
+IS
+    
+        
+    var_data                        VARCHAR2(30000);
+    var_company_name	            VARCHAR2(250);
+	var_payroll_name	            VARCHAR2(250);
+    
+    CURSOR DETAIL_LIST IS
         SELECT PAPF.PERSON_ID,
                PAAF.ASSIGNMENT_ID,
                PEA_SDO.EXTERNAL_ACCOUNT_ID,
@@ -74,24 +90,24 @@
                PAAF.ASS_ATTRIBUTE10                                                         AS  "AFORE",
                PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                         PPF.PAYROLL_ID,
-                                                                                                        :P_YEAR),
+                                                                                                        P_YEAR),
                                                      'D058_INFONAVIT',
                                                      'Credit Number')                       AS  "INFONAVIT_CREDIT_NUMBER",
                (CASE 
                 WHEN PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                               PPF.PAYROLL_ID,
-                                                                                                              :P_YEAR),
+                                                                                                              P_YEAR),
                                                            'D058_INFONAVIT',
                                                            'Discount Start Date') IS NOT NULL THEN
                     SUBSTR(PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                                     PPF.PAYROLL_ID,
-                                                                                                                    :P_YEAR),
+                                                                                                                    P_YEAR),
                                                                  'D058_INFONAVIT',
                                                                  'Discount Start Date'), 1, 11)
                 END)                                                                        AS  "INFONAVIT_START_DATE",
                (CASE PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                               PPF.PAYROLL_ID,
-                                                                                                              :P_YEAR),
+                                                                                                              P_YEAR),
                                                            'D058_INFONAVIT',
                                                            'Discount Type')
                      WHEN 'P' THEN '1'
@@ -99,23 +115,23 @@
                      WHEN 'V' THEN '3'
                      ELSE PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                                    PPF.PAYROLL_ID,
-                                                                                                                   :P_YEAR),  
+                                                                                                                   P_YEAR),  
                                                                 'D058_INFONAVIT',
                                                                 'Discount Type')
                 END)                                                                        AS  "INFONAVIT_DISCOUNT_TYPE",
                PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                         PPF.PAYROLL_ID,
-                                                                                                        :P_YEAR),
+                                                                                                        P_YEAR),
                                                      'D058_INFONAVIT',
                                                      'Discount Value')                      AS  "INFONAVIT_DISCOUNT_VALUE",
                PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                         PPF.PAYROLL_ID,
-                                                                                                        :P_YEAR),
+                                                                                                        P_YEAR),
                                                      'D076_DESC_PENSION_ALIM',
                                                      'Porcentaje')                          AS  "PENSION_PORCENTAJE", 
                PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                         PPF.PAYROLL_ID,
-                                                                                                        :P_YEAR),
+                                                                                                        P_YEAR),
                                                      'D076_DESC_PENSION_ALIM',
                                                      'Amount')                              AS  "PENSION_AMOUNT",
                PAPF.EMAIL_ADDRESS                                                           AS  "EMAIL_ADDRESS",
@@ -146,18 +162,18 @@
                PER_PERIODS_OF_SERVICE               PPOS     
          WHERE 1 = 1
            AND FLV1.LOOKUP_TYPE = 'NOMINAS POR EMPLEADOR LEGAL'
-           AND FLV1.LOOKUP_CODE = :P_COMPANY_ID
+           AND FLV1.LOOKUP_CODE = P_COMPANY_ID
            AND FLV1.LANGUAGE = USERENV('LANG')
            AND SUBSTR(PPF.PAYROLL_NAME,1,2) = FLV1.LOOKUP_CODE
-           AND APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
-           AND PPF.PAYROLL_ID = NVL(:P_PAYROLL_ID, PPF.PAYROLL_ID)
+           AND APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(P_PERIOD_TYPE, APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
+           AND PPF.PAYROLL_ID = NVL(P_PAYROLL_ID, PPF.PAYROLL_ID)
            AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
            AND SYSDATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
            AND PAAF.PERSON_ID = PAPF.PERSON_ID 
-           AND NVL(:P_YEAR, EXTRACT(YEAR FROM SYSDATE)) BETWEEN EXTRACT(YEAR FROM PAPF.EFFECTIVE_START_DATE) AND EXTRACT(YEAR FROM PAPF.EFFECTIVE_END_DATE)
+           AND NVL(P_YEAR, EXTRACT(YEAR FROM SYSDATE)) BETWEEN EXTRACT(YEAR FROM PAPF.EFFECTIVE_START_DATE) AND EXTRACT(YEAR FROM PAPF.EFFECTIVE_END_DATE)
            AND PPTT.PERSON_TYPE_ID = PAPF.PERSON_TYPE_ID
            AND PPTT.LANGUAGE = USERENV('LANG')
-           AND PPTT.USER_PERSON_TYPE = NVL(:P_PERSON_TYPE, PPTT.USER_PERSON_TYPE)
+           AND PPTT.USER_PERSON_TYPE = NVL(P_PERSON_TYPE, PPTT.USER_PERSON_TYPE)
            AND PAPF.PERSON_ID = PA.PERSON_ID
            AND PAAF.PEOPLE_GROUP_ID = PPG.PEOPLE_GROUP_ID
            AND PAAF.ASSIGNMENT_ID = PPPM_DESP.ASSIGNMENT_ID
@@ -189,3 +205,225 @@
          ORDER BY PERIOD_TYPE,
                   PAYROLL_NAME,
                   TO_NUMBER(EMPLOYEE_NUMBER);
+    
+    
+    TYPE    DETAILS IS TABLE OF DETAIL_LIST%ROWTYPE INDEX BY PLS_INTEGER;
+    
+    detail  DETAILS;
+BEGIN
+            
+    dbms_output.put_line('P_COMPANY_ID : '      || P_COMPANY_ID);
+    dbms_output.put_line('P_PERIOD_TYPE : '     || P_PERIOD_TYPE);
+    dbms_output.put_line('P_PAYROLL_ID : '      || P_PAYROLL_ID);
+    dbms_output.put_line('P_PERSON_TYPE : '     || P_PERSON_TYPE);
+    dbms_output.put_line('P_YEAR : '            || P_YEAR);
+            
+    fnd_file.put_line(fnd_file.log, 'P_COMPANY_ID : '   || P_COMPANY_ID);
+    fnd_file.put_line(fnd_file.log, 'P_PERIOD_TYPE : '  || P_PERIOD_TYPE);
+    fnd_file.put_line(fnd_file.log, 'P_PAYROLL_ID : '   || P_PAYROLL_ID);
+    fnd_file.put_line(fnd_file.log, 'P_PERSON_TYPE : '  || P_PERSON_TYPE);
+    fnd_file.put_line(fnd_file.log, 'P_YEAR : '         || P_YEAR);
+    
+    
+    BEGIN
+		
+		SELECT UPPER(meaning)
+			INTO var_company_name
+			FROM fnd_lookup_values
+		 WHERE lookup_type = 'NOMINAS POR EMPLEADOR LEGAL'
+			 AND LANGUAGE = userenv('LANG')
+			 AND lookup_code = P_COMPANY_ID;
+			
+	EXCEPTION WHEN OTHERS THEN
+		fnd_file.put_line(fnd_file.log, 'No se consulto el Nombre de la Empresa. ' || SQLERRM);
+	END;
+    
+    
+    BEGIN
+		
+		SELECT DISTINCT PAYROLL_NAME
+		  INTO var_payroll_name
+			FROM PAY_PAYROLLS_F
+		 WHERE PAYROLL_ID = P_PAYROLL_ID;
+		
+	EXCEPTION WHEN OTHERS THEN
+		fnd_file.put_line(fnd_file.log, 'No se consulto el Nombre de la Nómina. ' || SQLERRM);	
+	END;
+        
+        
+   
+    fnd_file.PUT_LINE(fnd_file.OUTPUT, 'CATALOGO DE EMPLEADOS,');
+    fnd_file.PUT_LINE(fnd_file.OUTPUT, 'COMPAÑÍA : ,'   || var_company_name);
+    fnd_file.PUT_LINE(fnd_file.OUTPUT, 'PERIODO : ,'    || NVL(P_PERIOD_TYPE, 'TODOS'));
+    fnd_file.PUT_LINE(fnd_file.OUTPUT, 'NÓMINA : ,'     || NVL(var_payroll_name, 'TODAS'));
+    fnd_file.PUT_LINE(fnd_file.OUTPUT, 'ESTATUS : ,'    || NVL(P_PERSON_TYPE, 'TODOS'));
+    fnd_file.PUT_LINE(fnd_file.OUTPUT, 'AÑO : ,'        || P_YEAR);
+    
+               
+    var_data := 'PERIODO,'                              ||
+                'NOMINA,'                               ||
+                'ID EMPLEADO,'                          ||
+                'NOMBRE COMPLETO,'                      ||
+                'APELLIDO PATERNO,'                     ||
+                'APELLIDO MATERNO,'                     ||
+                'NOMBRES,'                              ||
+                'CALLE,'                                ||
+                'NUM EXT,'                              ||
+                'NUM INT,'                              ||
+                'COLONIA,'                              ||
+                'DELEGACION O MUNICIPIO,'               ||
+                'LOCALIDAD O POBLACION,'                ||
+                'ESTADO,'                               ||
+                'PAIS,'                                 ||
+                'CODIGO POSTAL,'                        ||
+                'TELEFONO,'                             ||
+                'SEXO,'                                 ||
+                'NACIONALIDAD,'                         ||
+                'LUGAR DE NACIMIENTO,'                  ||
+                'FECHA DE NACIMIENTO,'                  ||
+                'NIVEL DE ESTUDIOS,'                    ||
+                'TIPO DE CONTRATO,'                     ||
+                'FECHA DE TERMINACION DE CONTRATO,'     ||
+                'NUM DE GERENCIA,'                      ||
+                'GERENCIA,'                             ||
+                'NUM DEPARTAMENTO,'                     ||
+                'DEPARTAMENTO,'                         ||
+                'PUESTO,'                               ||
+                'TRABAJO,'                              ||
+                'TURNO,'                                ||
+                'SIND.,'                                ||
+                'RFC,'                                  ||
+                'CURP,'                                 ||
+                'NSS,'                                  ||
+                'DELEGACION IMSS,'                      ||
+                'SUBDELEGACION IMSS,'                   ||
+                'UNIDAD MED FAM,'                       ||
+                'REG PATRONAL,'                         ||
+                'FECHA ALTA CIA,'                       ||
+                'SUELDO BASE,'                          ||
+                'S D INTEGRADO,'                        ||
+                'UNIC. INGR.,'                          ||
+                'BONO DESPENSA,'                        ||
+                'FORMA PAGO DESPENSA,'                  ||
+                'CTA BONO DESPENSA,'                    ||                      
+                'NUM TARJETA DESPENSA,'                 ||
+                'TIPO PAGO SDO,'                        ||
+                'BANCO DEPOSITO,'                       ||
+                'CUENTA BANCARIA,'                      ||
+                'TARJETA BANCARIA,'                     ||
+                'AFORE,'                                ||
+                'CREDITO INFONAVIT,'                    ||
+                'FECHA CREDITO,'                        ||
+                'TIPO DESCUENTO,'                       ||
+                'VALOR DESCUENTO,'                      ||
+                '% PENSION ALIMENTICIA,'                ||
+                'IMPORTE PENSION ALIMENTICIA,'          ||
+                'CORREO ELECTRONICO,'                   ||
+                'ESTADO CIVIL,'                         ||
+                'REGIMEN MATRIMONIAL,'                  ||
+                'ESTATUS,'                              ||
+                'FECHA BAJA,'                           ||
+                'AREA';
+    
+    fnd_file.PUT_LINE(fnd_file.OUTPUT, var_data);
+                      
+                                            
+    BEGIN
+    
+        OPEN DETAIL_LIST;
+        
+        LOOP
+        
+            FETCH DETAIL_LIST 
+                  BULK COLLECT INTO detail LIMIT 500;
+            
+            EXIT WHEN detail.COUNT = 0;
+                  
+            FOR rowIndex IN 1 .. detail.COUNT LOOP
+                        
+            
+                var_data := '';
+                var_data := detail(rowIndex).PERIOD_TYPE                    || ',' ||
+                            detail(rowIndex).PAYROLL_NAME                   || ',' ||
+                            detail(rowIndex).EMPLOYEE_NUMBER                || ',' ||
+                            detail(rowIndex).EMPLOYEE_FULL_NAME             || ',' ||
+                            detail(rowIndex).LAST_NAME                      || ',' ||
+                            detail(rowIndex).SECOND_LAST_NAME               || ',' ||
+                            detail(rowIndex).NAMES                          || ',' ||
+                            detail(rowIndex).STREET                         || ',' ||
+                            detail(rowIndex).EXTERNAL_NUMBER                || ',' ||
+                            detail(rowIndex).INTERNAL_NUMBER                || ',' ||
+                            detail(rowIndex).NEIGHBORHOOD                   || ',' ||
+                            detail(rowIndex).MUNICIPALITY                   || ',' ||
+                            detail(rowIndex).CITY                           || ',' ||
+                            detail(rowIndex).STATE                          || ',' ||
+                            detail(rowIndex).COUNTRY                        || ',' ||
+                            detail(rowIndex).POSTAL_CODE                    || ',' ||
+                            detail(rowIndex).TELEPHONE                      || ',' ||
+                            detail(rowIndex).SEX                            || ',' ||
+                            detail(rowIndex).NATIONALITY                    || ',' ||
+                            detail(rowIndex).TOWN_OF_BIRTH                  || ',' ||
+                            detail(rowIndex).DATE_OF_BIRTH                  || ',' ||
+                            detail(rowIndex).LEVEL_OF_EDUCATION             || ',' ||
+                            detail(rowIndex).ASSIGNMENT_CATEGORY            || ',' ||
+                            detail(rowIndex).CONTRACT_TERMINATION_DATE      || ',' ||
+                            detail(rowIndex).MANAGEMENT_NUM                 || ',' ||
+                            detail(rowIndex).MANAGEMENT_DESC                || ',' ||
+                            detail(rowIndex).DEPARTMENT_NUMBER              || ',' ||
+                            detail(rowIndex).DEPARTMENT_NAME                || ',' ||
+                            detail(rowIndex).POSITION_NAME                  || ',' ||
+                            detail(rowIndex).JOB_NAME                       || ',' ||
+                            detail(rowIndex).TIME_TURN                      || ',' ||
+                            detail(rowIndex).EMPLOY_CATEGORY                || ',' ||
+                            detail(rowIndex).RFC                            || ',' ||
+                            detail(rowIndex).CURP                           || ',' ||
+                            detail(rowIndex).NSS                            || ',' ||
+                            detail(rowIndex).DELEGATION_IMSS                || ',' ||
+                            detail(rowIndex).SUBDELEGATION_IMSS             || ',' ||
+                            detail(rowIndex).SOCIAL_SECURITY_MEDICAL_CENTER || ',' ||
+                            detail(rowIndex).EMPLOYER_REGISTRATION          || ',' ||
+                            detail(rowIndex).EFFECTIVE_START_DATE           || ',' ||
+                            detail(rowIndex).BASIC_SALARY                   || ',' ||
+                            detail(rowIndex).IDW                            || ',' ||
+                            detail(rowIndex).SINGLE_EMPLOYEE                || ',' ||
+                            detail(rowIndex).BONO_DESP                      || ',' ||
+                            detail(rowIndex).PAYMENT_TYPE_DESP              || ',' ||
+                            detail(rowIndex).ACCOUNT_DESP                   || ',' ||
+                            detail(rowIndex).CARD_DESP                      || ',' ||
+                            detail(rowIndex).PAYMENT_TYPE_SDO               || ',' ||
+                            detail(rowIndex).BANK                           || ',' ||
+                            detail(rowIndex).ACCOUNT_SDO                    || ',' ||
+                            detail(rowIndex).CARD_SDO                       || ',' ||
+                            detail(rowIndex).AFORE                          || ',' ||
+                            detail(rowIndex).INFONAVIT_CREDIT_NUMBER        || ',' ||
+                            detail(rowIndex).INFONAVIT_START_DATE           || ',' ||
+                            detail(rowIndex).INFONAVIT_DISCOUNT_TYPE        || ',' ||
+                            detail(rowIndex).INFONAVIT_DISCOUNT_VALUE       || ',' ||
+                            detail(rowIndex).PENSION_PORCENTAJE             || ',' ||
+                            detail(rowIndex).PENSION_AMOUNT                 || ',' ||
+                            detail(rowIndex).EMAIL_ADDRESS                  || ',' ||
+                            detail(rowIndex).MARITAL_STATUS                 || ',' ||
+                            detail(rowIndex).REGIMEN_MATRIMONIAL            || ',' ||
+                            detail(rowIndex).PERSON_TYPE                    || ',' ||
+                            detail(rowIndex).EFFECTIVE_END_DATE             || ',' ||
+                            detail(rowIndex).AREA;
+                            
+                                        
+                fnd_file.PUT_LINE(fnd_file.OUTPUT, var_data);                                            
+                                 
+            END LOOP;        
+        
+        END LOOP;
+        
+        CLOSE DETAIL_LIST;
+
+    EXCEPTION WHEN OTHERS THEN
+        dbms_output.put_line('**Error al Generar los registros de detalle del documento. ' || SQLERRM);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Generar los registros de detalle del documento. ' || SQLERRM);
+    END;
+    
+EXCEPTION WHEN OTHERS THEN
+    dbms_output.put_line('**Error al Ejecutar el Procedure Cuadro Basico. ' || SQLERRM);
+    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Ejecutar el Procedure Cuadro Basico. ' || SQLERRM);
+END PAC_CAT_EMPLEADOS_PRC;
+/
