@@ -1,0 +1,77 @@
+CREATE TABLE ATET_SB_LOANS_TRANSACTIONS
+(
+    LOAN_TRANSACTION_ID             NUMBER      NOT NULL,
+    LOAN_ID                         NUMBER      NOT NULL,
+    MEMBER_ACCOUNT_ID               NUMBER      NOT NULL,
+    TRANSACTION_CODE                VARCHAR2(10),
+    DEBIT_AMOUNT                    NUMBER,
+    CREDIT_AMOUNT                   NUMBER,
+    PERIOD_NAME                     VARCHAR2(50),
+    PERIOD_START_DATE               DATE,
+    PERIOD_END_DATE                 DATE,
+    REQUEST_ID                      NUMBER,
+    PAYROLL_ACTION_ID               NUMBER,
+    ACCOUNTED_FLAG                  VARCHAR2(1),
+    ATTRIBUTE1                      NUMBER,
+    ATTRIBUTE2                      NUMBER,
+    ATTRIBUTE3                      NUMBER,
+    ATTRIBUTE4                      NUMBER,
+    ATTRIBUTE5                      NUMBER,
+    ATTRIBUTE6                      VARCHAR2(250),
+    ATTRIBUTE7                      VARCHAR2(250),
+    ATTRIBUTE8                      VARCHAR2(250),
+    ATTRIBUTE9                      VARCHAR2(250),
+    ATTRIBUTE10                     VARCHAR2(250),
+    ATTRIBUTE11                     VARCHAR2(250),
+    ATTRIBUTE12                     VARCHAR2(250),
+    ATTRIBUTE13                     VARCHAR2(250),
+	ATTRIBUTE14                     VARCHAR2(250),
+	ATTRIBUTE15                     VARCHAR2(250),
+	CREATION_DATE                   DATE,
+	CREATED_BY                      NUMBER,
+	LAST_UPDATE_DATE                DATE,
+	LAST_UPDATED_BY                 NUMBER
+);
+
+
+ALTER TABLE ATET_SB_LOANS_TRANSACTIONS
+	ADD CONSTRAINT UQ_ATET_SB_LOANS_TRAN UNIQUE (LOAN_TRANSACTION_ID)
+ USING INDEX ;
+ 
+ 
+ALTER TABLE ATET_SB_LOANS_TRANSACTIONS
+    ADD CONSTRAINT FK_ATETSBLOANSTRAN_ 
+        FOREIGN KEY (LOAN_ID)
+        REFERENCES ATET_SB_LOANS(LOAN_ID); 
+        
+
+ALTER TABLE ATET_SB_LOANS_TRANSACTIONS
+    ADD CONSTRAINT FK_ATETSBLOANSTRAN_MEMACCID
+        FOREIGN KEY (MEMBER_ACCOUNT_ID)
+        REFERENCES ATET_SB_MEMBERS_ACCOUNTS(MEMBER_ACCOUNT_ID); 
+        
+        
+CREATE SEQUENCE ATET_SB_LOANS_TRAN_SEQ
+  START WITH 1
+  NOCYCLE
+  NOCACHE
+  NOORDER;
+  
+  
+CREATE OR REPLACE TRIGGER ATET_SB_LOANS_TRAN_TGR
+BEFORE INSERT
+   ON ATET_SB_LOANS_TRANSACTIONS
+   FOR EACH ROW
+DECLARE
+
+   var_next_id  NUMBER;
+
+BEGIN
+
+    SELECT ATET_SB_LOANS_TRAN_SEQ.NEXTVAL
+      INTO var_next_id
+      FROM dual;        
+      
+    :NEW.LOAN_TRANSACTION_ID := var_next_id;
+
+END;
