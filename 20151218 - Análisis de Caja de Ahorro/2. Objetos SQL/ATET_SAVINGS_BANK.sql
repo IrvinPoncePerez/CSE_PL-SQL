@@ -14,6 +14,7 @@ CREATE TABLE ATET_SAVINGS_BANK
 	INTEREST_RATE_SHARING            NUMBER,
     EFFECTIVE_START_DATE             DATE,
     EFFECTIVE_END_DATE               DATE,    
+    SAVING_BANK_STATUS               VARCHAR2(50),
 	ATTRIBUTE1                       NUMBER,
 	ATTRIBUTE2                       NUMBER,
 	ATTRIBUTE3                       NUMBER,

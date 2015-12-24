@@ -4,6 +4,7 @@ CREATE TABLE ATET_SB_PARAMETERS
     SAVING_BANK_ID                   NUMBER NOT NULL,
     PARAMETER_CODE                   VARCHAR2(50),
     PARAMETER_DESCRIPTION            VARCHAR2(250),
+    PARAMETER_UNITS                  VARCHAR2(50),
     PARAMETER_VALUE                  VARCHAR2(50),
     EFFECTIVE_START_DATE             DATE,
     EFFECTIVE_END_DATE               DATE,
