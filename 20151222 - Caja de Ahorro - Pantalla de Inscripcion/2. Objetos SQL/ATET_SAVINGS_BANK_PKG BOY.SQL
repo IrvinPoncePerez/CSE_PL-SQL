@@ -185,7 +185,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
         RETURN 0;
-    END;
+    END GET_SUBTBR;
 
 
     FUNCTION GET_ISRRET(P_ASSIGNMENT_ACTION_ID      NUMBER)
@@ -210,7 +210,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
         RETURN 0;
-    END;
+    END GET_ISRRET;
     
     
     FUNCTION GET_MONDET(P_ASSIGNMENT_ACTION_ID      NUMBER)
@@ -244,7 +244,51 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
         RETURN 0;
-    END;
+    END GET_MONDET;
+    
+    
+    FUNCTION    GET_PERSON_TERMINATION_DATE(P_PERSON_ID     NUMBER)
+      RETURN    VARCHAR2
+    IS
+        var_actual_termination_date VARCHAR2(50) := 'NOTHING';
+    BEGIN
+    
+        SELECT PPOS.ACTUAL_TERMINATION_DATE
+          INTO var_actual_termination_date
+          FROM PER_PEOPLE_F             PPF,
+               PER_ASSIGNMENTS_F        PAF,
+               PER_PERIODS_OF_SERVICE   PPOS
+         WHERE 1 = 1
+           AND PPF.PERSON_ID = PAF.PERSON_ID
+           AND PPF.PERSON_ID = PPOS.PERSON_ID
+           AND PAF.PERIOD_OF_SERVICE_ID = PPOS.PERIOD_OF_SERVICE_ID
+           AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+           AND PPF.PERSON_ID = P_PERSON_ID;
+           
+        RETURN var_actual_termination_date;   
+        
+    EXCEPTION WHEN NO_DATA_FOUND THEN 
+        RETURN var_actual_termination_date; 
+    END GET_PERSON_TERMINATION_DATE;
+    
+      
+    FUNCTION    GET_MEMBER_TERMINATION_DATE(P_PERSON_ID     NUMBER)
+      RETURN    VARCHAR2
+    IS
+        var_member_termination_date VARCHAR2(50) := 'NOTHING';
+    BEGIN
+    
+        SELECT SBM.MEMBER_END_DATE
+          INTO var_member_termination_date
+          FROM ATET_SB_MEMBERS SBM
+         WHERE 1 = 1
+           AND SBM.PERSON_ID = P_PERSON_ID
+           AND SBM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+           
+        RETURN var_member_termination_date;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RETURN var_member_termination_date;
+    END GET_MEMBER_TERMINATION_DATE;
       
     
     /*****************      LHERNANDEZ  ****************/
