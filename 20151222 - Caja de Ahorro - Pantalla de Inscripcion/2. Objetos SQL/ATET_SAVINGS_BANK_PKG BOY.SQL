@@ -442,11 +442,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             
             CLOSE DETAIL_LIST;
         ELSE
-            FND_FILE.PUT_LINE(FND_FILE.LOG, '');
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'EL PROCESO DE EXPORTACIÓN PARA EL PERIODO ' || P_PERIOD_NAME || ' YA FUE EJECUTADO ANTERIORMENTE.');
-            
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'EL PROCESO DE EXPORTACIÓN PARA EL PERIODO ' || P_PERIOD_NAME || ' YA FUE EJECUTADO ANTERIORMENTE.');
+        
+            P_ERRBUF := 'EL PROCESO DE EXPORTACIÓN PARA EL PERIODO ' || P_PERIOD_NAME || ' YA FUE EJECUTADO ANTERIORMENTE.';
+            P_RETCODE := 1;
+        
         END IF;
         
     
@@ -488,7 +487,100 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
       RETURN V_MEANING;
    --
    END GET_LOOKUP_MEANING;
+   
+   
+    PROCEDURE   ROLLBACK_EXPORT_PAYRESULT(P_ERRBUF            OUT NOCOPY  VARCHAR2,
+                                          P_RETCODE           OUT NOCOPY  VARCHAR2,
+                                          P_EXPORT_REQUEST_ID NUMBER)
+    IS
+    
+        CURSOR DETAIL_LIST  IS
+            SELECT ASPR.PAYROLL_RESULT_ID,
+                   ASPR.PERSON_ID,
+                   ASPR.ASSIGNMENT_ID,
+                   ASPR.ASSIGNMENT_ACTION_ID,
+                   ASPR.PAYROLL_ACTION_ID,
+                   ASPR.EARNED_DATE,
+                   ASPR.PERIOD_NAME,
+                   ASPR.PAYROLL_STATUS,
+                   ASPR.ELEMENT_NAME,
+                   ASPR.ENTRY_NAME,
+                   ASPR.ENTRY_UNITS,
+                   ASPR.ENTRY_VALUE,
+                   ASPR.EXPORT_REQUEST_ID
+              FROM ATET_SB_PAYROLL_RESULTS ASPR
+             WHERE ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID;
+             
+        TYPE   DETAILS IS TABLE OF DETAIL_LIST%ROWTYPE INDEX BY PLS_INTEGER;
+     
+        detail DETAILS;
         
+        var_log             VARCHAR2(1000);
+        var_validate        NUMBER;
+        
+    BEGIN
+        
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_EXPORT_REQUEST_ID : ' || P_EXPORT_REQUEST_ID);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '******************************************');
+        
+        OPEN DETAIL_LIST;
+            
+        LOOP
+            
+            FETCH DETAIL_LIST BULK COLLECT INTO detail LIMIT 500;
+                
+            EXIT WHEN detail.COUNT = 0;
+                
+            FOR rowIndex IN 1 .. detail.COUNT
+            LOOP
+                
+                var_log := '';
+                
+                SELECT COUNT(ASPR.PAYROLL_RESULT_ID)
+                  INTO var_validate
+                  FROM ATET_SB_PAYROLL_RESULTS ASPR
+                 WHERE 1 = 1
+                   AND ASPR.PAYROLL_RESULT_ID = detail(rowIndex).PAYROLL_RESULT_ID
+                   AND ASPR.IMPORT_REQUEST_ID IS NULL; 
+                
+                IF var_validate = 1 THEN
+                    DELETE FROM ATET_SB_PAYROLL_RESULTS
+                     WHERE PAYROLL_RESULT_ID = detail(rowIndex).PAYROLL_RESULT_ID;
+                     
+                    COMMIT;
+                    
+                    var_log := RPAD('COMPLETE : ', 10, ' ');
+                ELSE
+                    P_ERRBUF := 'No se puede revertir el movimiento.';
+                    P_RETCODE := 1;
+                    var_log := RPAD('WARNING : ', 10, ' ');
+                END IF;    
+                
+                var_log := var_log || RPAD(detail(rowIndex).PERSON_ID, 10, ' ')              ||
+                                      RPAD(detail(rowIndex).ASSIGNMENT_ID, 10, ' ')          ||
+                                      RPAD(detail(rowIndex).ASSIGNMENT_ACTION_ID, 10, ' ')   ||
+                                      RPAD(detail(rowIndex).PAYROLL_ACTION_ID, 10, ' ')      ||
+                                      RPAD(detail(rowIndex).EARNED_DATE, 15, ' ')            ||
+                                      RPAD(detail(rowIndex).PERIOD_NAME, 20, ' ')            ||
+                                      RPAD(detail(rowIndex).PAYROLL_STATUS, 10, ' ')         ||
+                                      RPAD(detail(rowIndex).ELEMENT_NAME, 30, ' ')           ||
+                                      RPAD(detail(rowIndex).ENTRY_NAME, 15, ' ')             ||
+                                      RPAD(detail(rowIndex).ENTRY_UNITS, 10, ' ')            ||
+                                      RPAD(detail(rowIndex).ENTRY_VALUE, 10, ' ')            ||
+                                      RPAD(detail(rowIndex).EXPORT_REQUEST_ID, 10, ' ');
+                    
+                FND_FILE.PUT_LINE(FND_FILE.LOG ,var_log);
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT ,var_log);       
+                        
+            END LOOP;
+                
+        END LOOP;
+            
+        CLOSE DETAIL_LIST;
+        
+    
+    END ROLLBACK_EXPORT_PAYRESULT;
       
     
     /*****************      LHERNANDEZ  ****************/

@@ -48,10 +48,14 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                        P_MONTH          NUMBER,
                                        P_PERIOD_NAME    VARCHAR2);
                                        
-    FUNCTION GET_LOOKUP_MEANING (P_LOOKUP_TYPE    VARCHAR2,
-                                P_LOOKUP_CODE    VARCHAR2)
-      RETURN VARCHAR2;
+    FUNCTION    GET_LOOKUP_MEANING (P_LOOKUP_TYPE    VARCHAR2,
+                                    P_LOOKUP_CODE    VARCHAR2)
+      RETURN    VARCHAR2;
       
+    PROCEDURE   ROLLBACK_EXPORT_PAYRESULT(P_ERRBUF            OUT NOCOPY  VARCHAR2,
+                                          P_RETCODE           OUT NOCOPY  VARCHAR2,
+                                          P_EXPORT_REQUEST_ID NUMBER);
+                                                
       
     /*****************      LHERNANDEZ  ****************/
 
