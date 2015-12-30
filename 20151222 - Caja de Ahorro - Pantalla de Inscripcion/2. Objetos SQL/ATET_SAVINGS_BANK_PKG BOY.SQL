@@ -289,6 +289,206 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     EXCEPTION WHEN NO_DATA_FOUND THEN
         RETURN var_member_termination_date;
     END GET_MEMBER_TERMINATION_DATE;
+    
+    
+    PROCEDURE   EXPORT_PAYROLL_RESULTS(P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                                       P_RETCODE        OUT NOCOPY  VARCHAR2,
+                                       P_PERIOD_TYPE    VARCHAR2,
+                                       P_YEAR           NUMBER,
+                                       P_MONTH          NUMBER,
+                                       P_PERIOD_NAME    VARCHAR2)
+    IS
+    
+        CURSOR  DETAIL_LIST IS
+            SELECT DISTINCT
+                   PAF.PERSON_ID            AS  "PERSON_ID",
+                   PAF.ASSIGNMENT_ID        AS  "ASSIGNMENT_ID",
+                   PAA.ASSIGNMENT_ACTION_ID AS  "ASSIGNMENT_ACTION_ID",
+                   PPA.PAYROLL_ACTION_ID    AS  "PAYROLL_ACTION_ID",
+                   PPA.DATE_EARNED          AS  "EARNED_DATE",
+                   PTP.PERIOD_NAME          AS  "PERIOD_NAME",
+                   ATET_SAVINGS_BANK_PKG.GET_LOOKUP_MEANING('ACTION_STATUS', 
+                                                            PPA.ACTION_STATUS)        AS  "PAYROLL_STATUS",
+                   PETF.ELEMENT_NAME        AS  "ELEMENT_NAME",
+                   PIVF.NAME                AS  "ENTRY_NAME",
+                   ATET_SAVINGS_BANK_PKG.GET_LOOKUP_MEANING('UNITS', 
+                                                            PIVF.UOM)                 AS  "ENTRY_UNITS",
+                   PRRV.RESULT_VALUE        AS  "ENTRY_VALUE"
+              FROM PAY_PAYROLL_ACTIONS          PPA,
+                   PER_TIME_PERIODS             PTP,
+                   PAY_ASSIGNMENT_ACTIONS       PAA,
+                   PAY_PAYROLLS_F               PPF,
+                   PER_ASSIGNMENTS_F            PAF,
+                   PAY_RUN_RESULTS              PRR,
+                   PAY_ELEMENT_TYPES_F          PETF,
+                   PAY_RUN_RESULT_VALUES        PRRV,
+                   PAY_INPUT_VALUES_F           PIVF,
+                   PAY_ELEMENT_CLASSIFICATIONS  PEC
+             WHERE 1 = 1
+               AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
+               AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
+               AND PPA.PAYROLL_ID = PPF.PAYROLL_ID     
+               AND PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(P_PERIOD_TYPE, PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
+               AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')
+               AND PTP.PERIOD_NAME LIKE '%' || P_YEAR || '%'
+               AND PTP.PERIOD_NAME = NVL(P_PERIOD_NAME, PTP.PERIOD_NAME)
+               AND EXTRACT(MONTH FROM PPA.DATE_EARNED) >= P_MONTH
+               AND PAF.ASSIGNMENT_ID = PAA.ASSIGNMENT_ID
+               AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+               AND PRR.ASSIGNMENT_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID
+               AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+               AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+               AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+               AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+               AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+               AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
+               AND PETF.ELEMENT_NAME IN (ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME'),
+                                         ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME'))
+             ORDER BY PAF.PERSON_ID,
+                      PETF.ELEMENT_NAME,
+                      PIVF.NAME;
+   
+        TYPE   DETAILS IS TABLE OF DETAIL_LIST%ROWTYPE INDEX BY PLS_INTEGER;
+     
+        detail DETAILS;
+        
+        var_request_id      NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
+        var_log             VARCHAR2(1000);
+        var_user_id         NUMBER := FND_GLOBAL.USER_ID;
+        var_validate        NUMBER;
+    
+    BEGIN
+        
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_PERIOD_TYPE : ' || P_PERIOD_TYPE);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_YEAR : ' || P_YEAR);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_MONTH : ' || P_MONTH);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_PERIOD_NAME : ' || P_PERIOD_NAME);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '******************************************'); 
+        
+        SELECT COUNT(ASPR.PERIOD_NAME) 
+          INTO var_validate
+          FROM ATET_SB_PAYROLL_RESULTS ASPR 
+         WHERE 1 = 1
+           AND ASPR.PERIOD_NAME = P_PERIOD_NAME;
+        
+        IF var_validate = 0 THEN
+        
+            OPEN DETAIL_LIST;
+            
+            LOOP
+            
+                FETCH DETAIL_LIST BULK COLLECT INTO detail LIMIT 500;
+                
+                EXIT WHEN detail.COUNT = 0;
+                
+                FOR rowIndex IN 1 .. detail.COUNT
+                LOOP
+                
+                    INSERT INTO ATET_SB_PAYROLL_RESULTS(PERSON_ID,
+                                                        ASSIGNMENT_ID,
+                                                        ASSIGNMENT_ACTION_ID,
+                                                        PAYROLL_ACTION_ID,
+                                                        EARNED_DATE,
+                                                        PERIOD_NAME,
+                                                        PAYROLL_STATUS,
+                                                        ELEMENT_NAME,
+                                                        ENTRY_NAME,
+                                                        ENTRY_UNITS,
+                                                        ENTRY_VALUE,
+                                                        EXPORT_REQUEST_ID,
+                                                        CREATION_DATE,
+                                                        CREATED_BY,
+                                                        LAST_UPDATE_DATE,
+                                                        LAST_UPDATED_BY)
+                                                 VALUES (detail(rowIndex).PERSON_ID,
+                                                         detail(rowIndex).ASSIGNMENT_ID,
+                                                         detail(rowIndex).ASSIGNMENT_ACTION_ID,
+                                                         detail(rowIndex).PAYROLL_ACTION_ID,
+                                                         detail(rowIndex).EARNED_DATE,
+                                                         detail(rowIndex).PERIOD_NAME,
+                                                         detail(rowIndex).PAYROLL_STATUS,
+                                                         detail(rowIndex).ELEMENT_NAME,
+                                                         detail(rowIndex).ENTRY_NAME,
+                                                         detail(rowIndex).ENTRY_UNITS,
+                                                         detail(rowIndex).ENTRY_VALUE,
+                                                         var_request_id,
+                                                         SYSDATE,
+                                                         var_user_id,
+                                                         SYSDATE,
+                                                         var_user_id);
+                                 
+                    COMMIT;
+                    
+                
+                    var_log := RPAD(detail(rowIndex).PERSON_ID, 10, ' ')              ||
+                               RPAD(detail(rowIndex).ASSIGNMENT_ID, 10, ' ')          ||
+                               RPAD(detail(rowIndex).ASSIGNMENT_ACTION_ID, 10, ' ')   ||
+                               RPAD(detail(rowIndex).PAYROLL_ACTION_ID, 10, ' ')      ||
+                               RPAD(detail(rowIndex).EARNED_DATE, 15, ' ')            ||
+                               RPAD(detail(rowIndex).PERIOD_NAME, 20, ' ')            ||
+                               RPAD(detail(rowIndex).PAYROLL_STATUS, 10, ' ')         ||
+                               RPAD(detail(rowIndex).ELEMENT_NAME, 30, ' ')           ||
+                               RPAD(detail(rowIndex).ENTRY_NAME, 15, ' ')             ||
+                               RPAD(detail(rowIndex).ENTRY_UNITS, 10, ' ')            ||
+                               RPAD(detail(rowIndex).ENTRY_VALUE, 10, ' ');
+                    
+                    FND_FILE.PUT_LINE(FND_FILE.LOG ,var_log);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT ,var_log);       
+                        
+                END LOOP;
+                
+            END LOOP;
+            
+            CLOSE DETAIL_LIST;
+        ELSE
+            FND_FILE.PUT_LINE(FND_FILE.LOG, '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'EL PROCESO DE EXPORTACIÓN PARA EL PERIODO ' || P_PERIOD_NAME || ' YA FUE EJECUTADO ANTERIORMENTE.');
+            
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'EL PROCESO DE EXPORTACIÓN PARA EL PERIODO ' || P_PERIOD_NAME || ' YA FUE EJECUTADO ANTERIORMENTE.');
+        END IF;
+        
+    
+    END EXPORT_PAYROLL_RESULTS;
+    
+    
+    FUNCTION GET_LOOKUP_MEANING (P_LOOKUP_TYPE    VARCHAR2,
+                                P_LOOKUP_CODE    VARCHAR2)
+      RETURN VARCHAR2
+   --
+   AS
+      V_MEANING   HR_LOOKUPS.MEANING%TYPE;
+   --
+   BEGIN
+      --
+
+
+      --
+      BEGIN
+         SELECT HRL.MEANING
+           INTO V_MEANING
+           FROM HR_LOOKUPS HRL
+          WHERE HRL.LOOKUP_TYPE = P_LOOKUP_TYPE
+                AND HRL.LOOKUP_CODE = P_LOOKUP_CODE;
+      EXCEPTION
+         WHEN OTHERS
+         THEN
+            RAISE_APPLICATION_ERROR (
+               -20001,
+                  'An error was encountered - in get_lookup_meaning '
+               || SQLCODE
+               || ' -ERROR- '
+               || SQLERRM);
+      END;
+
+      --
+
+      --
+      RETURN V_MEANING;
+   --
+   END GET_LOOKUP_MEANING;
+        
       
     
     /*****************      LHERNANDEZ  ****************/

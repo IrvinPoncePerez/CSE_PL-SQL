@@ -39,6 +39,20 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
       
     FUNCTION    GET_MEMBER_TERMINATION_DATE(P_PERSON_ID     NUMBER)
       RETURN    VARCHAR2;
+      
+      
+    PROCEDURE   EXPORT_PAYROLL_RESULTS(P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                                       P_RETCODE        OUT NOCOPY  VARCHAR2,
+                                       P_PERIOD_TYPE    VARCHAR2,
+                                       P_YEAR           NUMBER,
+                                       P_MONTH          NUMBER,
+                                       P_PERIOD_NAME    VARCHAR2);
+                                       
+    FUNCTION GET_LOOKUP_MEANING (P_LOOKUP_TYPE    VARCHAR2,
+                                P_LOOKUP_CODE    VARCHAR2)
+      RETURN VARCHAR2;
+      
+      
     /*****************      LHERNANDEZ  ****************/
 
 END ATET_SAVINGS_BANK_PKG;
