@@ -74,5 +74,6 @@ BEGIN
       FROM dual;        
       
     :NEW.MEMBER_ID := var_next_id;
+    :NEW.ATTRIBUTE6 := ATET_SAVINGS_BANK_PKG.GET_PERIOD_TYPE(:NEW.PERSON_ID);
 
 END;
