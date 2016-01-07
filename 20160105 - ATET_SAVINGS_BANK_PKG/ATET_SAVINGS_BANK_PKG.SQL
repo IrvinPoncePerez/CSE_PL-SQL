@@ -52,6 +52,10 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                        P_RETCODE           OUT NOCOPY  VARCHAR2,
                                        P_EXPORT_REQUEST_ID NUMBER);
                                        
+    PROCEDURE   CREATE_ACCOUNT(P_PERSON_ID              NUMBER,
+                               P_PARAM_ELEMENT_NAME     VARCHAR2,
+                               P_PARAM_CODE_COMBINATION VARCHAR2);
+                                       
     FUNCTION    GET_LOOKUP_MEANING (P_LOOKUP_TYPE    VARCHAR2,
                                     P_LOOKUP_CODE    VARCHAR2)
       RETURN    VARCHAR2;
@@ -70,7 +74,27 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     FUNCTION    GET_MEMBER_ID(P_PERSON_ID   NUMBER)
       RETURN    NUMBER;
       
+    FUNCTION    GET_MEMBER_IS_SAVER(P_MEMBER_ID     NUMBER)
+      RETURN    VARCHAR2;
+      
     FUNCTION    GET_CODE_COMBINATION_ID(ELEMENT_NAME    VARCHAR2)
+      RETURN    NUMBER;
+      
+    FUNCTION   INSERT_SAVING_TRANSACTION(P_PAYROLL_RESULT_ID   NUMBER,
+                                          P_PERSON_ID           NUMBER,
+                                          P_EARNED_DATE         DATE,
+                                          P_PERIOD_NAME         VARCHAR2,
+                                          P_ELEMENT_NAME        VARCHAR2,
+                                          P_ENTRY_NAME          VARCHAR2,
+                                          P_ENTRY_UNITS         VARCHAR2,
+                                          P_ENTRY_VALUE         NUMBER,
+                                          P_DEBIT_AMOUNT        NUMBER,
+                                          P_CREDIT_AMOUNT       NUMBER)
+      RETURN    VARCHAR2;
+     
+    FUNCTION    GET_SAVING_MEMBER_ACCOUNT_ID(P_MEMBER_ID            NUMBER,
+                                             P_ACCOUNT_NUMBER       VARCHAR2,
+                                             P_ACCOUNT_DESCRIPTION  VARCHAR2)
       RETURN    NUMBER;
     /*****************      LHERNANDEZ  ****************/
 
