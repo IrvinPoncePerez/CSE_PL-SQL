@@ -453,6 +453,133 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END EXPORT_PAYROLL_RESULTS;
     
     
+    PROCEDURE   IMPORT_PAYROLL_RESULTS(P_ERRBUF            OUT NOCOPY  VARCHAR2,
+                                       P_RETCODE           OUT NOCOPY  VARCHAR2,
+                                       P_EXPORT_REQUEST_ID NUMBER)
+    IS
+        var_import_request_id      NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
+        var_log             VARCHAR2(1000);
+        var_user_id         NUMBER := FND_GLOBAL.USER_ID;
+        var_validate        NUMBER;
+        var_have_account    NUMBER;
+    BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_EXPORT_REQUEST_ID : ' || P_EXPORT_REQUEST_ID);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '******************************************');
+        
+    
+        SELECT COUNT(ASPR.EXPORT_REQUEST_ID)
+          INTO var_validate
+          FROM ATET_SB_PAYROLL_RESULTS ASPR
+         WHERE 1 = 1
+           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+           AND IMPORT_REQUEST_ID IS NOT NULL;
+           
+           
+        IF var_validate = 0 THEN
+        
+            UPDATE ATET_SB_PAYROLL_RESULTS
+               SET IMPORT_REQUEST_ID = var_import_request_id,
+                   LAST_UPDATE_DATE = SYSDATE,
+                   LAST_UPDATED_BY = var_user_id
+             WHERE EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID;
+             
+            COMMIT;
+            
+            DECLARE
+                CURSOR DETAIL_LIST IS
+                    SELECT ASPR.PAYROLL_RESULT_ID,
+                           ASPR.PERSON_ID,
+                           ASPR.ASSIGNMENT_ID,
+                           ASPR.ASSIGNMENT_ACTION_ID,
+                           ASPR.PAYROLL_ACTION_ID,
+                           ASPR.EARNED_DATE,
+                           ASPR.PERIOD_NAME,
+                           ASPR.PAYROLL_STATUS,
+                           ASPR.ELEMENT_NAME,
+                           ASPR.ENTRY_NAME,
+                           ASPR.ENTRY_UNITS,
+                           ASPR.ENTRY_VALUE
+                      FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                     WHERE 1 = 1
+                       AND ASPR.ENTRY_NAME = 'Pay Value'
+                       AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                       AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;    
+                               
+                TYPE   DETAILS IS TABLE OF DETAIL_LIST%ROWTYPE INDEX BY PLS_INTEGER;
+             
+                detail DETAILS;            
+            BEGIN
+            
+                OPEN DETAIL_LIST;
+            
+                LOOP
+            
+                    FETCH DETAIL_LIST BULK COLLECT INTO detail LIMIT 500;
+                    
+                    EXIT WHEN detail.COUNT = 0;
+                    
+                    FOR rowIndex IN 1 .. detail.COUNT
+                    LOOP
+                    
+                        SELECT COUNT(ASMA.MEMBER_ACCOUNT_ID)
+                          INTO var_have_account
+                          FROM ATET_SB_MEMBERS          ASM,
+                               ATET_SB_MEMBERS_ACCOUNTS ASMA                               
+                         WHERE 1 = 1
+                           AND ASM.PERSON_ID = detail(rowIndex).PERSON_ID
+                           AND ASM.MEMBER_ID = ASMA.MEMBER_ID   
+                           AND ASMA.ACCOUNT_DESCRIPTION = detail(rowIndex).ELEMENT_NAME;
+                           
+                        IF var_have_account = 0 THEN
+                            IF detail(rowIndex).ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME') THEN
+                                
+                                INSERT INTO ATET_SB_MEMBERS_ACCOUNTS(MEMBER_ID,
+                                                                     CODE_COMBINATION_ID,
+                                                                     ACCOUNT_NUMBER,
+                                                                     ACCOUNT_DESCRIPTION,
+                                                                     DEBIT_BALANCE,
+                                                                     CREDIT_BALANCE,
+                                                                     CREATION_DATE,
+                                                                     CREATED_BY,
+                                                                     LAST_UPDATE_DATE,
+                                                                     LAST_UPDATED_BY)
+                                                             VALUES (GET_MEMBER_ID(detail(rowIndex).PERSON_ID),
+                                                                     GET_CODE_COMBINATION_ID(detail(rowIndex).ELEMENT_NAME),
+                                                                     GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAV_CODE_COMB'),
+                                                                     detail(rowIndex).ELEMENT_NAME,
+                                                                     0,
+                                                                     0,
+                                                                     SYSDATE,
+                                                                     var_user_id,
+                                                                     SYSDATE,
+                                                                     var_user_id);
+                                COMMIT;                                                                                                                                            
+                                                                                             
+                            ELSIF detail(rowIndex).ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME') THEN
+                                   NULL;                                       
+                            END IF;
+                        END IF; 
+                            
+                    END LOOP;
+                    
+                END LOOP;
+                
+                CLOSE DETAIL_LIST;
+            
+            END;
+            
+        ELSE
+        
+            P_ERRBUF := 'EL PROCESO DE IMPORTACIÓN YA FUE EJECUTADO ANTERIORMENTE.';
+            P_RETCODE := 1;
+        
+        END IF;
+    
+    END IMPORT_PAYROLL_RESULTS;
+    
+    
     FUNCTION GET_LOOKUP_MEANING (P_LOOKUP_TYPE    VARCHAR2,
                                 P_LOOKUP_CODE    VARCHAR2)
       RETURN VARCHAR2
@@ -668,83 +795,26 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END RESTART_SEQUENCE;  
     
     
-    FUNCTION    NEXT_VALUE_SEQUENCE(P_SEQUENCE_NAME     VARCHAR2)
-      RETURN    NUMBER
-    IS  
-        var_value   NUMBER;
-    BEGIN
-    
-        IF    P_SEQUENCE_NAME = 'ATET_SB_LOAN_NUMBER_SEQ' THEN
-            
-            SELECT ATET_SB_LOAN_NUMBER_SEQ.NEXTVAL
-              INTO var_value
-              FROM DUAL;
-              
-              
-            UPDATE ATET_SAVINGS_BANK
-               SET NEXT_LOAN_NUMBER = var_value
-             WHERE SAVING_BANK_ID = GET_SAVING_BANK_ID;
-             
-            COMMIT;
-        
-        ELSIF P_SEQUENCE_NAME = 'ATET_SB_CHECK_NUMBER_SEQ' THEN
-        
-            SELECT ATET_SB_CHECK_NUMBER_SEQ.NEXTVAL
-              INTO var_value
-              FROM DUAL;
-              
-            UPDATE ATET_SAVINGS_BANK
-               SET NEXT_CHECK_NUMBER = var_value
-             WHERE SAVING_BANK_ID = GET_SAVING_BANK_ID;
-             
-            COMMIT;
-        
-        ELSIF P_SEQUENCE_NAME = 'ATET_SB_ENDORSEMENT_NUMBER_SEQ' THEN
-        
-            SELECT ATET_SB_ENDORSEMENT_NUMBER_SEQ.NEXTVAL
-              INTO var_value
-              FROM DUAL;
-              
-            UPDATE ATET_SAVINGS_BANK
-               SET NEXT_CHARGED_ENDORSE_NUMBER = var_value
-             WHERE SAVING_BANK_ID = GET_SAVING_BANK_ID;
-             
-            COMMIT;
-        
-        END IF;
-    
-        RETURN var_value;
-    END NEXT_VALUE_SEQUENCE;
-      
-      
-    FUNCTION    CURRENT_VALUE_SEQUENCE(P_SEQUENCE_NAME     VARCHAR2)
+    FUNCTION    GET_MEMBER_ID(P_PERSON_ID   NUMBER)
       RETURN    NUMBER
     IS
-        var_value   NUMBER;
+        var_member_id   NUMBER;
     BEGIN
-    
-        IF    P_SEQUENCE_NAME = 'ATET_SB_LOAN_NUMBER_SEQ' THEN
-            
-            SELECT ATET_SB_LOAN_NUMBER_SEQ.CURRVAL
-              INTO var_value
-              FROM DUAL;
-        
-        ELSIF P_SEQUENCE_NAME = 'ATET_SB_CHECK_NUMBER_SEQ' THEN
-        
-            SELECT ATET_SB_CHECK_NUMBER_SEQ.CURRVAL
-              INTO var_value
-              FROM DUAL;
-        
-        ELSIF P_SEQUENCE_NAME = 'ATET_SB_ENDORSEMENT_NUMBER_SEQ' THEN
-        
-            SELECT ATET_SB_ENDORSEMENT_NUMBER_SEQ.CURRVAL
-              INTO var_value
-              FROM DUAL;
-        
-        END IF;
-    
-        RETURN var_value;
-    END CURRENT_VALUE_SEQUENCE;
+        SELECT ASM.MEMBER_ID
+          INTO var_member_id
+          FROM ATET_SB_MEMBERS ASM
+         WHERE ASM.PERSON_ID = P_PERSON_ID
+           AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+           
+        RETURN var_member_id;           
+    END GET_MEMBER_ID;
+      
+    FUNCTION    GET_CODE_COMBINATION_ID(ELEMENT_NAME    VARCHAR2)
+      RETURN    NUMBER
+    IS
+    BEGIN
+        RETURN 1;
+    END GET_CODE_COMBINATION_ID;
     
     /*****************      LHERNANDEZ  ****************/
 

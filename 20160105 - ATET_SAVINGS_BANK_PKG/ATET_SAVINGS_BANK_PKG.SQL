@@ -48,6 +48,10 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                        P_MONTH          NUMBER,
                                        P_PERIOD_NAME    VARCHAR2);
                                        
+    PROCEDURE   IMPORT_PAYROLL_RESULTS(P_ERRBUF            OUT NOCOPY  VARCHAR2,
+                                       P_RETCODE           OUT NOCOPY  VARCHAR2,
+                                       P_EXPORT_REQUEST_ID NUMBER);
+                                       
     FUNCTION    GET_LOOKUP_MEANING (P_LOOKUP_TYPE    VARCHAR2,
                                     P_LOOKUP_CODE    VARCHAR2)
       RETURN    VARCHAR2;
@@ -63,10 +67,10 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                       
     PROCEDURE   RESTART_SEQUENCE;
     
-    FUNCTION    NEXT_VALUE_SEQUENCE(P_SEQUENCE_NAME     VARCHAR2)
+    FUNCTION    GET_MEMBER_ID(P_PERSON_ID   NUMBER)
       RETURN    NUMBER;
       
-    FUNCTION    CURRENT_VALUE_SEQUENCE(P_SEQUENCE_NAME     VARCHAR2)
+    FUNCTION    GET_CODE_COMBINATION_ID(ELEMENT_NAME    VARCHAR2)
       RETURN    NUMBER;
     /*****************      LHERNANDEZ  ****************/
 
