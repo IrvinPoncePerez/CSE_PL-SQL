@@ -307,6 +307,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    PAA.ASSIGNMENT_ACTION_ID AS  "ASSIGNMENT_ACTION_ID",
                    PPA.PAYROLL_ACTION_ID    AS  "PAYROLL_ACTION_ID",
                    PPA.DATE_EARNED          AS  "EARNED_DATE",
+                   PTP.TIME_PERIOD_ID       AS  "TIME_PERIOD_ID",
                    PTP.PERIOD_NAME          AS  "PERIOD_NAME",
                    ATET_SAVINGS_BANK_PKG.GET_LOOKUP_MEANING('ACTION_STATUS', 
                                                             PPA.ACTION_STATUS)        AS  "PAYROLL_STATUS",
@@ -345,7 +346,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
                AND PETF.ELEMENT_NAME IN (ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME'),
                                          ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME'))
---               AND PAF.PERSON_ID IN (SELECT ASM.PERSON_ID FROM ATET_SB_MEMBERS ASM)
+               AND PAF.PERSON_ID IN (SELECT ASM.PERSON_ID FROM ATET_SB_MEMBERS ASM)
              ORDER BY PAF.PERSON_ID,
                       PETF.ELEMENT_NAME,
                       PIVF.NAME;
@@ -392,6 +393,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                         ASSIGNMENT_ACTION_ID,
                                                         PAYROLL_ACTION_ID,
                                                         EARNED_DATE,
+                                                        TIME_PERIOD_ID,
                                                         PERIOD_NAME,
                                                         PAYROLL_STATUS,
                                                         ELEMENT_NAME,
@@ -408,6 +410,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                          detail(rowIndex).ASSIGNMENT_ACTION_ID,
                                                          detail(rowIndex).PAYROLL_ACTION_ID,
                                                          detail(rowIndex).EARNED_DATE,
+                                                         detail(rowIndex).TIME_PERIOD_ID,
                                                          detail(rowIndex).PERIOD_NAME,
                                                          detail(rowIndex).PAYROLL_STATUS,
                                                          detail(rowIndex).ELEMENT_NAME,
@@ -428,6 +431,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                RPAD(detail(rowIndex).ASSIGNMENT_ACTION_ID, 10, ' ')   ||
                                RPAD(detail(rowIndex).PAYROLL_ACTION_ID, 10, ' ')      ||
                                RPAD(detail(rowIndex).EARNED_DATE, 15, ' ')            ||
+                               RPAD(detail(rowIndex).TIME_PERIOD_ID, 15, ' ')         ||
                                RPAD(detail(rowIndex).PERIOD_NAME, 20, ' ')            ||
                                RPAD(detail(rowIndex).PAYROLL_STATUS, 10, ' ')         ||
                                RPAD(detail(rowIndex).ELEMENT_NAME, 30, ' ')           ||
@@ -500,6 +504,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                            ASPR.ASSIGNMENT_ACTION_ID,
                            ASPR.PAYROLL_ACTION_ID,
                            ASPR.EARNED_DATE,
+                           ASPR.TIME_PERIOD_ID,
                            ASPR.PERIOD_NAME,
                            ASPR.PAYROLL_STATUS,
                            ASPR.ELEMENT_NAME,
@@ -520,6 +525,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                            ASPR.ASSIGNMENT_ACTION_ID,
                            ASPR.PAYROLL_ACTION_ID,
                            ASPR.EARNED_DATE,
+                           ASPR.TIME_PERIOD_ID,
                            ASPR.PERIOD_NAME,
                            ASPR.PAYROLL_STATUS,
                            ASPR.ELEMENT_NAME,
@@ -547,6 +553,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     var_result := INSERT_SAVING_TRANSACTION(detail_saving.PAYROLL_RESULT_ID,
                                                             detail_saving.PERSON_ID,
                                                             detail_saving.EARNED_DATE,
+                                                            detail_saving.TIME_PERIOD_ID,
                                                             detail_saving.PERIOD_NAME,
                                                             detail_saving.ELEMENT_NAME,
                                                             detail_saving.ENTRY_NAME,
@@ -1014,6 +1021,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     FUNCTION    INSERT_SAVING_TRANSACTION(P_PAYROLL_RESULT_ID   NUMBER,
                                           P_PERSON_ID           NUMBER,
                                           P_EARNED_DATE         DATE,
+                                          P_TIME_PERIOD_ID      NUMBER,
                                           P_PERIOD_NAME         VARCHAR2,
                                           P_ELEMENT_NAME        VARCHAR2,
                                           P_ENTRY_NAME          VARCHAR2,
@@ -1041,6 +1049,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                   PAYROLL_RESULT_ID,
                                                   PERSON_ID,
                                                   EARNED_DATE,
+                                                  TIME_PERIOD_ID,
                                                   PERIOD_NAME,
                                                   ELEMENT_NAME,
                                                   ENTRY_NAME,
@@ -1060,6 +1069,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                   P_PAYROLL_RESULT_ID,
                                                   P_PERSON_ID,
                                                   P_EARNED_DATE,
+                                                  P_TIME_PERIOD_ID,
                                                   P_PERIOD_NAME,
                                                   P_ELEMENT_NAME,
                                                   P_ENTRY_NAME,
