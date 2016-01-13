@@ -1,10 +1,6 @@
 CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
 
-    /*****************      ARINCON     ****************/
-    
-    /*****************      SARIAS      ****************/
-    
-    /*****************      IPONCE      ****************/
+
     FUNCTION    GET_SAVING_BANK_ID
       RETURN    NUMBER
     IS
@@ -78,6 +74,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 OR SYSDATE BETWEEN ASP.EFFECTIVE_START_DATE AND EFFECTIVE_END_DATE);
                 
         RETURN var_parameter_value;
+    
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, '***************************************************************************************');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'No se ha definido el valor del parámetro ' || P_PARAMETER_CODE);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, '***************************************************************************************');
     
     END GET_PARAMETER_VALUE;
     
@@ -346,7 +348,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
                AND PETF.ELEMENT_NAME IN (ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME'),
                                          ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME'))
-               AND PAF.PERSON_ID IN (SELECT ASM.PERSON_ID FROM ATET_SB_MEMBERS ASM)
+               /************************************************/
+               /************************************************/
+--               AND PAF.PERSON_ID IN (SELECT ASM.PERSON_ID FROM ATET_SB_MEMBERS ASM)
+               /************************************************/
+               /************************************************/ 
              ORDER BY PAF.PERSON_ID,
                       PETF.ELEMENT_NAME,
                       PIVF.NAME;
@@ -692,7 +698,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    AND ASM.MEMBER_ID = ASMA.MEMBER_ID   
                    AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME)
                    AND ASMA.ACCOUNT_NUMBER = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_SAV_CODE_COMB')
-                   AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+                   AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID
+                   AND ASMA.LOAN_ID IS NULL;
                    
                 IF var_have_account = 0 THEN             
                     INSERT INTO ATET_SB_MEMBERS_ACCOUNTS(MEMBER_ID,
@@ -731,7 +738,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    AND ASM.MEMBER_ID = ASMA.MEMBER_ID   
                    AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME)
                    AND ASMA.ACCOUNT_NUMBER = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_NO_SAV_CODE_COMB')
-                   AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+                   AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID
+                   AND ASMA.LOAN_ID IS NULL;
                    
                 IF var_have_account = 0 THEN 
                     INSERT INTO ATET_SB_MEMBERS_ACCOUNTS(MEMBER_ID,
@@ -907,12 +915,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_employee_name       VARCHAR2(500);
     BEGIN
     
-        IF SYSDATE > ATET_SAVINGS_BANK_PKG.GET_REGISTRATION_DATE THEN
+        IF SYSDATE > TO_DATE(GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'REG_CHANGED_DATE'), 'RRRR/MM/DD') THEN
             P_ERRBUF := 'No se puede cambiar el monto de ahorro cuando la fecha de inscripción ha finalizado.';
             P_RETCODE := 1;
         ELSE
+        
             UPDATE ATET_SB_MEMBERS
                SET AMOUNT_TO_SAVE = P_AMOUNT_TO_SAVE,
+                   ATTRIBUTE7 = 'CHANGED',
                    LAST_UPDATE_DATE = SYSDATE,
                    LAST_UPDATED_BY = FND_GLOBAL.USER_ID
              WHERE EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
@@ -1148,6 +1158,391 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
          
         RETURN var_member_account_id;
     END GET_SAVING_MEMBER_ACCOUNT_ID;
-    /*****************      LHERNANDEZ  ****************/
+    
+    
+    FUNCTION    GET_LOAN_MEMBER_ACCOUNT_ID(P_MEMBER_ID          NUMBER,
+                                           P_LOAN_ID            NUMBER)
+      RETURN    NUMBER
+    IS
+        var_member_account_id   NUMBER;
+
+    BEGIN
+           
+        BEGIN
+        
+            SELECT ASMA.MEMBER_ACCOUNT_ID
+              INTO var_member_account_id
+              FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+             WHERE 1 = 1
+               AND ASMA.MEMBER_ID = P_MEMBER_ID
+               AND ASMA.LOAN_ID = P_LOAN_ID
+               AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME');        
+               
+               DBMS_OUTPUT.PUT_LINE( 'SELECT ACCOUNT');
+        
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+           
+            UPDATE ATET_SB_MEMBERS_ACCOUNTS ASMA
+               SET ASMA.LOAN_ID = P_LOAN_ID
+             WHERE 1 = 1
+               AND ASMA.MEMBER_ID = P_MEMBER_ID
+               AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+               AND ASMA.LOAN_ID IS NULL; 
+               
+               DBMS_OUTPUT.PUT_LINE( 'UPDATE ACCOUNT');
+               
+            COMMIT;
+            
+            SELECT ASMA.MEMBER_ACCOUNT_ID
+              INTO var_member_account_id
+              FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+             WHERE 1 = 1
+               AND ASMA.MEMBER_ID = P_MEMBER_ID
+               AND ASMA.LOAN_ID = P_LOAN_ID
+               AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME');  
+        
+            DBMS_OUTPUT.PUT_LINE( 'SELECT ACCOUNT');
+        
+        END;
+        
+    
+        RETURN var_member_account_id;
+    END GET_LOAN_MEMBER_ACCOUNT_ID;
+
+
+    PROCEDURE   SET_LOAN_BALANCE(P_LOAN_ID            NUMBER,
+                                 P_LOAN_AMOUNT        NUMBER,
+                                 P_PERSON_ID          NUMBER)
+    IS
+        var_member_id           NUMBER := GET_MEMBER_ID(P_PERSON_ID);
+        var_member_account_id   NUMBER;
+        var_user_id             NUMBER := FND_GLOBAL.USER_ID;
+        var_loan_number         NUMBER;
+        var_loan_id             NUMBER;
+    BEGIN
+    
+        SELECT ASL.LOAN_ID,
+               ASL.LOAN_NUMBER
+          INTO var_loan_id,
+               var_loan_number
+          FROM ATET_SB_LOANS    ASL
+         WHERE 1 = 1
+           AND ASL.MEMBER_ID = GET_MEMBER_ID(P_PERSON_ID)
+           AND ASL.LOAN_ID = P_LOAN_ID;
+           
+           
+            DBMS_OUTPUT.PUT_LINE( 'SELECT LOAN_ID, LOAN_NUMBER');     
+           
+        var_member_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(GET_MEMBER_ID(P_PERSON_ID), P_LOAN_ID);
+                                                          
+        UPDATE ATET_SB_MEMBERS_ACCOUNTS
+           SET DEBIT_BALANCE = DEBIT_BALANCE + P_LOAN_AMOUNT,
+               CREDIT_BALANCE = CREDIT_BALANCE + 0,
+               LAST_TRANSACTION_DATE = SYSDATE               
+         WHERE MEMBER_ID = var_member_id
+           AND MEMBER_ACCOUNT_ID = var_member_account_id;
+           
+        UPDATE ATET_SB_MEMBERS_ACCOUNTS
+           SET FINAL_BALANCE = DEBIT_BALANCE - CREDIT_BALANCE,
+               LAST_UPDATE_DATE = SYSDATE,
+               LAST_UPDATED_BY = var_user_id             
+         WHERE MEMBER_ID = var_member_id
+           AND MEMBER_ACCOUNT_ID = var_member_account_id;
+        
+        COMMIT;
+
+        NULL;
+    
+    END SET_LOAN_BALANCE;
+    
+    
+    PROCEDURE   INSERT_EXTEMPORANEOUS_SAVING(P_ERRBUF               OUT NOCOPY  VARCHAR2,
+                                             P_RETCODE              OUT NOCOPY  VARCHAR2,
+                                             P_PERSON_ID            NUMBER,
+                                             P_SAVING_AMOUNT        NUMBER,
+                                             P_PENDING_PAYMENT      NUMBER)
+    IS
+    
+         var_person_id                  NUMBER;
+         var_employee_number            NUMBER;
+         var_employee_full_name         VARCHAR2(300);
+         var_person_type                VARCHAR2(300);
+         var_seniority_years            NUMBER;
+         var_rfc                        VARCHAR2(300);
+         var_curp                       VARCHAR2(300);
+         var_sex                        VARCHAR2(300);
+         var_email_address              VARCHAR2(300);
+         var_effective_hire_date        DATE;
+         var_member_start_date          DATE;
+         var_is_saver                   VARCHAR2(10);
+         var_is_borrower                VARCHAR2(10);
+         var_is_endorsement             VARCHAR2(10);
+         var_assignment_id              NUMBER;
+         var_payroll_id                 NUMBER;
+         var_period_type                VARCHAR2(300);
+         var_max_assignment_action_id   NUMBER;
+         var_max_per_sav                NUMBER;
+         var_max_sav_amt_sm             NUMBER;
+         var_max_sav_amt_wk             NUMBER;
+         var_posibility_saving          NUMBER;
+         var_real_posibility_saving     NUMBER;
+         var_isrret                     NUMBER;
+         var_subtbr                     NUMBER;
+         var_mondet                     NUMBER;
+         var_validate                   VARCHAR2(1) := 'N';
+         var_min_sav_amt_sm             NUMBER;
+         var_min_sav_amt_wk             NUMBER;
+         var_saving_bank_id             NUMBER := ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID;
+    BEGIN
+        
+        IF TO_DATE(GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'REG_EXTEMPORANEOUS_DATE'), 'RRRR/MM/DD') > SYSDATE THEN
+            
+            SELECT PPF.PERSON_ID                                                  AS  "PERSON_ID",
+                 PPF.EMPLOYEE_NUMBER                                              AS  "EMPLOYEE_NUMBER",
+                 PPF.FULL_NAME                                                    AS  "EMPLOYEE_NAME",
+                 UPPER(PPTT.USER_PERSON_TYPE)                                     AS  "PERSON_TYPE",
+                 TRUNC(HR_MX_UTILITY.GET_SENIORITY_SOCIAL_SECURITY(PPF.PERSON_ID, 
+                                                                   SYSDATE))      AS  "SENIORITY_YEARS",
+                 PPF.PER_INFORMATION2                                             AS  "RFC",
+                 PPF.NATIONAL_IDENTIFIER                                          AS  "CURP",
+                 UPPER(PAC_HR_PAY_PKG.GET_LOOKUP_MEANING('SEX', 
+                                                         PPF.SEX))                AS  "SEX",
+                 PPF.EMAIL_ADDRESS                                                AS  "EMAIL_ADDRESS",
+                 PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PPF.PERSON_ID)    AS  "FFECTIVE_START_DATE",
+                 SYSDATE,
+                 'Y'                                                              AS  "IS_SAVER",
+                 'N'                                                              AS  "IS_BORROWER",
+                 'N'                                                              AS  "IS_ENDORSEMENT",
+                 PAF.ASSIGNMENT_ID,
+                 PAF.PAYROLL_ID
+            INTO var_person_id,
+                 var_employee_number,
+                 var_employee_full_name,
+                 var_person_type,
+                 var_seniority_years,
+                 var_rfc,
+                 var_curp,
+                 var_sex,
+                 var_email_address,
+                 var_effective_hire_date,
+                 var_member_start_date,
+                 var_is_saver,
+                 var_is_borrower,
+                 var_is_endorsement,
+                 var_assignment_id,
+                 var_payroll_id
+            FROM PER_PEOPLE_F             PPF,
+                 PER_PERSON_TYPES_TL      PPTT,
+                 PER_ASSIGNMENTS_F        PAF,
+                 PER_PERIODS_OF_SERVICE   PPOS
+            WHERE 1 = 1
+             AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+             AND PPF.PERSON_TYPE_ID = PPTT.PERSON_TYPE_ID
+             AND LANGUAGE = USERENV('LANG')
+             AND PPTT.USER_PERSON_TYPE IN ('Employee', 'Empleado')
+             AND PPF.PERSON_ID = PAF.PERSON_ID
+             AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+             AND PPOS.PERSON_ID = PPF.PERSON_ID
+             AND PPOS.PERIOD_OF_SERVICE_ID = PAF.PERIOD_OF_SERVICE_ID
+             AND PPF.PERSON_ID = P_PERSON_ID
+            ORDER BY TO_NUMBER(PPF.EMPLOYEE_NUMBER);
+            
+            IF ATET_SAVINGS_BANK_PKG.IF_MEMBER_EXIST(var_employee_number) = 0 THEN
+            
+                var_period_type := ATET_SAVINGS_BANK_PKG.GET_PERIOD_TYPE(var_person_id);
+                var_max_assignment_action_id := ATET_SAVINGS_BANK_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(var_assignment_id, var_payroll_id);
+                var_subtbr := ATET_SAVINGS_BANK_PKG.GET_SUBTBR(var_max_assignment_action_id);
+                var_isrret := ATET_SAVINGS_BANK_PKG.GET_ISRRET(var_max_assignment_action_id);
+                var_mondet := ATET_SAVINGS_BANK_PKG.GET_MONDET(var_max_assignment_action_id);
+                            
+            
+                var_max_per_sav := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_PER_SAV');
+                var_max_sav_amt_sm := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_SM');
+                var_max_sav_amt_wk := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_WK');
+                var_min_sav_amt_sm := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MIN_SAV_AMT_SM');
+                var_min_sav_amt_wk := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MIN_SAV_AMT_WK');
+                var_posibility_saving := (var_subtbr - (var_isrret + var_mondet)) * (var_max_per_sav / 100);
+            
+                IF    var_period_type IN ('Week', 'Semana') THEN
+                
+                  IF var_posibility_saving > var_max_sav_amt_wk THEN
+                    var_real_posibility_saving := TRUNC(var_max_sav_amt_wk);
+                  ELSE
+                    var_real_posibility_saving := TRUNC(var_posibility_saving);
+                  END IF;
+                
+                ELSIF var_period_type IN ('Semi-Month', 'Quincena') THEN
+                
+                  IF var_posibility_saving > var_max_sav_amt_sm THEN
+                    var_real_posibility_saving := TRUNC(var_max_sav_amt_sm);
+                  ELSE
+                    var_real_posibility_saving := TRUNC(var_posibility_saving);
+                  END IF;
+                
+                END IF;
+                
+                
+                IF    var_period_type IN ('Semana', 'Week') THEN
+                
+                  IF    P_SAVING_AMOUNT < var_min_sav_amt_wk THEN
+                    var_validate := 'N';
+                  ELSIF P_SAVING_AMOUNT > var_real_posibility_saving THEN
+                    var_validate := 'N';
+                  ELSE
+                    var_validate := 'Y';
+                  END IF;
+                
+                ELSIF var_period_type IN ('Quincena', 'Semi-Month') THEN
+                
+                  IF    P_SAVING_AMOUNT < var_min_sav_amt_sm THEN
+                    var_validate := 'N';
+                  ELSIF P_SAVING_AMOUNT > var_real_posibility_saving THEN
+                    var_validate := 'N';
+                  ELSE
+                    var_validate := 'Y';
+                  END IF; 
+                
+                END IF;
+                
+                
+                IF var_validate = 'Y' THEN
+                    
+                    INSERT INTO ATET_SB_MEMBERS (SAVING_BANK_ID,
+                                                 PERSON_ID,
+                                                 EMPLOYEE_NUMBER,
+                                                 EMPLOYEE_FULL_NAME,
+                                                 PERSON_TYPE,
+                                                 SENIORITY_YEARS,
+                                                 RFC,
+                                                 CURP,
+                                                 SEX,
+                                                 EMAIL_ADDRESS,
+                                                 AMOUNT_TO_SAVE,
+                                                 ATTRIBUTE2,
+                                                 ATTRIBUTE3,
+                                                 EFFECTIVE_HIRE_DATE,
+                                                 MEMBER_START_DATE,
+                                                 IS_SAVER,
+                                                 IS_BORROWER,
+                                                 IS_ENDORSEMENT,
+                                                 ATTRIBUTE6,                                                 
+                                                 CREATION_DATE,
+                                                 CREATED_BY,
+                                                 LAST_UPDATE_DATE,
+                                                 LAST_UPDATED_BY)
+                                         VALUES (var_saving_bank_id,
+                                                 var_person_id,
+                                                 var_employee_number,
+                                                 var_employee_full_name,
+                                                 var_person_type,
+                                                 var_seniority_years,
+                                                 var_rfc,
+                                                 var_curp,
+                                                 var_sex,
+                                                 var_email_address,
+                                                 P_SAVING_AMOUNT * (1 + P_PENDING_PAYMENT),
+                                                 P_PENDING_PAYMENT,
+                                                 P_SAVING_AMOUNT,
+                                                 var_effective_hire_date,
+                                                 TO_DATE(var_member_start_date, 'DD/MM/RRRR'),
+                                                 var_is_saver,
+                                                 var_is_borrower,
+                                                 var_is_endorsement,
+                                                 var_period_type,
+                                                 SYSDATE,
+                                                 FND_GLOBAL.USER_ID,
+                                                 SYSDATE,
+                                                 FND_GLOBAL.USER_ID); 
+                                                 
+                    COMMIT;
+                    
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '****************AHORRO INGRESADO****************');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Número de empleado : ' || var_employee_number);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Nombre de empleado : ' || var_employee_full_name);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Tipo de persona : ' || var_person_type);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Antigüedad : ' || var_seniority_years);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'RFC : ' || var_rfc);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'CURP :' || var_curp);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Sexo : ' || var_sex);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'e-mail : ' || var_email_address);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Monto de ahorro :' || P_SAVING_AMOUNT);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Periodos pendientes :' || P_PENDING_PAYMENT);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Siguiente descuento :' || TO_CHAR(P_SAVING_AMOUNT * (1 + P_PENDING_PAYMENT)));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Fecha de Inscripción :' || TO_CHAR(var_member_start_date));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********************************************');
+                
+                ELSE
+                    P_ERRBUF := 'La cantidad de ahorro ingresada excede la posibilidad de ahorro del empleado.';
+                    P_RETCODE := 1;
+                END IF;
+            
+            ELSE
+                P_ERRBUF := 'El empleado ingresado ya es miembro de la caja de ahorro.';
+                P_RETCODE := 1;
+            END IF;
+        
+        ELSE
+            P_ERRBUF := 'La fecha de registro ha vencido para este proceso.';
+            P_RETCODE := 1;
+        END IF;
+    
+    END INSERT_EXTEMPORANEOUS_SAVING;
+    
+    
+    FUNCTION    GET_POSIBILITY_SAVING(P_PERSON_ID           NUMBER)
+      RETURN    NUMBER
+    IS
+         var_period_type                VARCHAR2(100);
+         var_assignment_id               NUMBER;
+         var_payroll_id                 NUMBER;
+         var_max_assignment_action_id   NUMBER;
+         var_max_per_sav                NUMBER;
+         var_posibility_saving          NUMBER;
+         var_isrret                     NUMBER;
+         var_subtbr                     NUMBER;
+         var_mondet                     NUMBER;
+         var_saving_bank_id             NUMBER := ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID;
+         var_max_sav_amt_sm             NUMBER;
+         var_max_sav_amt_wk             NUMBER;
+    BEGIN
+    
+        SELECT PAF.ASSIGNMENT_ID,
+               PAF.PAYROLL_ID
+          INTO var_assignment_id,
+               var_payroll_id
+          FROM PER_ASSIGNMENTS_F    PAF
+         WHERE 1 = 1
+           AND PAF.PERSON_ID = P_PERSON_ID
+           AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE;
+          
+    
+        var_period_type := ATET_SAVINGS_BANK_PKG.GET_PERIOD_TYPE(P_PERSON_ID);   
+        var_max_assignment_action_id := ATET_SAVINGS_BANK_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(var_assignment_id, var_payroll_id);
+        var_subtbr := ATET_SAVINGS_BANK_PKG.GET_SUBTBR(var_max_assignment_action_id);
+        var_isrret := ATET_SAVINGS_BANK_PKG.GET_ISRRET(var_max_assignment_action_id);
+        var_mondet := ATET_SAVINGS_BANK_PKG.GET_MONDET(var_max_assignment_action_id);
+        var_max_per_sav := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_PER_SAV');
+        var_posibility_saving := (var_subtbr - (var_isrret + var_mondet)) * (var_max_per_sav / 100);
+        var_max_sav_amt_sm := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_SM');
+        var_max_sav_amt_wk := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_WK');
+        
+        IF    var_period_type IN ('Week', 'Semana') THEN
+          IF var_posibility_saving > var_max_sav_amt_wk THEN
+            var_posibility_saving := TRUNC(var_max_sav_amt_wk);
+          ELSE
+            var_posibility_saving := TRUNC(var_posibility_saving);
+          END IF;
+        ELSIF var_period_type IN ('Semi-Month', 'Quincena') THEN
+          IF var_posibility_saving > var_max_sav_amt_sm THEN
+            var_posibility_saving := TRUNC(var_max_sav_amt_sm);
+          ELSE
+            var_posibility_saving := TRUNC(var_posibility_saving);
+          END IF;
+        END IF;
+    
+        RETURN var_posibility_saving;
+    END GET_POSIBILITY_SAVING;
+        
+                                 
 
 END ATET_SAVINGS_BANK_PKG;

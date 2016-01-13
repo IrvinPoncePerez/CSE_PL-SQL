@@ -1,10 +1,6 @@
 CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
 
-    /*****************      ARINCON     ****************/
-    
-    /*****************      SARIAS      ****************/
-    
-    /*****************      IPONCE      ****************/
+
     FUNCTION    GET_SAVING_BANK_ID
       RETURN    NUMBER;
     
@@ -97,6 +93,24 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                              P_ACCOUNT_NUMBER       VARCHAR2,
                                              P_ACCOUNT_DESCRIPTION  VARCHAR2)
       RETURN    NUMBER;
-    /*****************      LHERNANDEZ  ****************/
+      
+    FUNCTION    GET_LOAN_MEMBER_ACCOUNT_ID(P_MEMBER_ID          NUMBER,
+                                           P_LOAN_ID            NUMBER)
+      RETURN    NUMBER;
+      
+      
+    PROCEDURE   SET_LOAN_BALANCE(P_LOAN_ID            NUMBER,
+                                 P_LOAN_AMOUNT        NUMBER,
+                                 P_PERSON_ID          NUMBER);
+
+
+    PROCEDURE   INSERT_EXTEMPORANEOUS_SAVING(P_ERRBUF               OUT NOCOPY  VARCHAR2,
+                                             P_RETCODE              OUT NOCOPY  VARCHAR2,
+                                             P_PERSON_ID            NUMBER,
+                                             P_SAVING_AMOUNT        NUMBER,
+                                             P_PENDING_PAYMENT      NUMBER);
+                                             
+    FUNCTION    GET_POSIBILITY_SAVING(P_PERSON_ID           NUMBER)
+      RETURN    NUMBER;
 
 END ATET_SAVINGS_BANK_PKG;
