@@ -19,6 +19,47 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_SAVING_BANK_ID;
     
     
+    FUNCTION    GET_SAVING_BANK_YEAR
+      RETURN    NUMBER
+    IS
+        var_saving_bank_year    NUMBER;
+    BEGIN
+    
+        SELECT ASB.YEAR
+          INTO var_saving_bank_year
+          FROM ATET_SAVINGS_BANK    ASB
+         WHERE 1 = 1
+           AND ASB.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+           
+        RETURN var_saving_bank_year;
+    
+    END GET_SAVING_BANK_YEAR;
+    
+    
+    FUNCTION    GET_AVAILABLE_PERIODS(P_MEMBER_ID   NUMBER)
+      RETURN    NUMBER
+    IS
+        var_count_periods   NUMBER;
+    BEGIN
+        SELECT COUNT(PTP.PERIOD_NAME)
+          INTO var_count_periods
+          FROM ATET_SB_MEMBERS      ASM,
+               ATET_SAVINGS_BANK    ASB,
+               PER_ASSIGNMENTS_F    PAF,
+               PER_TIME_PERIODS     PTP
+         WHERE 1 = 1
+           AND ASM.PERSON_ID = PAF.PERSON_ID
+           AND ASM.SAVING_BANK_ID = ASB.SAVING_BANK_ID
+           AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+           AND ASM.MEMBER_ID = P_MEMBER_ID
+           AND PTP.PAYROLL_ID = PAF.PAYROLL_ID
+           AND EXTRACT(YEAR FROM PTP.END_DATE) = ASB.YEAR
+           AND PTP.END_DATE BETWEEN SYSDATE AND ASB.TERMINATION_DATE;
+           
+        RETURN var_count_periods; 
+    END GET_AVAILABLE_PERIODS;
+    
+    
     FUNCTION    GET_PERIOD_TYPE(P_PERSON_ID             NUMBER)
       RETURN    VARCHAR2
     IS
@@ -557,7 +598,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                    'SAVINGS_ELEMENT_NAME',
                                    'SAV_CODE_COMB');                             
                         
-                    var_result := '';
+                    var_result := 'N';
+                    
                     var_result := INSERT_SAVING_TRANSACTION(detail_saving.PAYROLL_RESULT_ID,
                                                             detail_saving.PERSON_ID,
                                                             detail_saving.EARNED_DATE,
@@ -569,7 +611,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                             detail_saving.ENTRY_VALUE,
                                                             0,
                                                             detail_saving.ENTRY_VALUE);
-                    SAVEPOINT   INSERT_SAVING;
                                                                 
                     IF var_result = 'N' THEN
                         EXIT;
@@ -607,10 +648,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '********************************************************');
                     
                 ELSIF var_result = 'N' THEN
-                    ROLLBACK TO INSERT_SAVING;
                     
+                    ROLLBACK;
+                
                     UPDATE ATET_SB_PAYROLL_RESULTS  ASPR
-                       SET IMPORT_REQUEST_ID = NULL
+                       SET IMPORT_REQUEST_ID = NULL,
+                           ATTRIBUTE6 = NULL
                      WHERE ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
                        AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
                        
@@ -911,8 +954,13 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                       P_AMOUNT_TO_SAVE    NUMBER)
     IS
         var_amount_to_save      NUMBER;
+        var_next_discount       NUMBER;
         var_employee_number     NUMBER;
         var_employee_name       VARCHAR2(500);
+        
+        var_attribute2          VARCHAR2(15);
+        var_attribute3          VARCHAR2(15);
+        var_is_saver            VARCHAR2(5);
     BEGIN
     
         IF SYSDATE > TO_DATE(GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'REG_CHANGED_DATE'), 'RRRR/MM/DD') THEN
@@ -920,35 +968,92 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             P_RETCODE := 1;
         ELSE
         
-            UPDATE ATET_SB_MEMBERS
-               SET AMOUNT_TO_SAVE = P_AMOUNT_TO_SAVE,
-                   ATTRIBUTE7 = 'CHANGED',
-                   LAST_UPDATE_DATE = SYSDATE,
-                   LAST_UPDATED_BY = FND_GLOBAL.USER_ID
-             WHERE EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
-               AND SAVING_BANK_ID = GET_SAVING_BANK_ID;
-
-
-            COMMIT;
+            -- ATTRIBUTE2       Periodos pendientes
+            -- ATTRIBUTE3       Monto real de ahorro.
             
-            SELECT ASM.EMPLOYEE_NUMBER,
-                   ASM.EMPLOYEE_FULL_NAME,
-                   ASM.AMOUNT_TO_SAVE
-              INTO var_employee_number,
-                   var_employee_name,
-                   var_amount_to_save
-              FROM ATET_SB_MEMBERS ASM
-             WHERE ASM.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+            SELECT NVL(TO_CHAR(ASM.ATTRIBUTE2), 'NOTHING'),
+                   NVL(TO_CHAR(ASM.ATTRIBUTE3), 'NOTHING'),
+                   ASM.IS_SAVER
+              INTO var_attribute2,
+                   var_attribute3,
+                   var_is_saver
+              FROM ATET_SB_MEMBERS ASM 
+             WHERE ASM.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER 
                AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
                
-               
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     CAMBIO DE AHORRO     ***********');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Número de empleado :          ' || var_employee_number);
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Nombre de empleado :          ' || var_employee_name);
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Monto de ahorro actualizado : ' || var_amount_to_save);
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '************************************************');
+            IF var_is_saver = 'Y' THEN
+                
+                IF var_attribute2 = 'NOTHING' AND var_attribute3 = 'NOTHING' THEN
+                
+                    UPDATE ATET_SB_MEMBERS
+                       SET AMOUNT_TO_SAVE = P_AMOUNT_TO_SAVE,
+                           ATTRIBUTE7 = 'CHANGED',
+                           LAST_UPDATE_DATE = SYSDATE,
+                           LAST_UPDATED_BY = FND_GLOBAL.USER_ID
+                     WHERE EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+                       AND SAVING_BANK_ID = GET_SAVING_BANK_ID;
+
+
+                    COMMIT;
+                        
+                    SELECT ASM.EMPLOYEE_NUMBER,
+                           ASM.EMPLOYEE_FULL_NAME,
+                           ASM.AMOUNT_TO_SAVE
+                      INTO var_employee_number,
+                           var_employee_name,
+                           var_amount_to_save
+                      FROM ATET_SB_MEMBERS ASM
+                     WHERE ASM.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+                       AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+                           
+                           
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     CAMBIO DE AHORRO     ***********');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Número de empleado :          ' || var_employee_number);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Nombre de empleado :          ' || var_employee_name);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Monto de ahorro actualizado : ' || var_amount_to_save);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '************************************************');
+                        
+                ELSE
+                    
+                    UPDATE ATET_SB_MEMBERS
+                       SET ATTRIBUTE3 = P_AMOUNT_TO_SAVE,
+                           AMOUNT_TO_SAVE = P_AMOUNT_TO_SAVE * (1 + ATTRIBUTE2),
+                           ATTRIBUTE7 = 'CHANGED',
+                           LAST_UPDATE_DATE = SYSDATE,
+                           LAST_UPDATED_BY = FND_GLOBAL.USER_ID
+                     WHERE EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+                       AND SAVING_BANK_ID = GET_SAVING_BANK_ID;
+
+
+                    COMMIT;
+                        
+                    SELECT ASM.EMPLOYEE_NUMBER,
+                           ASM.EMPLOYEE_FULL_NAME,
+                           ASM.ATTRIBUTE3,
+                           ASM.AMOUNT_TO_SAVE
+                      INTO var_employee_number,
+                           var_employee_name,
+                           var_amount_to_save,
+                           var_next_discount
+                      FROM ATET_SB_MEMBERS ASM
+                     WHERE ASM.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
+                       AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+                           
+                           
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     CAMBIO DE AHORRO     ***********');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Número de empleado :          ' || var_employee_number);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Nombre de empleado :          ' || var_employee_name);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Monto de ahorro actualizado : ' || var_amount_to_save);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Próximo descuento : '           || var_next_discount);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '************************************************');
+                    
+                END IF;
+                
+            END IF;
                
         END IF;
     
@@ -1049,6 +1154,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         var_member_id               NUMBER;
         var_member_account_id       NUMBER;
+        var_attribute2              VARCHAR2(50);
+        var_attribute3              VARCHAR2(50);
     BEGIN
     
         var_member_id := GET_MEMBER_ID(P_PERSON_ID);
@@ -1110,6 +1217,29 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                LAST_UPDATED_BY = var_user_id             
          WHERE MEMBER_ID = var_member_id
            AND MEMBER_ACCOUNT_ID = var_member_account_id;
+           
+        
+        
+        SELECT NVL(TO_CHAR(ASM.ATTRIBUTE2), 'NOTHING'),
+               NVL(TO_CHAR(ASM.ATTRIBUTE3), 'NOTHING')
+          INTO var_attribute2,
+               var_attribute3
+          FROM ATET_SB_MEMBERS ASM 
+         WHERE ASM.MEMBER_ID = var_member_id 
+           AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+        
+        
+        IF var_attribute2 <> 'NOTHING' AND var_attribute3 <> 'NOTHING' THEN
+            
+           UPDATE ATET_SB_MEMBERS
+              SET AMOUNT_TO_SAVE = TO_NUMBER(var_attribute3),
+                  ATTRIBUTE2 = NULL,
+                  ATTRIBUTE3 = NULL,
+                  LAST_UPDATE_DATE = SYSDATE,
+                  LAST_UPDATED_BY = var_user_id
+            WHERE MEMBER_ID = var_member_id;
+        
+        END IF;
              
                                                   
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MOVIMIENTO PROCESADO: '    || P_PAYROLL_RESULT_ID  || ','
@@ -1135,7 +1265,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                                         || P_ENTRY_VALUE        || ','
                                                                         || P_DEBIT_AMOUNT       || ','
                                                                         || P_CREDIT_AMOUNT      || '.' || SQLERRM);
-        
+        ROLLBACK;
         RETURN 'N';
     END INSERT_SAVING_TRANSACTION;
     
