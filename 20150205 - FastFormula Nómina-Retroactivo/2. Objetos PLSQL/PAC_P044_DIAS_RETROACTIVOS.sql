@@ -46,7 +46,7 @@ BEGIN
         IF P_PAYROLL LIKE '%SEM%' THEN    
         
         
-            IF detail.EFFECTIVE_DATE <= TO_DATE('05/01/2015', 'DD/MM/YYYY') THEN
+            IF detail.EFFECTIVE_DATE <= TO_DATE('04/01/2016', 'DD/MM/YYYY') THEN
             
             
                 IF P_ELEMENT_NAME LIKE '%P001%' THEN
@@ -57,7 +57,7 @@ BEGIN
                 END IF;
                 
                 
-            ELSIF detail.EFFECTIVE_DATE <= TO_DATE('12/01/2015', 'DD/MM/YYYY') THEN
+            ELSIF detail.EFFECTIVE_DATE <= TO_DATE('11/01/2016', 'DD/MM/YYYY') THEN
                        
                 IF P_ELEMENT_NAME LIKE '%P001%' THEN
                     days := days + TRUNC((detail.days * 7/6), 2);
