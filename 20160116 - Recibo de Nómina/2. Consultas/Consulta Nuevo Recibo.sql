@@ -1,5 +1,6 @@
 --ALTER SESSION SET NLS_LANGUAGE = 'LATIN AMERICAN SPANISH';
-SELECT D.COMPANY_NAME,
+SELECT DISTINCT
+       D.COMPANY_NAME,
        D.COMPANY_RFC,
        D.PERIOD_TYPE,
        D.PERIOD_NUM,
@@ -35,7 +36,8 @@ SELECT D.COMPANY_NAME,
        D.ASSIGNMENT_ID,
        D.ASSIGNMENT_ACTION_ID,
        D.PAYMENT_TYPE,
-       D.PAYMENT_METHOD_GROCERIES
+       D.PAYMENT_METHOD_GROCERIES,
+       D.ORGANIZATION_ID
   FROM ( SELECT DISTINCT
                 UPPER(PAC_HR_PAY_PKG.GET_LOOKUP_MEANING('NOMINAS POR EMPLEADOR LEGAL', 
                                                         :P_COMPANY_ID))                                     AS  COMPANY_NAME,
@@ -59,7 +61,7 @@ SELECT D.COMPANY_NAME,
                 PAPF.NATIONAL_IDENTIFIER                                                                    AS  EMPLOYEE_CURP,
                 MAX(NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,
                                                               'Integrated Daily Wage',
-                                                              'Pay Value'), '0'))                           AS  EMPLOYEE_IDW,
+                                                              'Pay Value'), 0))                             AS  EMPLOYEE_IDW,
                 UPPER(PAC_HR_PAY_PKG.GET_LOOKUP_MEANING('MX_SOCIAL_SECURITY_SALARY_TYPE', 
                                                         HSCK.SEGMENT6))                                     AS  SALARY_TYPE,
                 PAAF.ASS_ATTRIBUTE30                                                                        AS  SHIFT,
@@ -109,7 +111,8 @@ SELECT D.COMPANY_NAME,
                     AND FLV.LOOKUP_TYPE = 'XXCALV_METODO_DESPENSA'
                     AND FLV.MEANING = OPM.ORG_PAYMENT_METHOD_NAME
                     AND PPM.ASSIGNMENT_ID = PAAF.ASSIGNMENT_ID 
-                    AND ROWNUM = 1 )                                                                        AS  PAYMENT_METHOD_GROCERIES
+                    AND ROWNUM = 1 )                                                                        AS  PAYMENT_METHOD_GROCERIES,
+                   HOUV.ORGANIZATION_ID
               FROM FND_LOOKUP_VALUES                FLV1,
                    HR_ALL_ORGANIZATION_UNITS        AOU,
                    HR_ORGANIZATION_INFORMATION      OI,
@@ -143,6 +146,8 @@ SELECT D.COMPANY_NAME,
                AND (EXTRACT(YEAR FROM PTP.END_DATE) = :P_YEAR 
                 AND EXTRACT(MONTH FROM PTP.END_DATE) = :P_MONTH)
                AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
+               AND PAPF.PERSON_ID = NVL(:P_PERSON_ID, PAPF.PERSON_ID)
+               AND HOUV.ORGANIZATION_ID = NVL(:P_ORGANIZATION_ID, HOUV.ORGANIZATION_ID)
                AND PPA.EFFECTIVE_DATE BETWEEN PTP.START_DATE AND PTP.END_DATE
                AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID   
                AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
@@ -166,8 +171,8 @@ SELECT D.COMPANY_NAME,
                AND PPTV.LANGUAGE = 'ESA'
                AND HSCK.SOFT_CODING_KEYFLEX_ID = PAAF.SOFT_CODING_KEYFLEX_ID
                AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
-               AND SYSDATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
-               AND SYSDATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE 
+               AND PTP.END_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
+               AND PTP.END_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE 
              GROUP BY OI.ORG_INFORMATION2,
                       PTP.PERIOD_TYPE,
                       PTP.PERIOD_NUM, 
@@ -192,8 +197,9 @@ SELECT D.COMPANY_NAME,
                       PAPF.PERSON_ID,
                       PAA.ASSIGNMENT_ACTION_ID,
                       PTP.START_DATE,
-                      PTP.END_DATE
+                      PTP.END_DATE,
+                      HOUV.ORGANIZATION_ID
              ORDER BY HOUV.NAME,
                       TO_NUMBER(PAPF.EMPLOYEE_NUMBER)) D
  WHERE 1 = 1
- 
+ ORDER BY ROWNUM
