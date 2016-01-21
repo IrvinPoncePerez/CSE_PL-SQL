@@ -6,6 +6,7 @@ CREATE TABLE ATET_SB_LOANS_TRANSACTIONS
     PAYROLL_RESULT_ID               NUMBER      NOT NULL,
     LOAN_ID                         NUMBER      NOT NULL,
     PERSON_ID                       NUMBER,
+    RUN_RESULT_ID                   NUMBER,
     EARNED_DATE                     DATE,
     TIME_PERIOD_ID                  NUMBER,
     PERIOD_NAME                     VARCHAR2(100),
