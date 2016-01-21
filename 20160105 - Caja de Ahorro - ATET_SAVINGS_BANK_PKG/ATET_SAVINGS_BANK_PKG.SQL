@@ -94,6 +94,21 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                          P_DEBIT_AMOUNT        NUMBER,
                                          P_CREDIT_AMOUNT       NUMBER)
       RETURN    VARCHAR2;
+      
+    FUNCTION   INSERT_LOAN_TRANSACTION(P_EXPORT_REQUEST_ID   NUMBER,
+                                       P_PAYROLL_RESULT_ID   NUMBER,
+                                       P_PERSON_ID           NUMBER,
+                                       P_RUN_RESULT_ID       NUMBER,
+                                       P_EARNED_DATE         DATE,
+                                       P_TIME_PERIOD_ID      NUMBER,
+                                       P_PERIOD_NAME         VARCHAR2,
+                                       P_ELEMENT_NAME        VARCHAR2,
+                                       P_ENTRY_NAME          VARCHAR2,
+                                       P_ENTRY_UNITS         VARCHAR2,
+                                       P_ENTRY_VALUE         NUMBER,
+                                       P_DEBIT_AMOUNT        NUMBER,
+                                       P_CREDIT_AMOUNT       NUMBER)
+      RETURN    VARCHAR2;
      
     FUNCTION    GET_SAVING_MEMBER_ACCOUNT_ID(P_MEMBER_ID            NUMBER,
                                              P_ACCOUNT_NUMBER       VARCHAR2,
@@ -118,5 +133,16 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                              
     FUNCTION    GET_POSIBILITY_SAVING(P_PERSON_ID           NUMBER)
       RETURN    NUMBER;
+      
+    FUNCTION    GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID                 NUMBER,
+                                               P_EXPORT_REQUEST_ID         NUMBER,
+                                               P_RUN_RESULT_ID             NUMBER,
+                                               P_ENTRY_NAME                VARCHAR2)
+      RETURN    NUMBER;
+      
+    FUNCTION    GET_LOAN_ID(P_MEMBER_ID     NUMBER,
+                            P_LOAN_NUMBER   NUMBER)
+      RETURN    NUMBER;
+      
 
 END ATET_SAVINGS_BANK_PKG;
