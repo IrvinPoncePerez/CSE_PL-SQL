@@ -1179,16 +1179,26 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         RETURN var_result;
     END;
       
-    /******************************************************/
-    /******************************************************/
-    /*                  BODY PENDIENTE                    */
-    /******************************************************/
-    /******************************************************/  
-    FUNCTION    GET_CODE_COMBINATION_ID(ELEMENT_NAME    VARCHAR2)
+   
+    FUNCTION    GET_CODE_COMBINATION_ID(P_CODE_COMBINATION   VARCHAR2)
       RETURN    NUMBER
     IS
+        var_result  NUMBER;
     BEGIN
-        RETURN 1;
+        SELECT GL.CODE_COMBINATION_ID
+          INTO var_result
+          FROM GL_CODE_COMBINATIONS_V  GL
+         WHERE 1 = 1
+           AND GL.TEMPLATE_ID IS NULL
+           AND GL.SEGMENT1 = '07'
+           AND (GL.SEGMENT1 ||
+                GL.SEGMENT2 ||
+                GL.SEGMENT3 ||
+                GL.SEGMENT4 ||
+                GL.SEGMENT5 ||
+                GL.SEGMENT6) = P_CODE_COMBINATION;
+                
+        RETURN var_result;
     END GET_CODE_COMBINATION_ID;
     
     
@@ -1576,6 +1586,38 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                LAST_UPDATED_BY = var_user_id             
          WHERE MEMBER_ID = var_member_id
            AND MEMBER_ACCOUNT_ID = var_member_account_id;
+           
+           
+        INSERT INTO ATET_SB_LOANS_TRANSACTIONS(MEMBER_ACCOUNT_ID,
+                                               MEMBER_ID,
+                                               PAYROLL_RESULT_ID,
+                                               LOAN_ID,
+                                               PERSON_ID,
+                                               EARNED_DATE,
+                                               PERIOD_NAME,
+                                               ELEMENT_NAME,
+                                               TRANSACTION_CODE,
+                                               DEBIT_AMOUNT,
+                                               CREDIT_AMOUNT,
+                                               CREATION_DATE,
+                                               CREATED_BY,
+                                               LAST_UPDATE_DATE,
+                                               LAST_UPDATED_BY)
+                                       VALUES (var_member_account_id,
+                                               var_member_id,
+                                               -1,
+                                               P_LOAN_ID,
+                                               P_PERSON_ID,
+                                               SYSDATE,
+                                               'APERTURA',
+                                               'APERTURA DE PRESTAMO',
+                                               'OPENING',
+                                               P_LOAN_AMOUNT,
+                                               0,
+                                               SYSDATE,
+                                               var_user_id,
+                                               SYSDATE,
+                                               var_user_id);
         
         COMMIT;
 
@@ -1849,7 +1891,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_isrret := ATET_SAVINGS_BANK_PKG.GET_ISRRET(var_max_assignment_action_id);
         var_mondet := ATET_SAVINGS_BANK_PKG.GET_MONDET(var_max_assignment_action_id);
         var_max_per_sav := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_PER_SAV');
-        var_posibility_saving := (var_subtbr - (var_isrret + var_mondet)) * (var_max_per_sav / 100);
+--        var_posibility_saving := (var_subtbr - (var_isrret + var_mondet)) * (var_max_per_sav / 100);
+        var_posibility_saving := (var_subtbr) * (var_max_per_sav / 100);
         var_max_sav_amt_sm := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_SM');
         var_max_sav_amt_wk := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_WK');
         
