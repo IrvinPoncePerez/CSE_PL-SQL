@@ -551,8 +551,15 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_have_account            NUMBER;
         var_result                  VARCHAR2(50) := 'N';
         
+        var_period_name             VARCHAR2(200);
+        
         var_sum_saving_amount       NUMBER;
         var_sum_saving_pay_value    NUMBER;
+        var_sum_saving_import       NUMBER;
+        
+        var_sum_loan_amount         NUMBER;
+        var_sum_loan_pay_value      NUMBER;
+        var_sum_loan_import         NUMBER;
     BEGIN
     
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
@@ -601,7 +608,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                        AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;           
                 
                 CURSOR DETAIL_LIST_LOANS IS
-                    SELECT ASPR.PAYROLL_RESULT_ID,
+                    SELECT ASPR.EXPORT_REQUEST_ID,
+                           ASPR.PAYROLL_RESULT_ID,
                            ASPR.PERSON_ID,
                            ASPR.ASSIGNMENT_ID,
                            ASPR.ASSIGNMENT_ACTION_ID,
@@ -636,17 +644,21 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                             
                         var_result := 'N';
                         
-                        var_result := INSERT_SAVING_TRANSACTION(detail_saving.PAYROLL_RESULT_ID,
-                                                                detail_saving.PERSON_ID,
-                                                                detail_saving.EARNED_DATE,
-                                                                detail_saving.TIME_PERIOD_ID,
-                                                                detail_saving.PERIOD_NAME,
-                                                                detail_saving.ELEMENT_NAME,
-                                                                detail_saving.ENTRY_NAME,
-                                                                detail_saving.ENTRY_UNITS,
-                                                                detail_saving.ENTRY_VALUE,
-                                                                0,
-                                                                detail_saving.ENTRY_VALUE);
+                        var_result := INSERT_SAVING_TRANSACTION(P_PAYROLL_RESULT_ID => detail_saving.PAYROLL_RESULT_ID,
+                                                                P_PERSON_ID => detail_saving.PERSON_ID,
+                                                                P_EARNED_DATE => detail_saving.EARNED_DATE,
+                                                                P_TIME_PERIOD_ID => detail_saving.TIME_PERIOD_ID,
+                                                                P_PERIOD_NAME => detail_saving.PERIOD_NAME,
+                                                                P_ELEMENT_NAME => detail_saving.ELEMENT_NAME,
+                                                                P_ENTRY_NAME => detail_saving.ENTRY_NAME,
+                                                                P_ENTRY_UNITS => detail_saving.ENTRY_UNITS,
+                                                                P_ENTRY_VALUE => detail_saving.ENTRY_VALUE,
+                                                                P_DEBIT_AMOUNT => 0,
+                                                                P_CREDIT_AMOUNT => detail_saving.ENTRY_VALUE);
+                        
+                        UPDATE ATET_SB_PAYROLL_RESULTS ASPR
+                           SET ASPR.ATTRIBUTE7 = 'PROCESSED'
+                         WHERE ASPR.PAYROLL_RESULT_ID = detail_saving.PAYROLL_RESULT_ID;
                                                                     
                         IF var_result = 'N' THEN
                             EXIT;
@@ -655,6 +667,21 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     END LOOP;
                     
                     IF    var_result = 'Y' THEN
+                    
+                        SELECT DISTINCT ASPR.PERIOD_NAME
+                          INTO var_period_name
+                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                         WHERE 1 = 1
+                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
+                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                           
+                        SELECT SUM(ASPEE.ENTRY_VALUE1)
+                          INTO var_sum_saving_import
+                          FROM ATET_SB_PAY_ELEMENT_ENTRIES  ASPEE
+                         WHERE 1 = 1
+                           AND ASPEE.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
+                           AND ASPEE.PERIOD_NAME = var_period_name;
                         
                         SELECT SUM(ASPR.ENTRY_VALUE)
                           INTO var_sum_saving_amount
@@ -677,8 +704,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '********************************************************');
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*');
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   '||GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME'));
-                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   MOVIMIENTOS PROGRAMADOS   : ' || TO_CHAR(var_sum_saving_amount));
-                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   MOVIMIENTOS REALES        : ' || TO_CHAR(var_sum_saving_pay_value));
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   DESCUENTOS EXPORTADOS    : ' || TO_CHAR(var_sum_saving_import));
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   DESCUENTOS PROGRAMADOS   : ' || TO_CHAR(var_sum_saving_amount));
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   DESCUENTOS REALES        : ' || TO_CHAR(var_sum_saving_pay_value));
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*');
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '********************************************************');
                         
@@ -707,17 +735,101 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                          
                         var_result := 'N';
                         
-                        var_result := NULL;
-                                                                    
+                        var_result := INSERT_LOAN_TRANSACTION(P_EXPORT_REQUEST_ID => detail_loan.EXPORT_REQUEST_ID,
+                                                              P_PAYROLL_RESULT_ID => detail_loan.PAYROLL_RESULT_ID,
+                                                              P_PERSON_ID => detail_loan.PERSON_ID,
+                                                              P_RUN_RESULT_ID => detail_loan.RUN_RESULT_ID,
+                                                              P_EARNED_DATE => detail_loan.EARNED_DATE,
+                                                              P_TIME_PERIOD_ID => detail_loan.TIME_PERIOD_ID,
+                                                              P_PERIOD_NAME => detail_loan.PERIOD_NAME,
+                                                              P_ELEMENT_NAME => detail_loan.ELEMENT_NAME,
+                                                              P_ENTRY_NAME => detail_loan.ENTRY_NAME,
+                                                              P_ENTRY_UNITS => detail_loan.ENTRY_UNITS,
+                                                              P_ENTRY_VALUE => detail_loan.ENTRY_VALUE,
+                                                              P_DEBIT_AMOUNT => 0,
+                                                              P_CREDIT_AMOUNT => detail_loan.ENTRY_VALUE);
+                                                              
+                                                              
+                        UPDATE ATET_SB_PAYROLL_RESULTS ASPR
+                           SET ASPR.ATTRIBUTE7 = 'PROCESSED'
+                         WHERE ASPR.PAYROLL_RESULT_ID = detail_loan.PAYROLL_RESULT_ID;
+                                                                                                                                  
                         IF var_result = 'N' THEN
                             EXIT;
                         END IF;                          
                                 
                     END LOOP;
+                    
+                    IF    var_result = 'Y' THEN
+                    
+                        SELECT DISTINCT ASPR.PERIOD_NAME
+                          INTO var_period_name
+                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                         WHERE 1 = 1
+                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                           
+                        SELECT SUM(ASPEE.ENTRY_VALUE1)
+                          INTO var_sum_loan_import
+                          FROM ATET_SB_PAY_ELEMENT_ENTRIES  ASPEE
+                         WHERE 1 = 1
+                           AND ASPEE.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+                           AND ASPEE.PERIOD_NAME = var_period_name;
+                        
+                        SELECT SUM(ASPR.ENTRY_VALUE)
+                          INTO var_sum_loan_amount
+                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                         WHERE 1 = 1
+                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+                           AND ASPR.ENTRY_NAME = 'Amount'
+                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                           
+                        SELECT SUM(ASPR.ENTRY_VALUE)
+                          INTO var_sum_loan_pay_value
+                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                         WHERE 1 = 1
+                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+                           AND ASPR.ENTRY_NAME = 'Pay Value'
+                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                        
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '********************************************************');
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*');
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   '||GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME'));
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   DESCUENTOS EXPORTADOS    : ' || TO_CHAR(var_sum_loan_import));
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   DESCUENTOS PROGRAMADOS   : ' || TO_CHAR(var_sum_loan_amount));
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   DESCUENTOS REALES        : ' || TO_CHAR(var_sum_loan_pay_value));
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*');
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '********************************************************');
+                        
+                    ELSIF var_result = 'N' THEN
+                        
+                        ROLLBACK;
+                    
+                        UPDATE ATET_SB_PAYROLL_RESULTS  ASPR
+                           SET IMPORT_REQUEST_ID = NULL,
+                               ATTRIBUTE6 = NULL
+                         WHERE ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                           
+                        COMMIT; 
+                        
+                        P_ERRBUF := 'EL PROCESO DE IMPORTACIÓN ENCONTRO UN INCONVENIENTE AL MOMENTO DE PROCESAR LOS MOVIMIENTOS DE CAJA DE AHORRO.';
+                        P_RETCODE := 1;                      
+                           
+                    END IF;
                 
                 END IF;
             
             END;
+            
+            IF var_result = 'Y' THEN
+                COMMIT;
+            ELSIF var_result = 'N' THEN
+                ROLLBACK;
+            END IF;
             
         ELSE
         
@@ -1309,29 +1421,29 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
              
                                                   
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MOVIMIENTO PROCESADO: '    || P_PAYROLL_RESULT_ID  || ','
-                                                                    || P_PERSON_ID          || ','
-                                                                    || P_EARNED_DATE        || ','
-                                                                    || P_PERIOD_NAME        || ','
-                                                                    || P_ELEMENT_NAME       || ','
-                                                                    || P_ENTRY_NAME         || ','
-                                                                    || P_ENTRY_UNITS        || ','
-                                                                    || P_ENTRY_VALUE        || ','
-                                                                    || P_DEBIT_AMOUNT       || ','
-                                                                    || P_CREDIT_AMOUNT      || '.');                           
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MOVIMIENTO PROCESADO: *AHORRO*'    || P_PAYROLL_RESULT_ID  || ','
+                                                                               || P_PERSON_ID          || ','
+                                                                               || P_EARNED_DATE        || ','
+                                                                               || P_PERIOD_NAME        || ','
+                                                                               || P_ELEMENT_NAME       || ','
+                                                                               || P_ENTRY_NAME         || ','
+                                                                               || P_ENTRY_UNITS        || ','
+                                                                               || P_ENTRY_VALUE        || ','
+                                                                               || P_DEBIT_AMOUNT       || ','
+                                                                               || P_CREDIT_AMOUNT      || '.');                           
     
         RETURN 'Y';
     EXCEPTION WHEN OTHERS THEN
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'NO SE PROCESO EL MOVIMIENTO: ' || P_PAYROLL_RESULT_ID  || ','
-                                                                        || P_PERSON_ID          || ','
-                                                                        || P_EARNED_DATE        || ','
-                                                                        || P_PERIOD_NAME        || ','
-                                                                        || P_ELEMENT_NAME       || ','
-                                                                        || P_ENTRY_NAME         || ','
-                                                                        || P_ENTRY_UNITS        || ','
-                                                                        || P_ENTRY_VALUE        || ','
-                                                                        || P_DEBIT_AMOUNT       || ','
-                                                                        || P_CREDIT_AMOUNT      || '.' || SQLERRM);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'NO SE PROCESO EL MOVIMIENTO: *AHORRO*' || P_PAYROLL_RESULT_ID  || ','
+                                                                                || P_PERSON_ID          || ','
+                                                                                || P_EARNED_DATE        || ','
+                                                                                || P_PERIOD_NAME        || ','
+                                                                                || P_ELEMENT_NAME       || ','
+                                                                                || P_ENTRY_NAME         || ','
+                                                                                || P_ENTRY_UNITS        || ','
+                                                                                || P_ENTRY_VALUE        || ','
+                                                                                || P_DEBIT_AMOUNT       || ','
+                                                                                || P_CREDIT_AMOUNT      || '.' || SQLERRM);
         ROLLBACK;
         RETURN 'N';
     END INSERT_SAVING_TRANSACTION;
@@ -1364,23 +1476,46 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         var_loan_id                 NUMBER;
         var_loan_number             NUMBER;
+        var_entry_value_export      NUMBER;
+        
+        var_payment_schedule_id     NUMBER;
+        var_payment_number          NUMBER;
+        var_payment_amount          NUMBER;
+        var_payment_capital         NUMBER;
+        var_payment_interest        NUMBER;
+        var_partial_capital         NUMBER;
     BEGIN
     
+    
         var_member_id := GET_MEMBER_ID(P_PERSON_ID);
-        var_loan_id := GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID,
-                                                      P_EXPORT_REQUEST_ID,
-                                                      P_RUN_RESULT_ID,
-                                                      'Futuro 4');
-        var_loan_number :=GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID,
-                                                         P_EXPORT_REQUEST_ID,
-                                                         P_RUN_RESULT_ID,
-                                                         'Folio');
+        var_loan_id := GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Futuro 4');
+        var_loan_number := GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Folio');
         IF var_loan_id = 0 THEN
             var_loan_id := GET_LOAN_ID(var_member_id, var_loan_number);
         END IF;
         
-        var_member_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(GET_MEMBER_ID(P_PERSON_ID),
-                                                            var_loan_id);
+        var_member_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(GET_MEMBER_ID(P_PERSON_ID), var_loan_id);
+                                                            
+                                                            
+        SELECT ASPS.PAYMENT_SCHEDULE_ID,
+               ASPS.PAYMENT_NUMBER,
+               ASPS.PAYMENT_AMOUNT,
+               ASPS.PAYMENT_CAPITAL,
+               ASPS.PAYMENT_INTEREST
+          INTO var_payment_schedule_id,
+               var_payment_number,
+               var_payment_amount,
+               var_payment_capital,
+               var_payment_interest
+          FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+         WHERE 1 = 1
+           AND ASPS.LOAN_ID = var_loan_id
+           AND ASPS.TIME_PERIOD_ID = P_TIME_PERIOD_ID
+           AND ASPS.PERIOD_NAME = P_PERIOD_NAME;
+           
+        IF var_payment_amount <> P_ENTRY_VALUE THEN
+            var_partial_capital := var_payment_amount - P_ENTRY_VALUE;
+        END IF;
     
         INSERT INTO ATET_SB_LOANS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
                                                 MEMBER_ID,
@@ -1398,6 +1533,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                 TRANSACTION_CODE,
                                                 DEBIT_AMOUNT,
                                                 CREDIT_AMOUNT,
+                                                PAYMENT_AMOUNT,
+                                                PAYMENT_CAPITAL,
+                                                PAYMENT_INTEREST,
+                                                PARTIAL_CAPITAL,
                                                 REQUEST_ID,
                                                 ACCOUNTED_FLAG,
                                                 CREATION_DATE,
@@ -1420,6 +1559,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                  'PROCESSED',
                                                  P_DEBIT_AMOUNT,
                                                  P_CREDIT_AMOUNT,
+                                                 var_payment_amount,
+                                                 var_payment_capital,
+                                                 var_payment_interest,
+                                                 var_partial_capital,
                                                  var_import_request_id,
                                                  'UNACCOUNTED',
                                                   SYSDATE,
@@ -1441,39 +1584,76 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
          WHERE MEMBER_ID = var_member_id
            AND MEMBER_ACCOUNT_ID = var_member_account_id;
            
-           
         UPDATE ATET_SB_LOANS ASL
            SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - P_CREDIT_AMOUNT,
                ASL.LAST_PAYMENT_DATE = SYSDATE
          WHERE 1 = 1
            AND ASL.LOAN_ID = var_loan_id;
            
+           
+        --Actualización de payment_schedule.           
+        IF var_payment_amount = P_ENTRY_VALUE THEN
+            UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
+               SET ASPS.STATUS_FLAG = 'PAYED',
+                   ASPS.LAST_UPDATE_DATE = SYSDATE,
+                   ASPS.LAST_UPDATED_BY = var_user_id
+             WHERE ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
+               AND ASPS.LOAN_ID = var_loan_id;
+        ELSIF P_ENTRY_VALUE > 0 THEN
+            UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
+               SET ASPS.STATUS_FLAG = 'PARTIAL',
+                   ASPS.ATTRIBUTE1 = ASPS.PAYMENT_AMOUNT - P_ENTRY_VALUE,
+                   ASPS.LAST_UPDATE_DATE = SYSDATE,
+                   ASPS.LAST_UPDATED_BY = var_user_id
+             WHERE ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
+               AND ASPS.LOAN_ID = var_loan_id;
+        ELSIF P_ENTRY_VALUE = 0 THEN
+            UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
+               SET ASPS.STATUS_FLAG = 'PARTIAL',
+                   ASPS.ATTRIBUTE1 = ASPS.PAYMENT_CAPITAL,
+                   ASPS.ATTRIBUTE2 = ASPS.PAYMENT_INTEREST,
+                   ASPS.LAST_UPDATE_DATE = SYSDATE,
+                   ASPS.LAST_UPDATED_BY = var_user_id
+             WHERE ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
+               AND ASPS.LOAN_ID = var_loan_id;
+        END IF;
+        
+        UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
+           SET ASPS.STATUS_FLAG = 'SKIP'
+         WHERE 1 = 1
+           AND ASPS.LOAN_ID = var_loan_id
+           AND ASPS.PAYMENT_NUMBER BETWEEN 1 AND var_payment_number
+           AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED');
+           
+           
+        RELEASE_LOAN(var_loan_id);
+           
                                                   
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MOVIMIENTO PROCESADO: ' || P_PAYROLL_RESULT_ID  || ','
-                                                                    || P_PERSON_ID          || ','
-                                                                    || P_RUN_RESULT_ID      || ','
-                                                                    || P_EARNED_DATE        || ','
-                                                                    || P_PERIOD_NAME        || ','
-                                                                    || P_ELEMENT_NAME       || ','
-                                                                    || P_ENTRY_NAME         || ','
-                                                                    || P_ENTRY_UNITS        || ','
-                                                                    || P_ENTRY_VALUE        || ','
-                                                                    || P_DEBIT_AMOUNT       || ','
-                                                                    || P_CREDIT_AMOUNT      || '.');                           
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MOVIMIENTO PROCESADO: *PRESTAMO*' || P_PAYROLL_RESULT_ID  || ','
+                                                                              || P_PERSON_ID          || ','
+                                                                              || P_RUN_RESULT_ID      || ','
+                                                                              || P_EARNED_DATE        || ','
+                                                                              || P_PERIOD_NAME        || ','
+                                                                              || P_ELEMENT_NAME       || ','
+                                                                              || P_ENTRY_NAME         || ','
+                                                                              || P_ENTRY_UNITS        || ','
+                                                                              || P_ENTRY_VALUE        || ','
+                                                                              || P_DEBIT_AMOUNT       || ','
+                                                                              || P_CREDIT_AMOUNT      || '.');                           
     
         RETURN 'Y';
     EXCEPTION WHEN OTHERS THEN
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'NO SE PROCESO EL MOVIMIENTO: ' || P_PAYROLL_RESULT_ID  || ','
-                                                                        || P_PERSON_ID          || ','
-                                                                        || P_RUN_RESULT_ID      || ','
-                                                                        || P_EARNED_DATE        || ','
-                                                                        || P_PERIOD_NAME        || ','
-                                                                        || P_ELEMENT_NAME       || ','
-                                                                        || P_ENTRY_NAME         || ','
-                                                                        || P_ENTRY_UNITS        || ','
-                                                                        || P_ENTRY_VALUE        || ','
-                                                                        || P_DEBIT_AMOUNT       || ','
-                                                                        || P_CREDIT_AMOUNT      || '.' || SQLERRM);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'NO SE PROCESO EL MOVIMIENTO: *PRESTAMO*' || P_PAYROLL_RESULT_ID  || ','
+                                                                                  || P_PERSON_ID          || ','
+                                                                                  || P_RUN_RESULT_ID      || ','
+                                                                                  || P_EARNED_DATE        || ','
+                                                                                  || P_PERIOD_NAME        || ','
+                                                                                  || P_ELEMENT_NAME       || ','
+                                                                                  || P_ENTRY_NAME         || ','
+                                                                                  || P_ENTRY_UNITS        || ','
+                                                                                  || P_ENTRY_VALUE        || ','
+                                                                                  || P_DEBIT_AMOUNT       || ','
+                                                                                  || P_CREDIT_AMOUNT      || '.' || SQLERRM);
         ROLLBACK;
         RETURN 'N';
     END INSERT_LOAN_TRANSACTION;
@@ -1958,6 +2138,43 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
         RETURN var_result;
     END GET_LOAN_ID;
+    
+    
+    PROCEDURE   RELEASE_LOAN(P_LOAN_ID  NUMBER)
+    IS
+        var_validate    NUMBER;
+    BEGIN
+        SELECT COUNT(ASPS.PAYMENT_NUMBER)
+          INTO var_validate
+          FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+         WHERE 1 = 1
+           AND ASPS.LOAN_ID = P_LOAN_ID
+           AND ASPS.STATUS_FLAG NOT IN ('PAYED');
+           
+        IF var_validate = 0 THEN
+        
+            UPDATE ATET_SB_LOANS ASL
+               SET ASL.LOAN_STATUS_FLAG = 'PAYED'
+             WHERE ASL.LOAN_ID = P_LOAN_ID;
+             
+             
+            MERGE INTO ATET_SB_MEMBERS      ASM
+                 USING ATET_SB_ENDORSEMENTS ASE
+                    ON (    ASE.LOAN_ID = P_LOAN_ID
+                        AND ASE.MEMBER_BORROWER_ID = ASM.MEMBER_ID)
+            WHEN MATCHED THEN 
+            UPDATE SET ASM.IS_BORROWER = 'N';
+            
+             
+            MERGE INTO ATET_SB_MEMBERS      ASM
+                 USING ATET_SB_ENDORSEMENTS ASE
+                    ON (    ASE.LOAN_ID = P_LOAN_ID
+                        AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
+            WHEN MATCHED THEN 
+            UPDATE SET ASM.IS_ENDORSEMENT = 'N';      
+        
+        END IF;
+    END RELEASE_LOAN;
                                  
 
 END ATET_SAVINGS_BANK_PKG;
