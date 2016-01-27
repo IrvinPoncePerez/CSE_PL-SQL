@@ -106,12 +106,13 @@ CREATE OR REPLACE PROCEDURE APPS.XXCALV_TEF_PAY_P (  errbuf                     
                                            FROM apps.per_all_assignments_f b1
                                           WHERE b1.assignment_id = b.assignment_id )
         /*************IPONCE*************/   
-        AND   PP.PAYROLL_NAME LIKE DECODE(NVL(P_CEDIS, 'N'),
-                                          'Y', '%CEDIS%',
-                                          'N', PP.PAYROLL_NAME)
-        AND   PP.PAYROLL_NAME NOT LIKE DECODE(NVL(P_CEDIS, 'N'),
-                                              'N', '%CEDIS%',
-                                              'Y', '%#%')                               
+        AND PP.ATTRIBUTE2 = NVL(P_CEDIS, PP.ATTRIBUTE2)
+--        AND   PP.PAYROLL_NAME LIKE DECODE(NVL(P_CEDIS, 'N'),
+--                                          'Y', '%CEDIS%',
+--                                          'N', PP.PAYROLL_NAME)
+--        AND   PP.PAYROLL_NAME NOT LIKE DECODE(NVL(P_CEDIS, 'N'),
+--                                              'N', '%CEDIS%',
+--                                              'Y', '%#%')                               
         order by a.full_name;
                 
    CURSOR c_pago(p_assignment_id NUMBER, p_date DATE) IS
@@ -435,7 +436,7 @@ BEGIN
             l_linea := lpad(l_pago.cuenta,10,'0') || ',' ||
                        l_emp.importe || ',' ||
                        UPPER (l_referencia_lote || ' ' || l_period_name) || ',' ||
-                       rpad(replace(l_emp.full_name, 'Ñ', 'N'), 35, '');          
+                       TRIM(RPAD(REPLACE(l_emp.full_name, 'Ñ', 'N'), 35));          
             
             fnd_file.PUT_LINE(fnd_file.OUTPUT, l_linea);
         
