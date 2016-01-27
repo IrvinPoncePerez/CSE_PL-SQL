@@ -20,7 +20,7 @@ CREATE TABLE ATET_SB_LOANS_TRANSACTIONS
     PAYMENT_AMOUNT                  NUMBER,
     PAYMENT_CAPITAL                 NUMBER,
     PAYMENT_INTEREST                NUMBER,
-    PARTIAL_CAPITAL                 NUMBER,
+    PAYMENT_INTEREST_LATE           NUMBER,
     REQUEST_ID                      NUMBER,
     ACCOUNTED_FLAG                  VARCHAR2(50),
     ATTRIBUTE1                      NUMBER,

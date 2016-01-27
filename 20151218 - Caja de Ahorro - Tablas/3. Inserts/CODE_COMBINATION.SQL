@@ -1,10 +1,15 @@
 
 SELECT gl.CODE_COMBINATION_ID,
-       gl.segment1 || gl.segment2 || gl.segment3 || gl.segment4 || gl.segment5 || gl.segment6,
+       gl.segment1 || '-' ||
+       gl.segment2 || '-' || 
+       gl.segment3 ||  '-' ||
+       gl.segment4 ||  '-' ||
+       gl.segment5 ||  '-' ||
+       gl.segment6 AS CODE_COMBINATION,
     gl_flexfields_pkg.get_concat_description
                                           (chart_of_accounts_id,
                                            code_combination_id
-                                          )
+                                          ) AS DESCRIPTION
  FROM GL_CODE_COMBINATIONS_V  gl
 WHERE 1 = 1
   AND TEMPLATE_ID IS NULL
