@@ -15,7 +15,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
            
         RETURN var_saving_bank_id;
-    
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_SAVING_BANK_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_SAVING_BANK_ID;
     
     
@@ -32,7 +33,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASB.SAVING_BANK_ID = GET_SAVING_BANK_ID;
            
         RETURN var_saving_bank_year;
-    
+        
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_SAVING_BANK_YEAR ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_SAVING_BANK_YEAR;
     
     
@@ -85,6 +88,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
 
            
         RETURN var_count_periods; 
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_AVAILABLE_PERIODS ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_AVAILABLE_PERIODS;
     
     
@@ -106,6 +111,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         RETURN var_period_type;    
     
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_PERIOD_TYPE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_PERIOD_TYPE;
     
       
@@ -123,6 +130,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
         RETURN var_registration_date;
     
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_REGISTRATION_DATE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_REGISTRATION_DATE;
     
     
@@ -144,12 +153,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 
         RETURN var_parameter_value;
     
-    EXCEPTION WHEN NO_DATA_FOUND THEN
-    
-        FND_FILE.PUT_LINE(FND_FILE.LOG, '***************************************************************************************');
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'No se ha definido el valor del parámetro ' || P_PARAMETER_CODE);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, '***************************************************************************************');
-    
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_PARAMETER_VALUE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_PARAMETER_VALUE;
     
     
@@ -167,12 +172,13 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
     
         RETURN var_result;
-        
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en IF_MEMBER_EXIST ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END IF_MEMBER_EXIST;
     
     
     FUNCTION GET_MAX_ASSIGNMENT_ACTION_ID(P_ASSIGNMENT_ID        NUMBER,
-                                            P_PAYROLL_ID           NUMBER)
+                                          P_PAYROLL_ID           NUMBER)
         RETURN NUMBER                                                        
     IS
               
@@ -201,7 +207,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                   PAA.ASSIGNMENT_ACTION_ID DESC;
                        
         RETURN var_assignment_action_id;   
-              
+    
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_MAX_ASSIGNMENT_ACTION_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_MAX_ASSIGNMENT_ACTION_ID;
     
     
@@ -500,7 +508,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                          detail(rowIndex).RUN_RESULT_ID,
                                                          detail(rowIndex).ELEMENT_ENTRY_ID,
                                                          var_request_id,
-                                                         'EXPORTED',
+                                                         'IMPORTED',
                                                          SYSDATE,
                                                          var_user_id,
                                                          SYSDATE,
@@ -537,6 +545,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         END IF;
     
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en EXPORT_PAYROLL_RESULTS ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END EXPORT_PAYROLL_RESULTS;
     
     
@@ -668,38 +678,42 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     
                     IF    var_result = 'Y' THEN
                     
-                        SELECT DISTINCT ASPR.PERIOD_NAME
-                          INTO var_period_name
-                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
-                         WHERE 1 = 1
-                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
-                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
-                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
-                           
-                        SELECT SUM(ASPEE.ENTRY_VALUE1)
-                          INTO var_sum_saving_import
-                          FROM ATET_SB_PAY_ELEMENT_ENTRIES  ASPEE
-                         WHERE 1 = 1
-                           AND ASPEE.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
-                           AND ASPEE.PERIOD_NAME = var_period_name;
-                        
-                        SELECT SUM(ASPR.ENTRY_VALUE)
-                          INTO var_sum_saving_amount
-                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
-                         WHERE 1 = 1
-                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
-                           AND ASPR.ENTRY_NAME = 'Amount'
-                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
-                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
-                           
-                        SELECT SUM(ASPR.ENTRY_VALUE)
-                          INTO var_sum_saving_pay_value
-                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
-                         WHERE 1 = 1
-                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
-                           AND ASPR.ENTRY_NAME = 'Pay Value'
-                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
-                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                        BEGIN
+                            SELECT DISTINCT ASPR.PERIOD_NAME
+                              INTO var_period_name
+                              FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                             WHERE 1 = 1
+                               AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
+                               AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                               AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                               
+                            SELECT SUM(ASPEE.ENTRY_VALUE1)
+                              INTO var_sum_saving_import
+                              FROM ATET_SB_PAY_ELEMENT_ENTRIES  ASPEE
+                             WHERE 1 = 1
+                               AND ASPEE.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
+                               AND ASPEE.PERIOD_NAME = var_period_name;
+                            
+                            SELECT SUM(ASPR.ENTRY_VALUE)
+                              INTO var_sum_saving_amount
+                              FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                             WHERE 1 = 1
+                               AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
+                               AND ASPR.ENTRY_NAME = 'Amount'
+                               AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                               AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                               
+                            SELECT SUM(ASPR.ENTRY_VALUE)
+                              INTO var_sum_saving_pay_value
+                              FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                             WHERE 1 = 1
+                               AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME')
+                               AND ASPR.ENTRY_NAME = 'Pay Value'
+                               AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                               AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                        EXCEPTION WHEN NO_DATA_FOUND THEN
+                            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'SIN DECUENTOS ' ||GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME'));    
+                        END;
                         
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '********************************************************');
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*');
@@ -762,38 +776,42 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     
                     IF    var_result = 'Y' THEN
                     
-                        SELECT DISTINCT ASPR.PERIOD_NAME
-                          INTO var_period_name
-                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
-                         WHERE 1 = 1
-                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
-                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
-                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
-                           
-                        SELECT SUM(ASPEE.ENTRY_VALUE1)
-                          INTO var_sum_loan_import
-                          FROM ATET_SB_PAY_ELEMENT_ENTRIES  ASPEE
-                         WHERE 1 = 1
-                           AND ASPEE.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
-                           AND ASPEE.PERIOD_NAME = var_period_name;
-                        
-                        SELECT SUM(ASPR.ENTRY_VALUE)
-                          INTO var_sum_loan_amount
-                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
-                         WHERE 1 = 1
-                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
-                           AND ASPR.ENTRY_NAME = 'Amount'
-                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
-                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
-                           
-                        SELECT SUM(ASPR.ENTRY_VALUE)
-                          INTO var_sum_loan_pay_value
-                          FROM ATET_SB_PAYROLL_RESULTS  ASPR
-                         WHERE 1 = 1
-                           AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
-                           AND ASPR.ENTRY_NAME = 'Pay Value'
-                           AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
-                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                        BEGIN
+                            SELECT DISTINCT ASPR.PERIOD_NAME
+                              INTO var_period_name
+                              FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                             WHERE 1 = 1
+                               AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+                               AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                               AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                               
+                            SELECT SUM(ASPEE.ENTRY_VALUE1)
+                              INTO var_sum_loan_import
+                              FROM ATET_SB_PAY_ELEMENT_ENTRIES  ASPEE
+                             WHERE 1 = 1
+                               AND ASPEE.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+                               AND ASPEE.PERIOD_NAME = var_period_name;
+                            
+                            SELECT SUM(ASPR.ENTRY_VALUE)
+                              INTO var_sum_loan_amount
+                              FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                             WHERE 1 = 1
+                               AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+                               AND ASPR.ENTRY_NAME = 'Amount'
+                               AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                               AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                               
+                            SELECT SUM(ASPR.ENTRY_VALUE)
+                              INTO var_sum_loan_pay_value
+                              FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                             WHERE 1 = 1
+                               AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+                               AND ASPR.ENTRY_NAME = 'Pay Value'
+                               AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                               AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                        EXCEPTION WHEN NO_DATA_FOUND THEN
+                            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'SIN DECUENTOS ' ||GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME'));
+                        END;
                         
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '********************************************************');
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*');
@@ -838,6 +856,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         END IF;  
 
+    EXCEPTION WHEN OTHERS THEN
+        ROLLBACK;
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'XXXXXXXXXXXXX   ROLLBACK EJECUTADO   XXXXXXXXXXXXX');
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en IMPORT_PAYROLL_RESULTS ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END IMPORT_PAYROLL_RESULTS;
     
     
@@ -979,10 +1001,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             END IF;                          
         END IF;
  
-    END;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en CREATE_ACCOUNT ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+    END CREATE_ACCOUNT;
     
     
-    FUNCTION GET_LOOKUP_MEANING (P_LOOKUP_TYPE    VARCHAR2,
+    FUNCTION GET_LOOKUP_MEANING(P_LOOKUP_TYPE    VARCHAR2,
                                 P_LOOKUP_CODE    VARCHAR2)
       RETURN VARCHAR2
    --
@@ -1109,7 +1133,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             
         CLOSE DETAIL_LIST;
         
-    
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en ROLLBACK_EXPORT_PAYRESULT ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END ROLLBACK_EXPORT_PAYRESULT;
     
     
@@ -1222,6 +1247,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                
         END IF;
     
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en CHANGE_AMOUNT_TO_SAVE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END CHANGE_AMOUNT_TO_SAVE;
     
     
@@ -1256,8 +1283,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
           || 'START WITH 1 '
           || 'INCREMENT BY 1 '
           || 'NOCACHE '
-          || 'NOCYCLE';          
-    
+          || 'NOCYCLE';      
+                  
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en RESTART_SEQUENCE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END RESTART_SEQUENCE;  
     
     
@@ -1272,7 +1301,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
          WHERE ASM.PERSON_ID = P_PERSON_ID
            AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
            
-        RETURN var_member_id;           
+        RETURN var_member_id;   
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_MEMBER_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);        
     END GET_MEMBER_ID;
     
     
@@ -1289,7 +1320,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASM.MEMBER_ID = P_MEMBER_ID;
     
         RETURN var_result;
-    END;
+
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_MEMBER_IS_SAVER ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+    END GET_MEMBER_IS_SAVER;
       
    
     FUNCTION    GET_CODE_COMBINATION_ID(P_CODE_COMBINATION   VARCHAR2)
@@ -1308,9 +1342,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 GL.SEGMENT3 ||
                 GL.SEGMENT4 ||
                 GL.SEGMENT5 ||
-                GL.SEGMENT6) = P_CODE_COMBINATION;
+                GL.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
                 
         RETURN var_result;
+        
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_CODE_COMBINATION_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_CODE_COMBINATION_ID;
     
     
@@ -1478,15 +1515,19 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_loan_number             NUMBER;
         var_entry_value_export      NUMBER;
         
+        var_entry_value             NUMBER;
         var_payment_schedule_id     NUMBER;
         var_payment_number          NUMBER;
         var_payment_amount          NUMBER;
         var_payment_capital         NUMBER;
         var_payment_interest        NUMBER;
-        var_partial_capital         NUMBER;
+        var_payment_interest_late   NUMBER;
+        var_expected_payment_amount NUMBER;
+        
+        var_validate                NUMBER;
     BEGIN
     
-    
+        var_entry_value := P_ENTRY_VALUE;
         var_member_id := GET_MEMBER_ID(P_PERSON_ID);
         var_loan_id := GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Futuro 4');
         var_loan_number := GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Folio');
@@ -1500,21 +1541,52 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         SELECT ASPS.PAYMENT_SCHEDULE_ID,
                ASPS.PAYMENT_NUMBER,
                ASPS.PAYMENT_AMOUNT,
+               ASPS.PAYMENT_AMOUNT,
                ASPS.PAYMENT_CAPITAL,
-               ASPS.PAYMENT_INTEREST
+               ASPS.PAYMENT_INTEREST,
+               ASPS.PAYMENT_INTEREST_LATE
           INTO var_payment_schedule_id,
                var_payment_number,
                var_payment_amount,
+               var_expected_payment_amount,
                var_payment_capital,
-               var_payment_interest
+               var_payment_interest,
+               var_payment_interest_late
           FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
          WHERE 1 = 1
            AND ASPS.LOAN_ID = var_loan_id
            AND ASPS.TIME_PERIOD_ID = P_TIME_PERIOD_ID
            AND ASPS.PERIOD_NAME = P_PERIOD_NAME;
            
-        IF var_payment_amount <> P_ENTRY_VALUE THEN
-            var_partial_capital := var_payment_amount - P_ENTRY_VALUE;
+        IF var_payment_amount <> var_entry_value THEN
+            var_payment_amount := var_entry_value; 
+            
+            IF (var_entry_value - var_payment_interest_late) >= 0 THEN
+                var_payment_interest_late := var_payment_interest_late;
+            ELSE
+                var_payment_interest_late := var_entry_value;
+            END IF;
+            
+            var_entry_value := var_entry_value - var_payment_interest_late;
+            
+            IF (var_entry_value - var_payment_interest) >= 0 THEN
+                var_payment_interest := var_payment_interest;
+            ELSE
+                var_payment_interest := var_entry_value;
+            END IF; 
+            
+            var_entry_value := var_entry_value - var_payment_interest;
+            
+            IF (var_entry_value - var_payment_capital) >= 0 THEN
+                var_payment_capital := var_payment_capital;
+            ELSE
+                var_payment_capital := var_entry_value;
+            END IF;
+        ELSE
+            var_payment_amount := var_payment_amount;
+            var_payment_capital := var_payment_capital;
+            var_payment_interest := var_payment_interest;
+            var_payment_interest_late := var_payment_interest_late;
         END IF;
     
         INSERT INTO ATET_SB_LOANS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
@@ -1536,7 +1608,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                 PAYMENT_AMOUNT,
                                                 PAYMENT_CAPITAL,
                                                 PAYMENT_INTEREST,
-                                                PARTIAL_CAPITAL,
+                                                PAYMENT_INTEREST_LATE,
                                                 REQUEST_ID,
                                                 ACCOUNTED_FLAG,
                                                 CREATION_DATE,
@@ -1562,7 +1634,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                  var_payment_amount,
                                                  var_payment_capital,
                                                  var_payment_interest,
-                                                 var_partial_capital,
+                                                 var_payment_interest_late,
                                                  var_import_request_id,
                                                  'UNACCOUNTED',
                                                   SYSDATE,
@@ -1592,7 +1664,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
            
         --Actualización de payment_schedule.           
-        IF var_payment_amount = P_ENTRY_VALUE THEN
+        IF var_expected_payment_amount = P_ENTRY_VALUE THEN
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
                SET ASPS.STATUS_FLAG = 'PAYED',
                    ASPS.LAST_UPDATE_DATE = SYSDATE,
@@ -1602,7 +1674,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         ELSIF P_ENTRY_VALUE > 0 THEN
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
                SET ASPS.STATUS_FLAG = 'PARTIAL',
-                   ASPS.ATTRIBUTE1 = ASPS.PAYMENT_AMOUNT - P_ENTRY_VALUE,
+                   ASPS.ATTRIBUTE1 = var_payment_capital,
+                   ASPS.ATTRIBUTE2 = var_payment_interest,
+                   ASPS.ATTRIBUTE3 = var_payment_interest_late,
                    ASPS.LAST_UPDATE_DATE = SYSDATE,
                    ASPS.LAST_UPDATED_BY = var_user_id
              WHERE ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
@@ -1612,21 +1686,61 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                SET ASPS.STATUS_FLAG = 'PARTIAL',
                    ASPS.ATTRIBUTE1 = ASPS.PAYMENT_CAPITAL,
                    ASPS.ATTRIBUTE2 = ASPS.PAYMENT_INTEREST,
+                   ASPS.ATTRIBUTE3 = ASPS.PAYMENT_INTEREST_LATE,
                    ASPS.LAST_UPDATE_DATE = SYSDATE,
                    ASPS.LAST_UPDATED_BY = var_user_id
              WHERE ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
-               AND ASPS.LOAN_ID = var_loan_id;
+               AND ASPS.LOAN_ID = var_loan_id;                   
         END IF;
         
+        
         UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
-           SET ASPS.STATUS_FLAG = 'SKIP'
+               SET ASPS.STATUS_FLAG = 'SKIP'
+             WHERE 1 = 1
+               AND ASPS.LOAN_ID = var_loan_id
+               AND ASPS.PAYMENT_NUMBER BETWEEN 1 AND var_payment_number
+               AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED');    
+        
+        
+        SELECT COUNT(ASPS.PAYMENT_NUMBER)
+          INTO var_validate
+          FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
          WHERE 1 = 1
            AND ASPS.LOAN_ID = var_loan_id
-           AND ASPS.PAYMENT_NUMBER BETWEEN 1 AND var_payment_number
-           AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED');
+           AND ASPS.STATUS_FLAG NOT IN ('PAYED');
            
-           
-        RELEASE_LOAN(var_loan_id);
+        IF var_validate = 0 THEN
+        
+            UPDATE ATET_SB_LOANS ASL
+               SET ASL.LOAN_STATUS_FLAG = 'PAYED'
+             WHERE ASL.LOAN_ID = var_loan_id;
+
+             
+            MERGE INTO ATET_SB_MEMBERS      ASM
+                 USING ATET_SB_ENDORSEMENTS ASE
+                    ON (    ASE.LOAN_ID = var_loan_id
+                        AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
+            WHEN MATCHED THEN 
+            UPDATE SET ASM.IS_ENDORSEMENT = 'N';      
+
+
+            SELECT COUNT(ASL.LOAN_ID)
+              INTO var_validate
+              FROM ATET_SB_LOANS ASL
+             WHERE 1 = 1
+               AND ASL.MEMBER_ID = var_member_id
+               AND ASL.LOAN_STATUS_FLAG = 'ACTIVE';
+
+            IF var_validate = 0 THEN 
+                MERGE INTO ATET_SB_MEMBERS      ASM
+                     USING ATET_SB_ENDORSEMENTS ASE
+                        ON (    ASE.LOAN_ID = var_loan_id
+                            AND ASE.MEMBER_BORROWER_ID = ASM.MEMBER_ID)
+                WHEN MATCHED THEN 
+                UPDATE SET ASM.IS_BORROWER = 'N';
+            END IF;
+        
+        END IF;
            
                                                   
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MOVIMIENTO PROCESADO: *PRESTAMO*' || P_PAYROLL_RESULT_ID  || ','
@@ -1675,6 +1789,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASMA.ACCOUNT_DESCRIPTION = P_ACCOUNT_DESCRIPTION;
          
         RETURN var_member_account_id;
+
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_SAVING_MEMBER_ACCOUNT_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_SAVING_MEMBER_ACCOUNT_ID;
     
     
@@ -1801,7 +1918,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         COMMIT;
 
-    
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en SET_LOAN_BALANCE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END SET_LOAN_BALANCE;
     
     
@@ -2035,6 +2153,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             P_RETCODE := 1;
         END IF;
     
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en INSERT_EXTEMPORANEOUS_SAVING ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END INSERT_EXTEMPORANEOUS_SAVING;
     
     
@@ -2091,6 +2211,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
     
         RETURN var_posibility_saving;
+        
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_POSIBILITY_SAVING ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_POSIBILITY_SAVING;
         
     
@@ -2137,44 +2260,29 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
     
         RETURN var_result;
+        
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_LOAN_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_LOAN_ID;
     
     
-    PROCEDURE   RELEASE_LOAN(P_LOAN_ID  NUMBER)
+    PROCEDURE   SEND_TO_XLA(P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                            P_RETCODE        OUT NOCOPY  VARCHAR2,
+                            P_PERIOD_TYPE    VARCHAR2,
+                            P_YEAR           NUMBER,
+                            P_MONTH          NUMBER,
+                            P_PERIOD_NAME    VARCHAR2,
+                            P_ELEMENT_NAME   VARCHAR2)
     IS
-        var_validate    NUMBER;
     BEGIN
-        SELECT COUNT(ASPS.PAYMENT_NUMBER)
-          INTO var_validate
-          FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
-         WHERE 1 = 1
-           AND ASPS.LOAN_ID = P_LOAN_ID
-           AND ASPS.STATUS_FLAG NOT IN ('PAYED');
-           
-        IF var_validate = 0 THEN
-        
-            UPDATE ATET_SB_LOANS ASL
-               SET ASL.LOAN_STATUS_FLAG = 'PAYED'
-             WHERE ASL.LOAN_ID = P_LOAN_ID;
-             
-             
-            MERGE INTO ATET_SB_MEMBERS      ASM
-                 USING ATET_SB_ENDORSEMENTS ASE
-                    ON (    ASE.LOAN_ID = P_LOAN_ID
-                        AND ASE.MEMBER_BORROWER_ID = ASM.MEMBER_ID)
-            WHEN MATCHED THEN 
-            UPDATE SET ASM.IS_BORROWER = 'N';
-            
-             
-            MERGE INTO ATET_SB_MEMBERS      ASM
-                 USING ATET_SB_ENDORSEMENTS ASE
-                    ON (    ASE.LOAN_ID = P_LOAN_ID
-                        AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
-            WHEN MATCHED THEN 
-            UPDATE SET ASM.IS_ENDORSEMENT = 'N';      
-        
-        END IF;
-    END RELEASE_LOAN;
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_PERIOD_TYPE : ' || P_PERIOD_TYPE);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_YEAR : ' || P_YEAR);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_MONTH : ' || P_MONTH);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_PERIOD_NAME : ' || P_PERIOD_NAME);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_ELEMENT_NAME : ' || P_ELEMENT_NAME);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '******************************************');
+    END SEND_TO_XLA;
                                  
 
 END ATET_SAVINGS_BANK_PKG;

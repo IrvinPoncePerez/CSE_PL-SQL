@@ -144,7 +144,13 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                             P_LOAN_NUMBER   NUMBER)
       RETURN    NUMBER;
       
-    PROCEDURE   RELEASE_LOAN(P_LOAN_ID      NUMBER);
       
+    PROCEDURE   SEND_TO_XLA(P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                            P_RETCODE        OUT NOCOPY  VARCHAR2,
+                            P_PERIOD_TYPE    VARCHAR2,
+                            P_YEAR           NUMBER,
+                            P_MONTH          NUMBER,
+                            P_PERIOD_NAME    VARCHAR2,
+                            P_ELEMENT_NAME   VARCHAR2);
 
 END ATET_SAVINGS_BANK_PKG;
