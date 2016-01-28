@@ -1531,8 +1531,15 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_member_id := GET_MEMBER_ID(P_PERSON_ID);
         var_loan_id := GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Futuro 4');
         var_loan_number := GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Folio');
-        IF var_loan_id = 0 THEN
-            var_loan_id := GET_LOAN_ID(var_member_id, var_loan_number);
+        
+        IF var_loan_id = 0 AND var_loan_number <> 0 THEN
+            var_loan_id := GET_LOAN_ID(
+                                P_MEMBER_ID => var_member_id, 
+                                P_LOAN_NUMBER => var_loan_number);
+        ELSE
+            var_loan_id := GET_LOAN_ID(
+                                P_PERSON_ID => P_PERSON_ID,
+                                P_PAYMENT_AMOUNT => GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Amount'));
         END IF;
         
         var_member_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(GET_MEMBER_ID(P_PERSON_ID), var_loan_id);
@@ -2262,8 +2269,35 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         RETURN var_result;
         
     EXCEPTION WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_LOAN_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_LOAN_ID(P_MEMBER_ID, P_LOAN_NUMBER) ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_LOAN_ID;
+    
+    
+    FUNCTION    GET_LOAN_ID(P_PERSON_ID         NUMBER,
+                            P_PAYMENT_AMOUNT    NUMBER)
+      RETURN    NUMBER
+    IS
+        var_result  NUMBER;
+    BEGIN
+    
+        SELECT ASL.LOAN_ID
+          INTO var_result
+          FROM ATET_SB_MEMBERS              ASM,
+               ATET_SB_LOANS                ASL,
+               ATET_SB_PAYMENTS_SCHEDULE    ASPS
+         WHERE ASM.PERSON_ID = P_PERSON_ID
+           AND ASM.SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
+           AND ASM.MEMBER_ID = ASL.MEMBER_ID
+           AND ASL.LOAN_STATUS_FLAG = 'ACTIVE'
+           AND ASL.LOAN_ID = ASPS.LOAN_ID
+           AND ASPS.PAYMENT_NUMBER = 1
+           AND ASPS.PAYMENT_AMOUNT = P_PAYMENT_AMOUNT;
+    
+        RETURN var_result;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_LOAN_ID(P_PERSON_ID, P_PAYMENT_AMOUNT) ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+    END GET_LOAN_ID;
+      
     
     
     PROCEDURE   SEND_TO_XLA(P_ERRBUF         OUT NOCOPY  VARCHAR2,
@@ -2274,6 +2308,66 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                             P_PERIOD_NAME    VARCHAR2,
                             P_ELEMENT_NAME   VARCHAR2)
     IS
+    
+        CURSOR DETAILS_COMPANIES IS
+            SELECT DISTINCT SUBSTR(PPF.PAYROLL_NAME, 0, 2) AS COMPANY_CODE
+              FROM PAY_PAYROLLS_F   PPF
+             WHERE 1 = 1
+               AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
+    
+        CURSOR DETAILS_SAVINGS(PP_PERIOD_NAME   VARCHAR2, 
+                               PP_ELEMENT_NAME  VARCHAR2, 
+                               PP_COMPANY_CODE  VARCHAR2) IS
+            SELECT ASST.SAVING_TRANSACTION_ID,
+                   ASMA.CODE_COMBINATION_ID,
+                   ASMA.ACCOUNT_NUMBER,
+                   ASST.MEMBER_ID,
+                   ASM.EMPLOYEE_FULL_NAME,
+                   ASST.PERSON_ID,
+                   ASST.ENTRY_VALUE,
+                   ASST.DEBIT_AMOUNT,
+                   ASST.CREDIT_AMOUNT,
+                   ROWNUM   AS INDEXROW
+              FROM ATET_SB_SAVINGS_TRANSACTIONS ASST,
+                   ATET_SB_MEMBERS              ASM,
+                   ATET_SB_MEMBERS_ACCOUNTS     ASMA,
+                   PER_ASSIGNMENTS_F            PAF,
+                   PAY_PAYROLLS_F               PPF 
+             WHERE ASST.PERIOD_NAME = PP_PERIOD_NAME
+               AND ASST.ELEMENT_NAME = PP_ELEMENT_NAME 
+               AND ASST.ACCOUNTED_FLAG = 'UNACCOUNTED'
+               AND ASST.MEMBER_ID = ASM.MEMBER_ID
+               AND ASM.MEMBER_ID = ASMA.MEMBER_ID
+               AND ASST.MEMBER_ACCOUNT_ID = ASMA.MEMBER_ACCOUNT_ID
+               AND ASST.PERSON_ID = PAF.PERSON_ID
+               AND ASST.EARNED_DATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+               AND PAF.PAYROLL_ID = PPF.PAYROLL_ID
+               AND ASST.EARNED_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+               AND SUBSTR(PPF.PAYROLL_NAME, 0, 2) = PP_COMPANY_CODE;
+               
+        var_saving_debit_amount         NUMBER;
+        var_saving_credit_amount        NUMBER;
+        
+        var_deb_cs_code_comb            VARCHAR2(500);
+        var_deb_pac_code_comb           VARCHAR2(500);
+        var_not_rec_sav_code_comb       VARCHAR2(500);
+        var_not_rec_no_sav_code_comb    VARCHAR2(500);
+        var_une_int_code_comb           VARCHAR2(500);
+        var_int_rec_code_comb           VARCHAR2(500);
+        
+        var_deb_cs_account_id           NUMBER;
+        var_deb_pac_account_id          NUMBER;
+        var_not_rec_sav_account_id      NUMBER;
+        var_not_rec_no_sav_account_id   NUMBER;
+        var_une_int_account_id          NUMBER;
+        var_int_rec_account_id          NUMBER;
+        
+        var_header_id                   NUMBER;
+        var_index                       NUMBER := 0;
+        var_description                 VARCHAR2(500);
+        
+        var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
+        
     BEGIN
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_PERIOD_TYPE : ' || P_PERIOD_TYPE);
@@ -2282,6 +2376,159 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_PERIOD_NAME : ' || P_PERIOD_NAME);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_ELEMENT_NAME : ' || P_ELEMENT_NAME);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '******************************************');
+        
+        IF    P_ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME') THEN
+            
+            var_deb_cs_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'DEB_CS_CODE_COMB');
+            var_deb_pac_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'DEB_PAC_CODE_COMB');
+            var_deb_cs_account_id := GET_CODE_COMBINATION_ID(var_deb_cs_code_comb);
+            var_deb_pac_account_id := GET_CODE_COMBINATION_ID(var_deb_pac_code_comb);
+            
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_deb_cs_code_comb);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_deb_pac_code_comb);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_deb_cs_account_id);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_deb_pac_account_id);
+            
+            ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'PAYROLL',
+                                                       P_EVENT_TYPE_CODE    => 'PAYROLL_SAVINGS',
+                                                       P_JOURNAL_NAME       => (P_ELEMENT_NAME || '-' || P_PERIOD_NAME),
+                                                       P_HEADER_ID          => var_header_id);
+
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'HEADER_ID : ' || var_header_id);
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('CUENTA', 35, ' ') || RPAD('DESCRIPCION', 50, ' ') || LPAD('CARGO', 30, ' ') || LPAD('ABONO', 30, ' '));             
+            
+            FOR detail_company IN DETAILS_COMPANIES LOOP
+            
+                var_saving_debit_amount := 0;
+                var_saving_credit_amount := 0;
+                var_index := var_index + 1;
+                var_description := '';
+                
+                FOR detail_saving IN DETAILS_SAVINGS(P_PERIOD_NAME, 
+                                                     P_ELEMENT_NAME, 
+                                                     detail_company.COMPANY_CODE) LOOP
+                    var_saving_debit_amount := var_saving_debit_amount + detail_saving.ENTRY_VALUE;
+                END LOOP;
+                
+                IF detail_company.COMPANY_CODE = '02' AND var_saving_debit_amount > 0 THEN
+                
+                    var_description := UPPER('Aportaciones de ahorro (El Calvario Servicios)');
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_deb_cs_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_SAVINGS',
+                                                             P_ACCOUNTED_DR            => var_saving_debit_amount,
+                                                             P_ACCOUNTED_CR            => 0,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => -1,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_cs_code_comb, 35, ' ') || RPAD(var_description, 50, ' ') || LPAD(var_saving_debit_amount, 30, ' ') || LPAD(0, 30, ' '));
+                    
+                ELSIF detail_company.COMPANY_CODE = '11' AND var_saving_debit_amount > 0 THEN
+                
+                    var_description := UPPER('Aportaciones de ahorro (Productos Avicolas El Calvario)');
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_deb_pac_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_SAVINGS',
+                                                             P_ACCOUNTED_DR            => var_saving_debit_amount,
+                                                             P_ACCOUNTED_CR            => 0,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => -1,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_pac_code_comb, 35, ' ') || RPAD(var_description, 50, ' ') || LPAD(var_saving_debit_amount, 30, ' ') || LPAD(0, 30, ' '));                                         
+                                                                                 
+                END IF;
+                
+                
+                FOR detail_saving IN DETAILS_SAVINGS(P_PERIOD_NAME, 
+                                                     P_ELEMENT_NAME, 
+                                                     detail_company.COMPANY_CODE) LOOP
+                                                     
+                    var_saving_credit_amount := 0;
+                    var_index := var_index + 1;
+                    var_description := '';
+                                                     
+                    var_saving_credit_amount := detail_saving.CREDIT_AMOUNT;
+                    var_description := detail_saving.EMPLOYEE_FULL_NAME || '|' || var_saving_credit_amount;
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => detail_saving.CODE_COMBINATION_ID,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_SAVINGS',
+                                                             P_ACCOUNTED_DR            => 0,
+                                                             P_ACCOUNTED_CR            => var_saving_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => detail_saving.SAVING_TRANSACTION_ID,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(detail_saving.ACCOUNT_NUMBER, 35, ' ') || RPAD(var_description, 50, ' ') || LPAD(0, 30, ' ') || LPAD(var_saving_credit_amount, 30, ' '));
+                    
+                    UPDATE ATET_SB_SAVINGS_TRANSACTIONS ASST
+                       SET ASST.ACCOUNTED_FLAG = 'ACCOUNTED',
+                           LAST_UPDATE_DATE = SYSDATE,
+                           LAST_UPDATED_BY = var_user_id
+                     WHERE 1 = 1 
+                       AND ASST.SAVING_TRANSACTION_ID = detail_saving.SAVING_TRANSACTION_ID;
+                       
+                    COMMIT;
+                    
+                END LOOP;
+            
+            END LOOP;
+            
+        ELSIF P_ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME') THEN
+            
+            var_deb_cs_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'DEB_CS_CODE_COMB');
+            var_deb_pac_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'DEB_PAC_CODE_COMB');
+            var_not_rec_sav_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'NOT_REC_SAV_CODE_COMB');
+            var_not_rec_no_sav_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'NOT_REC_NO_SAV_CODE_COMB');
+            var_une_int_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'UNE_INT_CODE_COMB');
+            var_int_rec_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INT_REC_CODE_COMB');
+            
+            var_deb_cs_account_id := GET_CODE_COMBINATION_ID(var_deb_cs_code_comb);
+            var_deb_pac_account_id := GET_CODE_COMBINATION_ID(var_deb_pac_code_comb);
+            var_not_rec_sav_account_id := GET_CODE_COMBINATION_ID(var_not_rec_sav_code_comb);
+            var_not_rec_no_sav_account_id := GET_CODE_COMBINATION_ID(var_not_rec_no_sav_code_comb);
+            var_une_int_account_id := GET_CODE_COMBINATION_ID(var_une_int_code_comb);
+            var_int_rec_account_id := GET_CODE_COMBINATION_ID(var_int_rec_code_comb);  
+            
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_deb_cs_code_comb);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_deb_pac_code_comb);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_not_rec_sav_code_comb);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_not_rec_no_sav_code_comb);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_une_int_code_comb);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_int_rec_code_comb);
+            
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_deb_cs_account_id);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_deb_pac_account_id);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_not_rec_sav_account_id);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_not_rec_no_sav_account_id);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_une_int_account_id);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, var_int_rec_account_id);
+            
+            ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'PAYROLL',
+                                                       P_EVENT_TYPE_CODE    => 'PAYROLL_LOANS',
+                                                       P_JOURNAL_NAME       => (P_ELEMENT_NAME || '-' || P_PERIOD_NAME),
+                                                       P_HEADER_ID          => var_header_id);
+
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'HEADER_ID : ' || var_header_id);
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('CUENTA', 35, ' ') || RPAD('DESCRIPCION', 50, ' ') || LPAD('CARGO', 30, ' ') || LPAD('ABONO', 30, ' '));
+            
+            
+            
+        
+        END IF;
+        
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        
+    EXCEPTION WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en SEND_TO_XLA ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END SEND_TO_XLA;
                                  
 

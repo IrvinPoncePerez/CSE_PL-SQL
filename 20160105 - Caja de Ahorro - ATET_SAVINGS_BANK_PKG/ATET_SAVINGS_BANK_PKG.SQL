@@ -143,6 +143,11 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     FUNCTION    GET_LOAN_ID(P_MEMBER_ID     NUMBER,
                             P_LOAN_NUMBER   NUMBER)
       RETURN    NUMBER;
+     
+    
+    FUNCTION    GET_LOAN_ID(P_PERSON_ID         NUMBER,
+                            P_PAYMENT_AMOUNT    NUMBER)
+      RETURN    NUMBER;
       
       
     PROCEDURE   SEND_TO_XLA(P_ERRBUF         OUT NOCOPY  VARCHAR2,
