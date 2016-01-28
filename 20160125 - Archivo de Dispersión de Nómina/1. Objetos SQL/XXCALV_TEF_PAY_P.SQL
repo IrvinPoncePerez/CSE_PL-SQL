@@ -10,7 +10,7 @@ CREATE OR REPLACE PROCEDURE APPS.XXCALV_TEF_PAY_P (  errbuf                     
                                                ,p_assignment_set_id           IN NUMBER
                                                ,p_payment_method_id           IN NUMBER
                                                ,p_fecha_aplicacion            IN VARCHAR2 DEFAULT NULL
-                                               ,P_CEDIS                       IN VARCHAR2
+                                               ,P_CEDIS                       IN VARCHAR2 DEFAULT NULL
                                                ) IS
 
 /******************************************************************************************
