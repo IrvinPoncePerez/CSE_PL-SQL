@@ -2485,7 +2485,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             
             ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'PAYROLL',
                                                        P_EVENT_TYPE_CODE    => 'PAYROLL_SAVINGS',
-                                                       P_JOURNAL_NAME       => (P_ELEMENT_NAME || '-' || P_PERIOD_NAME),
+                                                       P_BATCH_NAME         => 'APORTACIONES DE AHORRO',
+                                                       P_JOURNAL_NAME       => UPPER(P_PERIOD_NAME || '-' || P_ELEMENT_NAME),
                                                        P_HEADER_ID          => var_header_id);
 
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'HEADER_ID : ' || var_header_id);
@@ -2629,7 +2630,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             
             ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'PAYROLL',
                                                        P_EVENT_TYPE_CODE    => 'PAYROLL_LOANS',
-                                                       P_JOURNAL_NAME       => (P_ELEMENT_NAME || '-' || P_PERIOD_NAME),
+                                                       P_BATCH_NAME         => 'PAGO DE PRESTAMOS',
+                                                       P_JOURNAL_NAME       => UPPER(P_PERIOD_NAME || '-' || P_ELEMENT_NAME),
                                                        P_HEADER_ID          => var_header_id);
 
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'HEADER_ID : ' || var_header_id);
