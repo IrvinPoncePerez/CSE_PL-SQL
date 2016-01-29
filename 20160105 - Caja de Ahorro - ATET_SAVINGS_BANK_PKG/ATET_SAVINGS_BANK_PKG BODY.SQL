@@ -2326,8 +2326,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    ASST.PERSON_ID,
                    ASST.ENTRY_VALUE,
                    ASST.DEBIT_AMOUNT,
-                   ASST.CREDIT_AMOUNT,
-                   ROWNUM   AS INDEXROW
+                   ASST.CREDIT_AMOUNT
               FROM ATET_SB_SAVINGS_TRANSACTIONS ASST,
                    ATET_SB_MEMBERS              ASM,
                    ATET_SB_MEMBERS_ACCOUNTS     ASMA,
@@ -2345,8 +2344,103 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                AND ASST.EARNED_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
                AND SUBSTR(PPF.PAYROLL_NAME, 0, 2) = PP_COMPANY_CODE;
                
+        CURSOR DETAILS_LOANS (PP_PERIOD_NAME   VARCHAR2, 
+                              PP_ELEMENT_NAME  VARCHAR2, 
+                              PP_COMPANY_CODE  VARCHAR2) IS
+            SELECT ASLT.LOAN_TRANSACTION_ID,
+                   ASMA.CODE_COMBINATION_ID,
+                   ASMA.ACCOUNT_NUMBER,
+                   ASLT.MEMBER_ID,
+                   ASM.EMPLOYEE_FULL_NAME,
+                   ASLT.PERSON_ID,
+                   ASLT.PAYMENT_AMOUNT,
+                   ASL.LOAN_NUMBER
+              FROM ATET_SB_LOANS_TRANSACTIONS   ASLT,
+                   ATET_SB_MEMBERS              ASM,
+                   ATET_SB_MEMBERS_ACCOUNTS     ASMA,
+                   ATET_SB_LOANS                ASL,
+                   PER_ASSIGNMENTS_F            PAF,
+                   PAY_PAYROLLS_F               PPF 
+             WHERE ASLT.PERIOD_NAME = PP_PERIOD_NAME
+               AND ASLT.ELEMENT_NAME = PP_ELEMENT_NAME 
+               AND ASLT.ACCOUNTED_FLAG = 'UNACCOUNTED'
+               AND ASLT.MEMBER_ID = ASM.MEMBER_ID
+               AND ASM.MEMBER_ID = ASMA.MEMBER_ID
+               AND ASLT.MEMBER_ACCOUNT_ID = ASMA.MEMBER_ACCOUNT_ID
+               AND ASLT.MEMBER_ID = ASL.MEMBER_ID
+               AND ASLT.LOAN_ID = ASL.LOAN_ID
+               AND ASLT.PERSON_ID = PAF.PERSON_ID
+               AND ASLT.EARNED_DATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+               AND PAF.PAYROLL_ID = PPF.PAYROLL_ID
+               AND ASLT.EARNED_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+               AND SUBSTR(PPF.PAYROLL_NAME, 0, 2) = PP_COMPANY_CODE;
+               
+        CURSOR DETAILS_INTERESTS (PP_PERIOD_NAME   VARCHAR2, 
+                                  PP_ELEMENT_NAME  VARCHAR2, 
+                                  PP_COMPANY_CODE  VARCHAR2) IS
+            SELECT ASLT.LOAN_TRANSACTION_ID,
+                   ASMA.CODE_COMBINATION_ID,
+                   ASMA.ACCOUNT_NUMBER,
+                   ASLT.MEMBER_ID,
+                   ASM.EMPLOYEE_FULL_NAME,
+                   ASLT.PERSON_ID,
+                   ASLT.PAYMENT_INTEREST,
+                   ASL.LOAN_NUMBER
+              FROM ATET_SB_LOANS_TRANSACTIONS   ASLT,
+                   ATET_SB_MEMBERS              ASM,
+                   ATET_SB_MEMBERS_ACCOUNTS     ASMA,
+                   ATET_SB_LOANS                ASL,
+                   PER_ASSIGNMENTS_F            PAF,
+                   PAY_PAYROLLS_F               PPF 
+             WHERE ASLT.PERIOD_NAME = PP_PERIOD_NAME
+               AND ASLT.ELEMENT_NAME = PP_ELEMENT_NAME
+               AND ASLT.MEMBER_ID = ASM.MEMBER_ID
+               AND ASM.MEMBER_ID = ASMA.MEMBER_ID
+               AND ASLT.MEMBER_ACCOUNT_ID = ASMA.MEMBER_ACCOUNT_ID
+               AND ASLT.MEMBER_ID = ASL.MEMBER_ID
+               AND ASLT.LOAN_ID = ASL.LOAN_ID
+               AND ASLT.PERSON_ID = PAF.PERSON_ID
+               AND ASLT.EARNED_DATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+               AND PAF.PAYROLL_ID = PPF.PAYROLL_ID
+               AND ASLT.EARNED_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+               AND SUBSTR(PPF.PAYROLL_NAME, 0, 2) = PP_COMPANY_CODE;
+               
+        CURSOR DETAILS_INTERESTS_LATE (PP_PERIOD_NAME   VARCHAR2, 
+                                       PP_ELEMENT_NAME  VARCHAR2, 
+                                       PP_COMPANY_CODE  VARCHAR2) IS
+            SELECT ASLT.LOAN_TRANSACTION_ID,
+                   ASMA.CODE_COMBINATION_ID,
+                   ASMA.ACCOUNT_NUMBER,
+                   ASLT.MEMBER_ID,
+                   ASM.EMPLOYEE_FULL_NAME,
+                   ASLT.PERSON_ID,
+                   ASLT.PAYMENT_INTEREST_LATE,
+                   ASL.LOAN_NUMBER
+              FROM ATET_SB_LOANS_TRANSACTIONS   ASLT,
+                   ATET_SB_MEMBERS              ASM,
+                   ATET_SB_MEMBERS_ACCOUNTS     ASMA,
+                   ATET_SB_LOANS                ASL,
+                   PER_ASSIGNMENTS_F            PAF,
+                   PAY_PAYROLLS_F               PPF 
+             WHERE ASLT.PERIOD_NAME = PP_PERIOD_NAME
+               AND ASLT.ELEMENT_NAME = PP_ELEMENT_NAME
+               AND ASLT.MEMBER_ID = ASM.MEMBER_ID
+               AND ASM.MEMBER_ID = ASMA.MEMBER_ID
+               AND ASLT.MEMBER_ACCOUNT_ID = ASMA.MEMBER_ACCOUNT_ID
+               AND ASLT.MEMBER_ID = ASL.MEMBER_ID
+               AND ASLT.LOAN_ID = ASL.LOAN_ID
+               AND ASLT.PERSON_ID = PAF.PERSON_ID
+               AND ASLT.EARNED_DATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+               AND PAF.PAYROLL_ID = PPF.PAYROLL_ID
+               AND ASLT.EARNED_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+               AND ASLT.PAYMENT_INTEREST_LATE <> 0
+               AND SUBSTR(PPF.PAYROLL_NAME, 0, 2) = PP_COMPANY_CODE;
+               
         var_saving_debit_amount         NUMBER;
         var_saving_credit_amount        NUMBER;
+        
+        var_loan_debit_amount           NUMBER;
+        var_loan_credit_amount          NUMBER;
         
         var_deb_cs_code_comb            VARCHAR2(500);
         var_deb_pac_code_comb           VARCHAR2(500);
@@ -2395,13 +2489,15 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                        P_HEADER_ID          => var_header_id);
 
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'HEADER_ID : ' || var_header_id);
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('CUENTA', 35, ' ') || RPAD('DESCRIPCION', 50, ' ') || LPAD('CARGO', 30, ' ') || LPAD('ABONO', 30, ' '));             
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('CUENTA', 35, ' ') || 
+                                               RPAD('DESCRIPCION', 50, ' ') || 
+                                               LPAD('CARGO', 30, ' ') || 
+                                               LPAD('ABONO', 30, ' '));             
             
             FOR detail_company IN DETAILS_COMPANIES LOOP
             
                 var_saving_debit_amount := 0;
                 var_saving_credit_amount := 0;
-                var_index := var_index + 1;
                 var_description := '';
                 
                 FOR detail_saving IN DETAILS_SAVINGS(P_PERIOD_NAME, 
@@ -2410,7 +2506,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     var_saving_debit_amount := var_saving_debit_amount + detail_saving.ENTRY_VALUE;
                 END LOOP;
                 
+                /*****************************************************/
+                /*          CARGO   :   DEUDORES DIVERSOS            */
+                /*****************************************************/
                 IF detail_company.COMPANY_CODE = '02' AND var_saving_debit_amount > 0 THEN
+                
+                    var_index := var_index + 1;
                 
                     var_description := UPPER('Aportaciones de ahorro (El Calvario Servicios)');
                 
@@ -2419,14 +2520,19 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                              P_CODE_COMBINATION_ID     => var_deb_cs_account_id,
                                                              P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_SAVINGS',
                                                              P_ACCOUNTED_DR            => var_saving_debit_amount,
-                                                             P_ACCOUNTED_CR            => 0,
+                                                             P_ACCOUNTED_CR            => var_saving_credit_amount,
                                                              P_DESCRIPTION             => var_description,
                                                              P_SOURCE_ID               => -1,
                                                              P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
                                                              
-                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_cs_code_comb, 35, ' ') || RPAD(var_description, 50, ' ') || LPAD(var_saving_debit_amount, 30, ' ') || LPAD(0, 30, ' '));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_cs_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_saving_debit_amount, 30, ' ') || 
+                                                       LPAD(var_saving_credit_amount, 30, ' '));
                     
                 ELSIF detail_company.COMPANY_CODE = '11' AND var_saving_debit_amount > 0 THEN
+                
+                    var_index := var_index + 1;
                 
                     var_description := UPPER('Aportaciones de ahorro (Productos Avicolas El Calvario)');
                 
@@ -2435,20 +2541,25 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                              P_CODE_COMBINATION_ID     => var_deb_pac_account_id,
                                                              P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_SAVINGS',
                                                              P_ACCOUNTED_DR            => var_saving_debit_amount,
-                                                             P_ACCOUNTED_CR            => 0,
+                                                             P_ACCOUNTED_CR            => var_saving_credit_amount,
                                                              P_DESCRIPTION             => var_description,
                                                              P_SOURCE_ID               => -1,
                                                              P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
                                                              
-                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_pac_code_comb, 35, ' ') || RPAD(var_description, 50, ' ') || LPAD(var_saving_debit_amount, 30, ' ') || LPAD(0, 30, ' '));                                         
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_pac_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_saving_debit_amount, 30, ' ') || 
+                                                       LPAD(var_saving_credit_amount, 30, ' '));                                         
                                                                                  
                 END IF;
                 
-                
+                /*****************************************************/
+                /*          ABONO   :   APORTACIONES POR PAGAR       */
+                /*****************************************************/
                 FOR detail_saving IN DETAILS_SAVINGS(P_PERIOD_NAME, 
                                                      P_ELEMENT_NAME, 
                                                      detail_company.COMPANY_CODE) LOOP
-                                                     
+                    var_saving_debit_amount := 0;                                                     
                     var_saving_credit_amount := 0;
                     var_index := var_index + 1;
                     var_description := '';
@@ -2460,24 +2571,29 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                              P_ROW_NUMBER              => var_index,
                                                              P_CODE_COMBINATION_ID     => detail_saving.CODE_COMBINATION_ID,
                                                              P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_SAVINGS',
-                                                             P_ACCOUNTED_DR            => 0,
+                                                             P_ACCOUNTED_DR            => var_saving_debit_amount,
                                                              P_ACCOUNTED_CR            => var_saving_credit_amount,
                                                              P_DESCRIPTION             => var_description,
                                                              P_SOURCE_ID               => detail_saving.SAVING_TRANSACTION_ID,
                                                              P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
                                                              
-                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(detail_saving.ACCOUNT_NUMBER, 35, ' ') || RPAD(var_description, 50, ' ') || LPAD(0, 30, ' ') || LPAD(var_saving_credit_amount, 30, ' '));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(detail_saving.ACCOUNT_NUMBER, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_saving_debit_amount, 30, ' ') || 
+                                                       LPAD(var_saving_credit_amount, 30, ' '));
                     
                     UPDATE ATET_SB_SAVINGS_TRANSACTIONS ASST
                        SET ASST.ACCOUNTED_FLAG = 'ACCOUNTED',
-                           LAST_UPDATE_DATE = SYSDATE,
-                           LAST_UPDATED_BY = var_user_id
+                           ASST.LAST_UPDATE_DATE = SYSDATE,
+                           ASST.LAST_UPDATED_BY = var_user_id
                      WHERE 1 = 1 
                        AND ASST.SAVING_TRANSACTION_ID = detail_saving.SAVING_TRANSACTION_ID;
                        
                     COMMIT;
                     
                 END LOOP;
+                
+                
             
             END LOOP;
             
@@ -2517,10 +2633,308 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                        P_HEADER_ID          => var_header_id);
 
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'HEADER_ID : ' || var_header_id);
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('CUENTA', 35, ' ') || RPAD('DESCRIPCION', 50, ' ') || LPAD('CARGO', 30, ' ') || LPAD('ABONO', 30, ' '));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('CUENTA', 35, ' ') || 
+                                               RPAD('DESCRIPCION', 50, ' ') || 
+                                               LPAD('CARGO', 30, ' ') || 
+                                               LPAD('ABONO', 30, ' '));
             
+            FOR detail_company IN DETAILS_COMPANIES LOOP
             
+                var_loan_debit_amount := 0;
+                var_loan_credit_amount := 0;
+                var_description := '';
+                
+                FOR detail_loan IN DETAILS_LOANS(P_PERIOD_NAME, 
+                                                 P_ELEMENT_NAME, 
+                                                 detail_company.COMPANY_CODE) LOOP
+                    var_loan_debit_amount := var_loan_debit_amount + detail_loan.PAYMENT_AMOUNT;
+                END LOOP;
+                
+                /*****************************************************/
+                /*          CARGO   :   DEUDORES DIVERSOS            */
+                /*****************************************************/
+                IF detail_company.COMPANY_CODE = '02' AND var_loan_debit_amount > 0 THEN
+                
+                    var_index := var_index + 1;
+                
+                    var_description := UPPER('Pago de prestamo de caja ahorro (El Calvario Servicios)');
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_deb_cs_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_LOANS',
+                                                             P_ACCOUNTED_DR            => var_loan_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_loan_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => -1,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_cs_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_loan_debit_amount, 30, ' ') || 
+                                                       LPAD(var_loan_credit_amount, 30, ' '));
+                    
+                ELSIF detail_company.COMPANY_CODE = '11' AND var_loan_debit_amount > 0 THEN
+                
+                    var_index := var_index + 1;
+                
+                    var_description := UPPER('Pago de prestamo de caja ahorro (Productos Avicolas El Calvario)');
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_deb_pac_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_LOANS',
+                                                             P_ACCOUNTED_DR            => var_loan_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_loan_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => -1,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_pac_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_loan_debit_amount, 30, ' ') || 
+                                                       LPAD(var_loan_credit_amount, 30, ' '));                                         
+                                                                                 
+                END IF;
+                
+                /*****************************************************/
+                /*          ABONO   :   DOCUMENTOS POR COBRAR        */
+                /*****************************************************/
+                FOR detail_loan IN DETAILS_LOANS(P_PERIOD_NAME, 
+                                                 P_ELEMENT_NAME, 
+                                                 detail_company.COMPANY_CODE) LOOP
+                    var_loan_debit_amount := 0;
+                    var_loan_credit_amount := 0;
+                    var_index := var_index + 1;
+                    var_description := '';
+                                                     
+                    var_loan_credit_amount := detail_loan.PAYMENT_AMOUNT;
+                    var_description := detail_loan.EMPLOYEE_FULL_NAME || '|' || detail_loan.LOAN_NUMBER || '|' || var_loan_credit_amount;
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => detail_loan.CODE_COMBINATION_ID,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_LOANS',
+                                                             P_ACCOUNTED_DR            => var_loan_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_loan_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => detail_loan.LOAN_TRANSACTION_ID,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(detail_loan.ACCOUNT_NUMBER, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_loan_debit_amount, 30, ' ') || 
+                                                       LPAD(var_loan_credit_amount, 30, ' '));
+                    
+                    UPDATE ATET_SB_LOANS_TRANSACTIONS ASLT
+                       SET ASLT.ACCOUNTED_FLAG = 'ACCOUNTED',
+                           ASLT.LAST_UPDATE_DATE = SYSDATE,
+                           ASLT.LAST_UPDATED_BY = var_user_id
+                     WHERE 1 = 1 
+                       AND ASLT.LOAN_TRANSACTION_ID = detail_loan.LOAN_TRANSACTION_ID;
+                       
+                    COMMIT;
+                                                                     
+                END LOOP;       
+                
+                /*****************************************************/
+                /*          CARGO   :   INTERESES POR DEVENGAR       */
+                /*****************************************************/
+                FOR detail_interest IN DETAILS_INTERESTS(P_PERIOD_NAME, 
+                                                         P_ELEMENT_NAME, 
+                                                         detail_company.COMPANY_CODE) LOOP
+                    
+                    var_loan_debit_amount := 0;
+                    var_loan_credit_amount := 0;
+                    var_index := var_index + 1;
+                    var_description := '';
+                                                     
+                    var_loan_debit_amount := detail_interest.PAYMENT_INTEREST;
+                    var_description := detail_interest.EMPLOYEE_FULL_NAME || '|' || detail_interest.LOAN_NUMBER || '|' || var_loan_debit_amount;
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_une_int_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_INTEREST',
+                                                             P_ACCOUNTED_DR            => var_loan_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_loan_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => detail_interest.LOAN_TRANSACTION_ID,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_une_int_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_loan_debit_amount, 30, ' ') || 
+                                                       LPAD(var_loan_credit_amount, 30, ' '));
+                    
+                    
+                    UPDATE ATET_SB_LOANS_TRANSACTIONS ASLT
+                       SET ASLT.ACCOUNTED_FLAG = 'ACCOUNTED',
+                           ASLT.LAST_UPDATE_DATE = SYSDATE,
+                           ASLT.LAST_UPDATED_BY = var_user_id
+                     WHERE 1 = 1 
+                       AND ASLT.LOAN_TRANSACTION_ID = detail_interest.LOAN_TRANSACTION_ID;
+                       
+                    COMMIT;
+                                                                     
+                END LOOP;  
+                
+                var_loan_debit_amount := 0;
+                var_loan_credit_amount := 0;
+                var_description := '';
+                
+                FOR detail_interest IN DETAILS_INTERESTS(P_PERIOD_NAME, 
+                                                         P_ELEMENT_NAME, 
+                                                         detail_company.COMPANY_CODE) LOOP
+                    var_loan_credit_amount := var_loan_credit_amount + detail_interest.PAYMENT_INTEREST;
+                END LOOP;      
+                
+                /*****************************************************/
+                /*          ABONO   :   INTERESES COBRADOS           */
+                /*****************************************************/
+                IF detail_company.COMPANY_CODE = '02' AND var_loan_credit_amount > 0 THEN
+                
+                    var_index := var_index + 1;
+                
+                    var_description := UPPER('Intereses Cobrados (El Calvario Servicios)');
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_int_rec_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_INTEREST',
+                                                             P_ACCOUNTED_DR            => var_loan_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_loan_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => -1,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_int_rec_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_loan_debit_amount, 30, ' ') || 
+                                                       LPAD(var_loan_credit_amount, 30, ' '));
+                    
+                ELSIF detail_company.COMPANY_CODE = '11' AND var_loan_credit_amount > 0 THEN
+                
+                    var_index := var_index + 1;
+                
+                    var_description := UPPER('Intereses Cobrados (Productos Avicolas El Calvario)');
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_int_rec_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_INTEREST',
+                                                             P_ACCOUNTED_DR            => var_loan_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_loan_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => -1,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_int_rec_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_loan_debit_amount, 30, ' ') || 
+                                                       LPAD(var_loan_credit_amount, 30, ' '));                                         
+                                                                                 
+                END IF;
+                
+                var_loan_debit_amount := 0;
+                var_loan_credit_amount := 0;
+                var_description := '';
+                
+                FOR detail_interest_late IN DETAILS_INTERESTS_LATE(P_PERIOD_NAME, 
+                                                                   P_ELEMENT_NAME, 
+                                                                   detail_company.COMPANY_CODE) LOOP
+                    var_loan_debit_amount := var_loan_debit_amount + detail_interest_late.PAYMENT_INTEREST_LATE;
+                END LOOP;
+                
+                /*****************************************************/
+                /*          CARGO   :   DEUDORES DIVERSOS            */
+                /*****************************************************/
+                IF detail_company.COMPANY_CODE = '02' AND var_loan_debit_amount > 0 THEN
+                
+                    var_index := var_index + 1;
+                
+                    var_description := UPPER('Intereses Moratorios Cobrados (El Calvario Servicios)');
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_deb_cs_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_INTEREST_LATE',
+                                                             P_ACCOUNTED_DR            => var_loan_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_loan_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => -1,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_cs_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_loan_debit_amount, 30, ' ') || 
+                                                       LPAD(var_loan_credit_amount, 30, ' '));
+                    
+                ELSIF detail_company.COMPANY_CODE = '11' AND var_loan_debit_amount > 0 THEN
+                
+                    var_index := var_index + 1;
+                
+                    var_description := UPPER('Intereses Moratorios Cobrados (Productos Avicolas El Calvario)');
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_deb_pac_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_LOANS',
+                                                             P_ACCOUNTED_DR            => var_loan_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_loan_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => -1,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_deb_pac_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_loan_debit_amount, 30, ' ') || 
+                                                       LPAD(var_loan_credit_amount, 30, ' '));                                         
+                                                                                 
+                END IF;
+                
+                /*****************************************************/
+                /*          CARGO   :   INTERESES POR DEVENGAR       */
+                /*****************************************************/
+                FOR detail_interest_late IN DETAILS_INTERESTS_LATE(P_PERIOD_NAME, 
+                                                                   P_ELEMENT_NAME, 
+                                                                   detail_company.COMPANY_CODE) LOOP
+                    var_loan_debit_amount := 0;
+                    var_loan_credit_amount := 0;
+                    var_index := var_index + 1;
+                    var_description := '';
+                                                     
+                    var_loan_credit_amount := detail_interest_late.PAYMENT_INTEREST_LATE;
+                    var_description := detail_interest_late.EMPLOYEE_FULL_NAME || '|' || detail_interest_late.LOAN_NUMBER || '|' || var_loan_credit_amount;
+                
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_index,
+                                                             P_CODE_COMBINATION_ID     => var_int_rec_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_INTEREST_LATE',
+                                                             P_ACCOUNTED_DR            => var_loan_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_loan_credit_amount,
+                                                             P_DESCRIPTION             => var_description,
+                                                             P_SOURCE_ID               => detail_interest_late.LOAN_TRANSACTION_ID,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS');
+                                                             
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(var_int_rec_code_comb, 35, ' ') || 
+                                                       RPAD(var_description, 50, ' ') || 
+                                                       LPAD(var_loan_debit_amount, 30, ' ') || 
+                                                       LPAD(var_loan_credit_amount, 30, ' '));
+                    
+                    
+                    UPDATE ATET_SB_LOANS_TRANSACTIONS ASLT
+                       SET ASLT.ACCOUNTED_FLAG = 'ACCOUNTED',
+                           ASLT.LAST_UPDATE_DATE = SYSDATE,
+                           ASLT.LAST_UPDATED_BY = var_user_id
+                     WHERE 1 = 1 
+                       AND ASLT.LOAN_TRANSACTION_ID = detail_interest_late.LOAN_TRANSACTION_ID;
+                       
+                    COMMIT;
+                                                                     
+                END LOOP;  
             
+            END LOOP;                        
         
         END IF;
         
