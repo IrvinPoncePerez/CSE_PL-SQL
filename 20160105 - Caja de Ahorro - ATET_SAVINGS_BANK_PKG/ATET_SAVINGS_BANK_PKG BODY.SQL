@@ -1705,7 +1705,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             var_loan_id := GET_LOAN_ID(
                                 P_MEMBER_ID => var_member_id, 
                                 P_LOAN_NUMBER => var_loan_number);
-        ELSE
+        ELSIF var_loan_id = 0 AND var_loan_number = 0 THEN
             var_loan_id := GET_LOAN_ID(
                                 P_PERSON_ID => P_PERSON_ID,
                                 P_PAYMENT_AMOUNT => GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Amount'));
@@ -1840,7 +1840,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
            
         --Actualización de payment_schedule.           
-        IF var_expected_payment_amount = P_ENTRY_VALUE THEN
+        IF TRUNC(var_expected_payment_amount, 0) = TRUNC(P_ENTRY_VALUE, 0) THEN
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
                SET ASPS.STATUS_FLAG = 'PAYED',
                    ASPS.LAST_UPDATE_DATE = SYSDATE,
@@ -1850,9 +1850,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         ELSIF P_ENTRY_VALUE > 0 THEN
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
                SET ASPS.STATUS_FLAG = 'PARTIAL',
-                   ASPS.ATTRIBUTE1 = var_payment_capital,
-                   ASPS.ATTRIBUTE2 = var_payment_interest,
-                   ASPS.ATTRIBUTE3 = var_payment_interest_late,
+                   ASPS.ATTRIBUTE1 = ASPS.PAYMENT_CAPITAL - var_payment_capital,
+                   ASPS.ATTRIBUTE2 = ASPS.PAYMENT_INTEREST - var_payment_interest,
+                   ASPS.ATTRIBUTE3 = ASPS.PAYMENT_INTEREST_LATE - var_payment_interest_late,
+                   ASPS.ATTRIBUTE6 = HAS_DISABILITIES(P_PERSON_ID, ASPS.TIME_PERIOD_ID),
                    ASPS.LAST_UPDATE_DATE = SYSDATE,
                    ASPS.LAST_UPDATED_BY = var_user_id
              WHERE ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
@@ -1860,9 +1861,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         ELSIF P_ENTRY_VALUE = 0 THEN
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
                SET ASPS.STATUS_FLAG = 'PARTIAL',
-                   ASPS.ATTRIBUTE1 = ASPS.PAYMENT_CAPITAL,
-                   ASPS.ATTRIBUTE2 = ASPS.PAYMENT_INTEREST,
-                   ASPS.ATTRIBUTE3 = ASPS.PAYMENT_INTEREST_LATE,
+                   ASPS.ATTRIBUTE1 = ASPS.PAYMENT_CAPITAL - var_payment_capital,
+                   ASPS.ATTRIBUTE2 = ASPS.PAYMENT_INTEREST - var_payment_interest,
+                   ASPS.ATTRIBUTE3 = ASPS.PAYMENT_INTEREST_LATE - var_payment_interest_late,
+                   ASPS.ATTRIBUTE6 = HAS_DISABILITIES(P_PERSON_ID, ASPS.TIME_PERIOD_ID),
                    ASPS.LAST_UPDATE_DATE = SYSDATE,
                    ASPS.LAST_UPDATED_BY = var_user_id
              WHERE ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
@@ -1871,11 +1873,34 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         
         UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
-               SET ASPS.STATUS_FLAG = 'SKIP'
+               SET ASPS.STATUS_FLAG = 'SKIP',
+                   ASPS.ATTRIBUTE1 = ASPS.PAYMENT_CAPITAL,
+                   ASPS.ATTRIBUTE2 = ASPS.PAYMENT_INTEREST,
+                   ASPS.ATTRIBUTE3 = ASPS.PAYMENT_INTEREST_LATE,
+                   ASPS.ATTRIBUTE6 = HAS_DISABILITIES(P_PERSON_ID, ASPS.TIME_PERIOD_ID),
+                   ASPS.LAST_UPDATE_DATE = SYSDATE,
+                   ASPS.LAST_UPDATED_BY = var_user_id
              WHERE 1 = 1
                AND ASPS.LOAN_ID = var_loan_id
                AND ASPS.PAYMENT_NUMBER BETWEEN 1 AND var_payment_number
                AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED');    
+               
+               
+        /***********************  INTERESES  MORATORIOS  **********************/
+        
+        SELECT COUNT(ASPS.PAYMENT_SCHEDULE_ID)
+          INTO var_validate
+          FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+         WHERE 1 = 1
+           AND ASPS.LOAN_ID = var_loan_id
+           AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED')
+           AND ASPS.PAYMENT_NUMBER > var_payment_number;
+           
+        IF var_validate = 0 THEN
+            NULL;
+        END IF;
+        
+        /**********************************************************************/
         
         
         SELECT COUNT(ASPS.PAYMENT_NUMBER)
@@ -3169,6 +3194,66 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         ROLLBACK;
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en SEND_TO_XLA ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END SEND_TO_XLA;
+    
+    
+    FUNCTION    HAS_DISABILITIES(P_PERSON_ID        NUMBER,
+                                 P_TIME_PERIOD_ID   NUMBER)
+      RETURN    VARCHAR2
+    IS
+        var_result  VARCHAR2(100);
+        var_count   NUMBER;
+    BEGIN
+    
+                SELECT DISTINCT
+                       COUNT(PDF.DISABILITY_ID)
+                  INTO var_count
+                  FROM  PAY_ALL_PAYROLLS_F          PAP,
+                        PER_PERSON_TYPE_USAGES_F    PPTU,
+                        PER_PERIODS_OF_SERVICE      PPOS,
+                        PER_ALL_ASSIGNMENTS_F       PAA,   
+                        PER_PEOPLE_F                PPF,      
+                        PER_ALL_PEOPLE_F            PAPF,
+                        PER_DISABILITIES_F          PDF,
+                        PER_TIME_PERIODS            PTP  
+                 WHERE 1 = 1
+                   AND PPF.PERSON_ID = PPTU.PERSON_ID
+                   AND PPF.PERSON_ID = PPOS.PERSON_ID
+                   AND PAA.PAYROLL_ID = PAP.PAYROLL_ID
+                   AND PAA.PERSON_ID = PPF.PERSON_ID
+                   AND PAPF.PERSON_ID = PPF.PERSON_ID
+                   AND (PPF.EFFECTIVE_START_DATE = PAPF.EFFECTIVE_START_DATE
+                    AND PPF.EFFECTIVE_START_DATE = PPTU.EFFECTIVE_START_DATE
+                    AND PPF.EFFECTIVE_START_DATE = PPOS.DATE_START) 
+                   AND PAA.PERIOD_OF_SERVICE_ID = PPOS.PERIOD_OF_SERVICE_ID
+                   AND PPF.REGISTERED_DISABLED_FLAG IS NULL
+                   AND PDF.PERSON_ID = PPF.PERSON_ID
+                   AND PDF.PERSON_ID = P_PERSON_ID
+                   AND PAP.PAYROLL_ID = PTP.PAYROLL_ID
+                   AND PTP.TIME_PERIOD_ID = P_TIME_PERIOD_ID
+                   AND (   PDF.REGISTRATION_DATE BETWEEN PTP.START_DATE AND PTP.END_DATE
+                        OR PDF.REGISTRATION_EXP_DATE BETWEEN PTP.START_DATE AND PTP.END_DATE)   
+                   AND (PDF.CATEGORY = 'RT'
+                     OR PDF.CATEGORY = 'GRAL'
+                     OR PDF.CATEGORY = 'MAT')
+                 GROUP BY PPF.PERSON_ID,
+                           PAPF.EMPLOYEE_NUMBER,       
+                           PAPF.FULL_NAME,
+                           PDF.DISABILITY_ID,
+                           PDF.REGISTRATION_DATE, 
+                           PDF.REGISTRATION_EXP_DATE;
+                           
+        IF var_count > 0 THEN
+            var_result := 'DISABILITIES';
+        ELSE
+            var_result := '';
+        END IF;
+        
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'HAS_DISABILITIES(P_PERSON_ID => ' || P_PERSON_ID || 
+                                                        ',P_TIME_PERIOD_ID => ' || P_TIME_PERIOD_ID || 
+                                                        ') RETURN ' || var_result);
+    
+        RETURN var_result;
+    END HAS_DISABILITIES;
                                  
 
 END ATET_SAVINGS_BANK_PKG;

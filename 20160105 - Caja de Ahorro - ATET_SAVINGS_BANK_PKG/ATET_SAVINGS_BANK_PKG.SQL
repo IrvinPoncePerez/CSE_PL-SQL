@@ -157,5 +157,9 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                             P_MONTH          NUMBER,
                             P_PERIOD_NAME    VARCHAR2,
                             P_ELEMENT_NAME   VARCHAR2);
+                            
+    FUNCTION    HAS_DISABILITIES(P_PERSON_ID        NUMBER,
+                                 P_TIME_PERIOD_ID   NUMBER)
+      RETURN    VARCHAR2;
 
 END ATET_SAVINGS_BANK_PKG;
