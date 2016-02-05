@@ -1,6 +1,4 @@
 CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
-
-
     FUNCTION    GET_SAVING_BANK_ID
       RETURN    NUMBER
     IS
@@ -1446,6 +1444,38 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END RESTART_SEQUENCE;  
     
     
+    PROCEDURE   CREATE_SEQUENCE
+    IS
+    BEGIN
+        
+        EXECUTE IMMEDIATE
+             'CREATE SEQUENCE ATET_SB_LOAN_NUMBER_SEQ '
+          || 'START WITH 1 '
+          || 'INCREMENT BY 1 '
+          || 'NOCACHE '
+          || 'NOCYCLE';
+                  
+                  
+        EXECUTE IMMEDIATE
+             'CREATE SEQUENCE ATET_SB_CHECK_NUMBER_SEQ '
+          || 'START WITH 1 '
+          || 'INCREMENT BY 1 '
+          || 'NOCACHE '
+          || 'NOCYCLE';
+          
+          
+        EXECUTE IMMEDIATE
+             'CREATE SEQUENCE ATET_SB_ENDORSEMENT_NUMBER_SEQ '
+          || 'START WITH 1 '
+          || 'INCREMENT BY 1 '
+          || 'NOCACHE '
+          || 'NOCYCLE';      
+                  
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en CREATE_SEQUENCE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+    END CREATE_SEQUENCE;  
+    
+    
     FUNCTION    GET_MEMBER_ID(P_PERSON_ID   NUMBER)
       RETURN    NUMBER
     IS
@@ -1491,22 +1521,26 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     IS
         var_result  NUMBER;
     BEGIN
-        SELECT GL.CODE_COMBINATION_ID
-          INTO var_result
-          FROM GL_CODE_COMBINATIONS_V  GL
-         WHERE 1 = 1
-           AND GL.TEMPLATE_ID IS NULL
-           AND GL.SEGMENT1 = '07'
-           AND (GL.SEGMENT1 ||
-                GL.SEGMENT2 ||
-                GL.SEGMENT3 ||
-                GL.SEGMENT4 ||
-                GL.SEGMENT5 ||
-                GL.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
+    
+--        SELECT GL.CODE_COMBINATION_ID
+--          INTO var_result
+--          FROM GL_CODE_COMBINATIONS_V  GL
+--         WHERE 1 = 1
+--           AND GL.TEMPLATE_ID IS NULL
+--           AND GL.SEGMENT1 = '07'
+--           AND (GL.SEGMENT1 ||
+--                GL.SEGMENT2 ||
+--                GL.SEGMENT3 ||
+--                GL.SEGMENT4 ||
+--                GL.SEGMENT5 ||
+--                GL.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
                 
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_CODE_COMBINATION_ID(P_CODE_COMBINATION => ' || P_CODE_COMBINATION || ') RETURN ' || var_result); 
                 
-        RETURN var_result;
+--        RETURN var_result;
+
+        RETURN 0;
+        
         
     EXCEPTION WHEN OTHERS THEN
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_CODE_COMBINATION_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
@@ -2183,6 +2217,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_user_id             NUMBER := FND_GLOBAL.USER_ID;
         var_loan_number         NUMBER;
         var_loan_id             NUMBER;
+        var_transaction_date    DATE;
     BEGIN
     
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'SET_LOAN_BALANCE(P_LOAN_ID => ' || P_LOAN_ID ||
@@ -2191,9 +2226,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                         ')');
     
         SELECT ASL.LOAN_ID,
-               ASL.LOAN_NUMBER
+               ASL.LOAN_NUMBER,
+               ASL.TRANSACTION_DATE
           INTO var_loan_id,
-               var_loan_number
+               var_loan_number,
+               var_transaction_date
           FROM ATET_SB_LOANS    ASL
          WHERE 1 = 1
            AND ASL.MEMBER_ID = GET_MEMBER_ID(P_PERSON_ID)
@@ -2239,7 +2276,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                -1,
                                                P_LOAN_ID,
                                                P_PERSON_ID,
-                                               SYSDATE,
+                                               var_transaction_date,
                                                'APERTURA',
                                                'APERTURA DE PRESTAMO',
                                                'OPENING',
