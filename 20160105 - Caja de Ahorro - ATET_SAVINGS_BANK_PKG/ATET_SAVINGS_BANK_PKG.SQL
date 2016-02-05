@@ -161,5 +161,14 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     FUNCTION    HAS_DISABILITIES(P_PERSON_ID        NUMBER,
                                  P_TIME_PERIOD_ID   NUMBER)
       RETURN    VARCHAR2;
+      
+    PROCEDURE   EXTEND_PAYMENTS_SCHEDULE(P_LOAN_ID                  NUMBER,
+                                         P_PERSON_ID                NUMBER,
+                                         P_MEMBER_ID                NUMBER,
+                                         P_TIME_PERIOD_ID           NUMBER,
+                                         P_ACTUAL_DATE_EARNED       DATE,
+                                         P_PAYMENT_CAPITAL          NUMBER,
+                                         P_PAYMENT_INTEREST         NUMBER,
+                                         P_PAYMENT_INTEREST_LATE    NUMBER);
 
 END ATET_SAVINGS_BANK_PKG;

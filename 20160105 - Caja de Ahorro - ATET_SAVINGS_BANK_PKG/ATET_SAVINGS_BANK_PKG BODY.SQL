@@ -551,6 +551,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_validate        NUMBER;
     
     BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXPORT_PAYROLL_RESULTS(P_PERIOD_TYPE => ' || P_PERIOD_TYPE ||
+                                                              ',P_YEAR => ' || P_YEAR ||
+                                                              ',P_MONTH => ' || P_MONTH ||
+                                                              ',P_PERIOD_NAME => ' || P_PERIOD_NAME ||
+                                                              ')');
         
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_PERIOD_TYPE : ' || P_PERIOD_TYPE);
@@ -676,6 +682,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_sum_loan_pay_value      NUMBER;
         var_sum_loan_import         NUMBER;
     BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'IMPORT_PAYROLL_RESULTS(P_EXPORT_REQUEST_ID => ' || P_EXPORT_REQUEST_ID || ')');
     
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_EXPORT_REQUEST_ID : ' || P_EXPORT_REQUEST_ID);
@@ -1007,6 +1015,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_have_account    NUMBER;
         var_user_id         NUMBER := FND_GLOBAL.USER_ID;
     BEGIN
+        
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'CREATE_ACCOUNT(P_PERSON_ID => ' || P_PERSON_ID ||
+                                                      ',P_PARAM_ELEMENT_NAME => ' || P_PARAM_ELEMENT_NAME ||
+                                                      ',P_PARAM_CODE_COMBINATION => ' || P_PARAM_CODE_COMBINATION || ')');
                    
 
         IF P_PARAM_ELEMENT_NAME = 'SAVINGS_ELEMENT_NAME' THEN
@@ -1211,6 +1223,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_validate        NUMBER;
         
     BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'ROLLBACK_EXPORT_PAYRESULT(P_EXPORT_REQUEST_ID => ' ||P_EXPORT_REQUEST_ID || ')');
         
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_EXPORT_REQUEST_ID : ' || P_EXPORT_REQUEST_ID);
@@ -1290,6 +1304,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_attribute3          VARCHAR2(15);
         var_is_saver            VARCHAR2(5);
     BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'CHANGE_AMOUNT_TO_SAVE(P_EMPLOYEE_NUMBER => ' || P_EMPLOYEE_NUMBER || 
+                                                             ',P_AMOUNT_TO_SAVE => ' || P_AMOUNT_TO_SAVE || 
+                                                             ')');
     
         IF SYSDATE > TO_DATE(GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'REG_CHANGED_DATE'), 'RRRR/MM/DD') THEN
             P_ERRBUF := 'No se puede cambiar el monto de ahorro cuando la fecha de inscripción ha finalizado.';
@@ -1693,7 +1711,22 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_payment_interest_late   NUMBER;
         var_expected_payment_amount NUMBER;
         
-        var_validate                NUMBER;
+        var_validate                   NUMBER;
+        
+        var_wd_payment_capital         NUMBER := 0;
+        var_wd_payment_interest        NUMBER := 0;
+        var_wd_payment_interest_late   NUMBER := 0;
+        
+        var_nd_payment_capital         NUMBER := 0;
+        var_nd_payment_interest        NUMBER := 0;
+        var_nd_payment_interest_late   NUMBER := 0;
+        
+        var_late_interest_rate         NUMBER := 0;
+        
+        var_p_payment_capital          NUMBER := 0;
+        var_p_payment_interest         NUMBER := 0;
+        var_p_payment_interest_late    NUMBER := 0;
+        
     BEGIN
     
         var_entry_value := P_ENTRY_VALUE;
@@ -1897,7 +1930,65 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASPS.PAYMENT_NUMBER > var_payment_number;
            
         IF var_validate = 0 THEN
-            NULL;
+        
+            SELECT COUNT(ASPS.PAYMENT_SCHEDULE_ID)
+              INTO var_validate
+              FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+             WHERE 1 = 1
+               AND ASPS.LOAN_ID = var_loan_id
+               AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL');
+               
+            IF var_validate > 0 THEN
+        
+                var_late_interest_rate := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LATE_INT');
+                
+                SELECT NVL(SUM(ASPS.ATTRIBUTE1), 0)  AS  PAYMENT_CAPITAL,
+                       NVL(SUM(ASPS.ATTRIBUTE2), 0)  AS  PAYMENT_INTEREST,
+                       NVL(SUM(ASPS.ATTRIBUTE3), 0)  AS  PAYMENT_INTEREST_LATE
+                  INTO var_nd_payment_capital,
+                       var_nd_payment_interest,
+                       var_nd_payment_interest_late
+                  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+                 WHERE 1 = 1
+                   AND ASPS.LOAN_ID = var_loan_id
+                   AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL')
+                   AND ASPS.ATTRIBUTE6 IS NULL;
+                   
+                SELECT NVL(SUM(ASPS.ATTRIBUTE1), 0)  AS  PAYMENT_CAPITAL,
+                       NVL(SUM(ASPS.ATTRIBUTE2), 0)  AS  PAYMENT_INTEREST,
+                       NVL(SUM(ASPS.ATTRIBUTE3), 0)  AS  PAYMENT_INTEREST_LATE
+                  INTO var_wd_payment_capital,
+                       var_wd_payment_interest,
+                       var_wd_payment_interest_late
+                  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+                 WHERE 1 = 1
+                   AND ASPS.LOAN_ID = var_loan_id
+                   AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL')
+                   AND ASPS.ATTRIBUTE6 = 'DISABILITIES';
+                   
+                var_wd_payment_capital := var_wd_payment_capital;
+                var_wd_payment_interest := var_wd_payment_interest;
+                var_wd_payment_interest_late := var_wd_payment_interest_late;
+                
+                var_nd_payment_capital := var_nd_payment_capital;
+                var_nd_payment_interest := var_nd_payment_interest;
+                var_nd_payment_interest_late := var_nd_payment_interest_late + ((var_nd_payment_capital + var_nd_payment_interest) * (var_late_interest_rate / 100));
+                
+                var_p_payment_capital := var_wd_payment_capital + var_nd_payment_capital;
+                var_p_payment_interest := var_wd_payment_interest + var_nd_payment_interest;
+                var_p_payment_interest_late := var_wd_payment_interest_late + var_nd_payment_interest_late;
+                
+                EXTEND_PAYMENTS_SCHEDULE(P_LOAN_ID => var_loan_id,
+                                         P_PERSON_ID => P_PERSON_ID,
+                                         P_MEMBER_ID => var_member_id,
+                                         P_TIME_PERIOD_ID => P_TIME_PERIOD_ID,
+                                         P_ACTUAL_DATE_EARNED => P_EARNED_DATE,
+                                         P_PAYMENT_CAPITAL => var_p_payment_capital,
+                                         P_PAYMENT_INTEREST => var_p_payment_interest,
+                                         P_PAYMENT_INTEREST_LATE => var_p_payment_interest_late);
+                                         
+            END IF;
+        
         END IF;
         
         /**********************************************************************/
@@ -2094,6 +2185,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_loan_id             NUMBER;
     BEGIN
     
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SET_LOAN_BALANCE(P_LOAN_ID => ' || P_LOAN_ID ||
+                                                        ',P_LOAN_AMOUNT => ' || P_LOAN_AMOUNT ||
+                                                        ',P_PERSON_ID => ' || P_PERSON_ID ||
+                                                        ')');
+    
         SELECT ASL.LOAN_ID,
                ASL.LOAN_NUMBER
           INTO var_loan_id,
@@ -2199,6 +2295,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
          var_min_sav_amt_wk             NUMBER;
          var_saving_bank_id             NUMBER := ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID;
     BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'INSERT_EXTEMPORANEOUS_SAVING(P_PERSON_ID => ' || P_PERSON_ID ||
+                                                                    ',P_SAVING_AMOUNT => ' || P_SAVING_AMOUNT ||
+                                                                    ',P_PENDING_PAYMENT => ' || P_PENDING_PAYMENT ||
+                                                                    ')');
         
         IF TO_DATE(GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'REG_EXTEMPORANEOUS_DATE'), 'RRRR/MM/DD') > SYSDATE THEN
             
@@ -2711,6 +2812,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
         
     BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SEND_TO_XLA(P_PERIOD_TYPE => ' || P_PERIOD_TYPE ||
+                                                   ',P_YEAR => ' || P_YEAR ||
+                                                   ',P_MONTH => ' || P_MONTH ||
+                                                   ',P_PERIOD_NAME => ' || P_PERIOD_NAME ||
+                                                   ',P_ELEMENT_NAME => ' || P_ELEMENT_NAME ||
+                                                   ')');
+    
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '***********     PARAMETERS     ***********');
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_PERIOD_TYPE : ' || P_PERIOD_TYPE);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'P_YEAR : ' || P_YEAR);
@@ -3254,6 +3363,31 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
         RETURN var_result;
     END HAS_DISABILITIES;
+    
+    
+    PROCEDURE   EXTEND_PAYMENTS_SCHEDULE(P_LOAN_ID                  NUMBER,
+                                         P_PERSON_ID                NUMBER,
+                                         P_MEMBER_ID                NUMBER,
+                                         P_TIME_PERIOD_ID           NUMBER,
+                                         P_ACTUAL_DATE_EARNED       DATE,
+                                         P_PAYMENT_CAPITAL          NUMBER,
+                                         P_PAYMENT_INTEREST         NUMBER,
+                                         P_PAYMENT_INTEREST_LATE    NUMBER)
+    IS
+    BEGIN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXTEND_PAYMENTS_SCHEDULE(P_LOAN_ID => ' || P_LOAN_ID ||
+                                                                ',P_PERSON_ID => ' || P_PERSON_ID ||
+                                                                ',P_MEMBER_ID => ' || P_MEMBER_ID ||
+                                                                ',P_TIME_PERIOD_ID => ' || P_TIME_PERIOD_ID ||
+                                                                ',P_ACTUAL_DATE_EARNED => ' || P_ACTUAL_DATE_EARNED ||
+                                                                ',P_PAYMENT_CAPITAL => ' || P_PAYMENT_CAPITAL ||
+                                                                ',P_PAYMENT_INTEREST => ' || P_PAYMENT_INTEREST ||
+                                                                ',P_PAYMENT_INTEREST_LATE => ' || P_PAYMENT_INTEREST_LATE || 
+                                                                ')');
+                                                                
+        
+        
+    END EXTEND_PAYMENTS_SCHEDULE;
                                  
 
 END ATET_SAVINGS_BANK_PKG;
