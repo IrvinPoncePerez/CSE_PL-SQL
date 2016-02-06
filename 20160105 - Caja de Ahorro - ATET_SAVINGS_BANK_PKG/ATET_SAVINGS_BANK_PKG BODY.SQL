@@ -51,13 +51,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
         IF var_extemp_loans = 'N' THEN 
             SELECT COUNT(D.PERIOD_NAME)
-            --       D.PERIOD_NAME,
-            --       D.TIME_PERIOD_ID,
-            --       D.ASSIGNMENT_ID,
-            --       D.PAYROLL_ID,
-            --       D.END_DATE,
-            --       PPA.TIME_PERIOD_ID,
-            --       PAA.RUN_TYPE_ID
               INTO var_count_periods
               FROM (SELECT PTP.PERIOD_NAME,
                            PTP.TIME_PERIOD_ID,
@@ -93,13 +86,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
               ORDER BY D.TIME_PERIOD_ID;
         ELSE 
             SELECT COUNT(D.PERIOD_NAME)
-            --       D.PERIOD_NAME,
-            --       D.TIME_PERIOD_ID,
-            --       D.ASSIGNMENT_ID,
-            --       D.PAYROLL_ID,
-            --       D.END_DATE,
-            --       PPA.TIME_PERIOD_ID,
-            --       PAA.RUN_TYPE_ID
               INTO var_count_periods
               FROM (SELECT PTP.PERIOD_NAME,
                            PTP.TIME_PERIOD_ID,
@@ -120,7 +106,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                        AND ASM.MEMBER_ID = P_MEMBER_ID
                        AND PTP.PAYROLL_ID = PAF.PAYROLL_ID    
                        AND EXTRACT(YEAR FROM PTP.END_DATE) = ASB.YEAR
---                       AND PTP.END_DATE BETWEEN SYSDATE AND ASB.TERMINATION_DATE
                        ) D
                LEFT JOIN PAY_PAYROLL_ACTIONS          PPA
                  ON PPA.PAYROLL_ID = D.PAYROLL_ID
@@ -1522,24 +1507,24 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_result  NUMBER;
     BEGIN
     
---        SELECT GL.CODE_COMBINATION_ID
---          INTO var_result
---          FROM GL_CODE_COMBINATIONS_V  GL
---         WHERE 1 = 1
---           AND GL.TEMPLATE_ID IS NULL
---           AND GL.SEGMENT1 = '07'
---           AND (GL.SEGMENT1 ||
---                GL.SEGMENT2 ||
---                GL.SEGMENT3 ||
---                GL.SEGMENT4 ||
---                GL.SEGMENT5 ||
---                GL.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
+        SELECT GL.CODE_COMBINATION_ID
+          INTO var_result
+          FROM GL_CODE_COMBINATIONS_V  GL
+         WHERE 1 = 1
+           AND GL.TEMPLATE_ID IS NULL
+           AND GL.SEGMENT1 = '07'
+           AND (GL.SEGMENT1 ||
+                GL.SEGMENT2 ||
+                GL.SEGMENT3 ||
+                GL.SEGMENT4 ||
+                GL.SEGMENT5 ||
+                GL.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
                 
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_CODE_COMBINATION_ID(P_CODE_COMBINATION => ' || P_CODE_COMBINATION || ') RETURN ' || var_result); 
                 
---        RETURN var_result;
+        RETURN var_result;
 
-        RETURN 0;
+--        RETURN 0;
         
         
     EXCEPTION WHEN OTHERS THEN
@@ -1905,8 +1890,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
          WHERE 1 = 1
            AND ASL.LOAN_ID = var_loan_id;
            
-           
-        --Actualización de payment_schedule.           
+                     
         IF TRUNC(var_expected_payment_amount, 0) = TRUNC(P_ENTRY_VALUE, 0) THEN
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
                SET ASPS.STATUS_FLAG = 'PAYED',
