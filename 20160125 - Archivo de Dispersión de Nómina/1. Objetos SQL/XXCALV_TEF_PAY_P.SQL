@@ -436,7 +436,7 @@ BEGIN
             l_linea := lpad(l_pago.cuenta,10,'0') || ',' ||
                        l_emp.importe || ',' ||
                        UPPER (l_referencia_lote || ' ' || l_period_name) || ',' ||
-                       TRIM(RPAD(REPLACE(l_emp.full_name, 'Ñ', 'N'), 35));          
+                       TRIM(RPAD(REPLACE(l_emp.full_name, 'Ñ', 'N'), 30));          
             
             fnd_file.PUT_LINE(fnd_file.OUTPUT, l_linea);
         
