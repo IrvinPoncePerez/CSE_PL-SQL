@@ -3395,6 +3395,52 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                          P_PAYMENT_INTEREST         NUMBER,
                                          P_PAYMENT_INTEREST_LATE    NUMBER)
     IS
+    
+        CURSOR  DETAILS(PP_TIME_PERIOD_ID       NUMBER,
+                        PP_ACTUAL_DATE_EARNED   DATE,
+                        PP_TERM_PERIODS         NUMBER
+                        ) IS
+            SELECT PAYROLL_ID,
+                   TIME_PERIOD_ID,
+                   END_DATE,
+                   PERIOD_NAME,
+                   PERIOD_NUM,
+                   PERIOD_SEQUENCE
+              FROM (SELECT PTP.PAYROLL_ID,
+                           PTP.TIME_PERIOD_ID,
+                           PTP.END_DATE,
+                           PTP.PERIOD_NAME,
+                           PTP.PERIOD_NUM,
+                           ROW_NUMBER () OVER (PARTITION BY PTP.PAYROLL_ID ORDER BY PTP.END_DATE)
+                           PERIOD_SEQUENCE
+                      FROM PER_TIME_PERIODS  PTP,   
+                           PER_TIME_PERIODS  PTP_PPF
+                     WHERE PTP.PAYROLL_ID = PTP_PPF.PAYROLL_ID
+                       AND PTP_PPF.TIME_PERIOD_ID = PP_TIME_PERIOD_ID
+                       AND (    PTP.END_DATE > TO_DATE(PP_ACTUAL_DATE_EARNED)
+                            AND PTP.END_DATE > TO_DATE (PP_ACTUAL_DATE_EARNED))
+                     ORDER BY PTP.END_DATE)
+             WHERE 1 = 1
+               AND PERIOD_SEQUENCE <= PP_TERM_PERIODS
+             ORDER BY PERIOD_SEQUENCE;
+             
+        var_term_periods                    NUMBER;
+        var_assignment_id                   NUMBER;
+        var_member_period_type              VARCHAR2(100);
+        
+        var_sum_payment_capital             NUMBER;
+        var_sum_payment_interest            NUMBER;
+        var_sum_payment_interest_late       NUMBER;
+        
+        var_opening_balance                 NUMBER;
+        var_payment_amount                  NUMBER;
+        var_payment_capital                 NUMBER;
+        var_payment_interest                NUMBER;
+        var_payment_interest_late           NUMBER;
+        var_final_balance                   NUMBER;
+        var_accrual_payment_amount          NUMBER;
+        var_user_id                         NUMBER := FND_GLOBAL.USER_ID;
+    
     BEGIN
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXTEND_PAYMENTS_SCHEDULE(P_LOAN_ID => ' || P_LOAN_ID ||
                                                                 ',P_PERSON_ID => ' || P_PERSON_ID ||
@@ -3406,8 +3452,82 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                                 ',P_PAYMENT_INTEREST_LATE => ' || P_PAYMENT_INTEREST_LATE || 
                                                                 ')');
                                                                 
+        SELECT PAF.ASSIGNMENT_ID,
+               PPF.PERIOD_TYPE
+          INTO var_assignment_id,
+               var_member_period_type
+          FROM PER_ASSIGNMENTS_F    PAF,
+               PAY_PAYROLLS_F       PPF
+         WHERE 1 = 1
+           AND PAF.PAYROLL_ID = PPF.PAYROLL_ID
+           AND PAF.PERSON_ID = P_PERSON_ID
+           AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
+           
+           
+        IF    var_member_period_type IN ('Week', 'Semana') THEN
+            var_term_periods := 4;
+            var_payment_capital := P_PAYMENT_CAPITAL / 4;
+            var_payment_interest := P_PAYMENT_INTEREST / 4;
+            var_payment_interest_late := P_PAYMENT_INTEREST_LATE / 4;
+        ELSIF var_member_period_type IN ('Semi-Month', 'Quincena') THEN
+            var_term_periods := 2;
+            var_payment_capital := P_PAYMENT_CAPITAL / 2;
+            var_payment_interest := P_PAYMENT_INTEREST / 2;
+            var_payment_interest_late := P_PAYMENT_INTEREST_LATE / 2;
+        END IF;
         
+        var_sum_payment_capital := 0;
+        var_sum_payment_interest := 0;
+        var_sum_payment_interest_late := 0;
+        var_payment_amount := 0;
+        var_accrual_payment_amount := 0;
+        var_final_balance := 0;
+        var_opening_balance := 0;
         
+        FOR detail IN DETAILS(P_TIME_PERIOD_ID, P_ACTUAL_DATE_EARNED, var_term_periods) LOOP
+            
+            IF detail.PERIOD_SEQUENCE = var_term_periods THEN
+                var_payment_capital := P_PAYMENT_CAPITAL - var_sum_payment_capital; 
+                var_payment_interest := P_PAYMENT_INTEREST - var_sum_payment_interest;
+                var_payment_interest_late := P_PAYMENT_INTEREST_LATE - var_sum_payment_interest_late; 
+            END IF;
+            
+            var_sum_payment_capital := var_sum_payment_capital + var_payment_capital;
+            var_sum_payment_interest := var_sum_payment_interest + var_payment_interest;
+            var_sum_payment_interest_late := var_sum_payment_interest_late + var_payment_interest_late;
+            var_payment_amount := var_payment_capital + var_payment_interest + var_payment_interest_late;
+            var_accrual_payment_amount := var_accrual_payment_amount + var_payment_amount;    
+            var_final_balance := (P_PAYMENT_CAPITAL + P_PAYMENT_INTEREST + P_PAYMENT_INTEREST_LATE) - var_accrual_payment_amount;
+            var_opening_balance := var_final_balance + var_payment_amount;
+            
+            DBMS_OUTPUT.PUT_LINE('LOAN_ID => ' || P_LOAN_ID ||
+                                     ', PAYMENT_NUMBER => ' || detail.PERIOD_SEQUENCE || 
+                                     ', PERIOD_NUMBER => ' || detail.PERIOD_NUM ||
+                                     ', TIME_PERIOD_ID => ' || detail.TIME_PERIOD_ID ||
+                                     ', PERIOD_NAME => ' || detail.PERIOD_NAME || 
+                                     ', PAYMENT_DATE => ' || detail.END_DATE ||
+                                     ', PAYROLL_ID => ' || detail.PAYROLL_ID ||
+                                     ', ASSIGNMENT_ID => ' || var_assignment_id ||
+                                     ', OPENING_BALANCE => ' || var_opening_balance ||
+                                     ', PAYMENT_AMOUNT => ' || var_payment_amount ||
+                                     ', PAYMENT_CAPITAL => ' || var_payment_capital || 
+                                     ', PAYMENT_INTEREST => ' || var_payment_interest ||
+                                     ', PAYMENT_INTEREST_LATE => ' || var_payment_interest_late ||
+                                     ', FINAL_BALANCE => ' || var_final_balance ||
+                                     ', ACCRUAL_PAYMENT_AMOUNT => ' || var_accrual_payment_amount);
+                                                
+            
+            IF detail.PERIOD_SEQUENCE = var_term_periods THEN
+                EXIT;
+            END IF;
+        
+        END LOOP;
+        
+         
+    EXCEPTION WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en EXTEND_PAYMENTS_SCHEDULE ' || SQLCODE || ' -ERROR- ' || SQLERRM);    
     END EXTEND_PAYMENTS_SCHEDULE;
                                  
 
