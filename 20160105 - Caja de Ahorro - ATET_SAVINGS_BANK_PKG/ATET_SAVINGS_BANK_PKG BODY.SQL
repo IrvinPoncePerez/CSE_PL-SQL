@@ -1872,7 +1872,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                   
         UPDATE ATET_SB_MEMBERS_ACCOUNTS
            SET DEBIT_BALANCE = DEBIT_BALANCE + P_DEBIT_AMOUNT,
-               CREDIT_BALANCE = CREDIT_BALANCE + P_CREDIT_AMOUNT,
+               CREDIT_BALANCE = CREDIT_BALANCE + (var_payment_capital + var_payment_interest),
                LAST_TRANSACTION_DATE = SYSDATE               
          WHERE MEMBER_ID = var_member_id
            AND MEMBER_ACCOUNT_ID = var_member_account_id;
@@ -1885,8 +1885,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND MEMBER_ACCOUNT_ID = var_member_account_id;
            
         UPDATE ATET_SB_LOANS ASL
-           SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - P_CREDIT_AMOUNT,
-               ASL.LAST_PAYMENT_DATE = SYSDATE
+           SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - (var_payment_capital + var_payment_interest),
+               ASL.LAST_PAYMENT_DATE = P_EARNED_DATE
          WHERE 1 = 1
            AND ASL.LOAN_ID = var_loan_id;
            
@@ -3467,14 +3467,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
         IF    var_member_period_type IN ('Week', 'Semana') THEN
             var_term_periods := 4;
-            var_payment_capital := P_PAYMENT_CAPITAL / 4;
-            var_payment_interest := P_PAYMENT_INTEREST / 4;
-            var_payment_interest_late := P_PAYMENT_INTEREST_LATE / 4;
+            var_payment_capital := TRUNC((P_PAYMENT_CAPITAL / 4), 2);
+            var_payment_interest := TRUNC((P_PAYMENT_INTEREST / 4), 2);
+            var_payment_interest_late := TRUNC((P_PAYMENT_INTEREST_LATE / 4), 2);
         ELSIF var_member_period_type IN ('Semi-Month', 'Quincena') THEN
             var_term_periods := 2;
-            var_payment_capital := P_PAYMENT_CAPITAL / 2;
-            var_payment_interest := P_PAYMENT_INTEREST / 2;
-            var_payment_interest_late := P_PAYMENT_INTEREST_LATE / 2;
+            var_payment_capital := TRUNC((P_PAYMENT_CAPITAL / 2), 2);
+            var_payment_interest := TRUNC((P_PAYMENT_INTEREST / 2), 2);
+            var_payment_interest_late := TRUNC((P_PAYMENT_INTEREST_LATE / 2), 2);
         END IF;
         
         var_sum_payment_capital := 0;
@@ -3501,22 +3501,65 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             var_final_balance := (P_PAYMENT_CAPITAL + P_PAYMENT_INTEREST + P_PAYMENT_INTEREST_LATE) - var_accrual_payment_amount;
             var_opening_balance := var_final_balance + var_payment_amount;
             
-            DBMS_OUTPUT.PUT_LINE('LOAN_ID => ' || P_LOAN_ID ||
-                                     ', PAYMENT_NUMBER => ' || detail.PERIOD_SEQUENCE || 
-                                     ', PERIOD_NUMBER => ' || detail.PERIOD_NUM ||
-                                     ', TIME_PERIOD_ID => ' || detail.TIME_PERIOD_ID ||
-                                     ', PERIOD_NAME => ' || detail.PERIOD_NAME || 
-                                     ', PAYMENT_DATE => ' || detail.END_DATE ||
-                                     ', PAYROLL_ID => ' || detail.PAYROLL_ID ||
-                                     ', ASSIGNMENT_ID => ' || var_assignment_id ||
-                                     ', OPENING_BALANCE => ' || var_opening_balance ||
-                                     ', PAYMENT_AMOUNT => ' || var_payment_amount ||
-                                     ', PAYMENT_CAPITAL => ' || var_payment_capital || 
-                                     ', PAYMENT_INTEREST => ' || var_payment_interest ||
-                                     ', PAYMENT_INTEREST_LATE => ' || var_payment_interest_late ||
-                                     ', FINAL_BALANCE => ' || var_final_balance ||
-                                     ', ACCRUAL_PAYMENT_AMOUNT => ' || var_accrual_payment_amount);
-                                                
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INSERT ATET_SB_PAYMENTS_SCHEDULE(LOAN_ID => ' || P_LOAN_ID ||
+                                                                           ', PAYMENT_NUMBER => ' || detail.PERIOD_SEQUENCE || 
+                                                                           ', PERIOD_NUMBER => ' || detail.PERIOD_NUM ||
+                                                                           ', TIME_PERIOD_ID => ' || detail.TIME_PERIOD_ID ||
+                                                                           ', PERIOD_NAME => ' || detail.PERIOD_NAME || 
+                                                                           ', PAYMENT_DATE => ' || detail.END_DATE ||
+                                                                           ', PAYROLL_ID => ' || detail.PAYROLL_ID ||
+                                                                           ', ASSIGNMENT_ID => ' || var_assignment_id ||
+                                                                           ', OPENING_BALANCE => ' || var_opening_balance ||
+                                                                           ', PAYMENT_AMOUNT => ' || var_payment_amount ||
+                                                                           ', PAYMENT_CAPITAL => ' || var_payment_capital || 
+                                                                           ', PAYMENT_INTEREST => ' || var_payment_interest ||
+                                                                           ', PAYMENT_INTEREST_LATE => ' || var_payment_interest_late ||
+                                                                           ', FINAL_BALANCE => ' || var_final_balance ||
+                                                                           ', ACCRUAL_PAYMENT_AMOUNT => ' || var_accrual_payment_amount ||
+                                                                           ')');
+            
+            INSERT 
+              INTO ATET_SB_PAYMENTS_SCHEDULE(LOAN_ID,
+                                             PAYMENT_NUMBER,
+                                             PERIOD_NUMBER,
+                                             TIME_PERIOD_ID,
+                                             PERIOD_NAME,
+                                             PAYMENT_DATE,
+                                             PAYROLL_ID,
+                                             ASSIGNMENT_ID,
+                                             OPENING_BALANCE,
+                                             PAYMENT_AMOUNT,
+                                             PAYMENT_CAPITAL,
+                                             PAYMENT_INTEREST,
+                                             PAYMENT_INTEREST_LATE,
+                                             FINAL_BALANCE,
+                                             ACCRUAL_PAYMENT_AMOUNT,
+                                             STATUS_FLAG,
+                                             CREATION_DATE,
+                                             CREATED_BY,
+                                             LAST_UPDATE_DATE,
+                                             LAST_UPDATED_BY)
+                                     VALUES (P_LOAN_ID,
+                                             detail.PERIOD_SEQUENCE,
+                                             detail.PERIOD_NUM,
+                                             detail.TIME_PERIOD_ID,
+                                             detail.PERIOD_NAME,
+                                             detail.END_DATE,
+                                             detail.PAYROLL_ID,
+                                             var_assignment_id,
+                                             var_opening_balance,
+                                             var_payment_amount,
+                                             var_payment_capital,
+                                             var_payment_interest,
+                                             var_payment_interest_late,
+                                             var_final_balance,
+                                             var_accrual_payment_amount,
+                                             'PENDING',
+                                             SYSDATE,
+                                             var_user_id,
+                                             SYSDATE,
+                                             var_user_id);
+                                                                             
             
             IF detail.PERIOD_SEQUENCE = var_term_periods THEN
                 EXIT;
@@ -3524,11 +3567,122 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         END LOOP;
         
+        UPDATE ATET_SB_PAYMENTS_SCHEDULE    ASPS
+           SET ASPS.STATUS_FLAG = 'REFINANCED'
+         WHERE 1 = 1
+           AND ASPS.LOAN_ID = P_LOAN_ID
+           AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL');
+        
          
     EXCEPTION WHEN OTHERS THEN
         ROLLBACK;
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en EXTEND_PAYMENTS_SCHEDULE ' || SQLCODE || ' -ERROR- ' || SQLERRM);    
     END EXTEND_PAYMENTS_SCHEDULE;
+    
+    
+    PROCEDURE   SETTLEMENT_LOAN(P_LOAN_ID           NUMBER)
+    IS
+        var_loan_id             NUMBER;
+        var_member_id           NUMBER;
+        var_member_account_id   NUMBER;
+        var_person_id           NUMBER;
+        var_loan_balance        NUMBER;
+        var_user_id             NUMBER := FND_GLOBAL.USER_ID;
+        var_validate            NUMBER;
+    BEGIN
+        
+        SELECT ASL.LOAN_ID,
+               ASL.MEMBER_ID,
+               ASM.PERSON_ID,
+               ASL.LOAN_BALANCE
+          INTO var_loan_id,
+               var_member_id,
+               var_person_id,
+               var_loan_balance
+          FROM ATET_SB_LOANS    ASL,
+               ATET_SB_MEMBERS  ASM
+         WHERE 1 = 1
+           AND ASL.LOAN_ID = P_LOAN_ID
+           AND ASL.MEMBER_ID = ASM.MEMBER_ID;
+        
+        var_member_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(var_member_id, var_loan_id);
+                                                            
+                                                            
+        UPDATE ATET_SB_PAYMENTS_SCHEDULE    ASPS
+           SET ASPS.STATUS_FLAG = 'PAYED',
+               ASPS.ATTRIBUTE6 = 'REFINANCED'
+         WHERE 1 = 1
+           AND ASPS.LOAN_ID = var_loan_id
+           AND ASPS.STATUS_FLAG IN ('PARTIAL', 'SKIP', 'PENDING', 'EXPORTED');
+           
+        
+    
+        INSERT INTO ATET_SB_LOANS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
+                                                MEMBER_ID,
+                                                PAYROLL_RESULT_ID,
+                                                LOAN_ID,
+                                                PERSON_ID,
+                                                EARNED_DATE,
+                                                PERIOD_NAME,
+                                                ELEMENT_NAME,
+                                                TRANSACTION_CODE,
+                                                DEBIT_AMOUNT,
+                                                CREDIT_AMOUNT,
+                                                CREATION_DATE,
+                                                CREATED_BY,
+                                                LAST_UPDATE_DATE,
+                                                LAST_UPDATED_BY)
+                                         VALUES (var_member_account_id,
+                                                 var_member_id,
+                                                 -1,
+                                                 var_loan_id,
+                                                 var_person_id,
+                                                 TO_DATE(SYSDATE, 'DD/MM/YYYY'),
+                                                 'LIQUIDACION',
+                                                 'LIQUIDACION DE PRESTAMO',
+                                                 'SETTLEMENT_LOAN',
+                                                 0,
+                                                 var_loan_balance,
+                                                 SYSDATE,
+                                                 var_user_id,
+                                                 SYSDATE,
+                                                 var_user_id);
+                                                  
+        UPDATE ATET_SB_MEMBERS_ACCOUNTS
+           SET DEBIT_BALANCE = DEBIT_BALANCE + 0,
+               CREDIT_BALANCE = CREDIT_BALANCE + var_loan_balance,
+               LAST_TRANSACTION_DATE = SYSDATE               
+         WHERE MEMBER_ID = var_member_id
+           AND MEMBER_ACCOUNT_ID = var_member_account_id;
+           
+        UPDATE ATET_SB_MEMBERS_ACCOUNTS
+           SET FINAL_BALANCE = DEBIT_BALANCE - CREDIT_BALANCE,
+               LAST_UPDATE_DATE = SYSDATE,
+               LAST_UPDATED_BY = var_user_id             
+         WHERE MEMBER_ID = var_member_id
+           AND MEMBER_ACCOUNT_ID = var_member_account_id;
+           
+        UPDATE ATET_SB_LOANS ASL
+           SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - var_loan_balance,
+               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/YYYY')
+         WHERE 1 = 1
+           AND ASL.LOAN_ID = var_loan_id;
+           
+        
+        
+        UPDATE ATET_SB_LOANS ASL
+           SET ASL.LOAN_STATUS_FLAG = 'PAYED'
+         WHERE ASL.LOAN_ID = var_loan_id;
+
+             
+        MERGE INTO ATET_SB_MEMBERS      ASM
+             USING ATET_SB_ENDORSEMENTS ASE
+                ON (    ASE.LOAN_ID = var_loan_id
+                    AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
+        WHEN MATCHED THEN 
+        UPDATE SET ASM.IS_ENDORSEMENT = 'N';      
+               
+    END SETTLEMENT_LOAN;
                                  
 
 END ATET_SAVINGS_BANK_PKG;

@@ -172,5 +172,7 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                          P_PAYMENT_CAPITAL          NUMBER,
                                          P_PAYMENT_INTEREST         NUMBER,
                                          P_PAYMENT_INTEREST_LATE    NUMBER);
+                                         
+    PROCEDURE   SETTLEMENT_LOAN(P_LOAN_ID           NUMBER); 
 
 END ATET_SAVINGS_BANK_PKG;
