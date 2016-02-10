@@ -7,7 +7,7 @@ begin
                              P_ACTUAL_DATE_EARNED => TO_DATE('31/10/2016', 'DD/MM/YYYY'),
                              P_PAYMENT_CAPITAL => 357.15,
                              P_PAYMENT_INTEREST => 74.9,
-                             P_PAYMENT_INTEREST_LATE => 21.60);
+                             P_PAYMENT_INTEREST_LATE => 21.70);
 
 end;
 
