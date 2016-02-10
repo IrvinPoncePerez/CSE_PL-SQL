@@ -1990,11 +1990,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 
                 var_nd_payment_capital := var_nd_payment_capital;
                 var_nd_payment_interest := var_nd_payment_interest;
-                var_nd_payment_interest_late := var_nd_payment_interest_late + ((var_nd_payment_capital + var_nd_payment_interest) * (var_late_interest_rate / 100));
+                var_nd_payment_interest_late := TRUNC((var_nd_payment_interest_late + ((var_nd_payment_capital + var_nd_payment_interest) * (var_late_interest_rate / 100))), 2);
                 
                 var_p_payment_capital := var_wd_payment_capital + var_nd_payment_capital;
                 var_p_payment_interest := var_wd_payment_interest + var_nd_payment_interest;
-                var_p_payment_interest_late := var_wd_payment_interest_late + var_nd_payment_interest_late;
+                var_p_payment_interest_late := TRUNC((var_wd_payment_interest_late + var_nd_payment_interest_late), 2);
                 
                 EXTEND_PAYMENTS_SCHEDULE(P_LOAN_ID => var_loan_id,
                                          P_PERSON_ID => P_PERSON_ID,
