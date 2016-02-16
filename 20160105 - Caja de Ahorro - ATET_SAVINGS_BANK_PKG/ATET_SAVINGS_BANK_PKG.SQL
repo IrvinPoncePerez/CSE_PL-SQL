@@ -175,4 +175,14 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                          
     PROCEDURE   SETTLEMENT_LOAN(P_LOAN_ID           NUMBER); 
 
+    
+    PROCEDURE   SAVING_RETIREMENT(P_ERRBUF                  OUT NOCOPY  VARCHAR2,
+                                  P_RETCODE                 OUT NOCOPY  VARCHAR2,
+                                  P_MEMBER_ID               NUMBER,
+                                  P_AMOUNT_SAVED            NUMBER,
+                                  P_PERCENTAGE_RETIREMENT   NUMBER,
+                                  P_SAVING_RETIREMENT       NUMBER,
+                                  P_IS_MEMBER_END           VARCHAR2);
+                                             
+
 END ATET_SAVINGS_BANK_PKG;
