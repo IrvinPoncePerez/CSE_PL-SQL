@@ -183,6 +183,13 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                   P_PERCENTAGE_RETIREMENT   NUMBER,
                                   P_SAVING_RETIREMENT       NUMBER,
                                   P_IS_MEMBER_END           VARCHAR2);
+                                  
                                              
+    PROCEDURE   PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID    NUMBER);
+    
+    
+    PROCEDURE   CREATE_SAVING_RETIREMENT_CHECK(P_SAVING_TRANSACTION_ID     NUMBER,
+                                               P_CHECK_ID                  OUT NOCOPY NUMBER);
+    
 
 END ATET_SAVINGS_BANK_PKG;

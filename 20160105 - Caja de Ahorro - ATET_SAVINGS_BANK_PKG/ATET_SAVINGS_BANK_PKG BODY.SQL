@@ -1040,7 +1040,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                      var_user_id,
                                                      SYSDATE,
                                                      var_user_id);
-                COMMIT;
                 
                 FND_FILE.PUT_LINE(FND_FILE.LOG, 'CREATE ACCOUNT ' || GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME) || '.');
                 
@@ -1084,7 +1083,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                          var_user_id,
                                                          SYSDATE,
                                                          var_user_id);
-                    COMMIT;
                     
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'CREATE ACCOUNT ' || GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME) || '.');
                 END IF;
@@ -1124,7 +1122,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                          var_user_id,
                                                          SYSDATE,
                                                          var_user_id);
-                    COMMIT;
                     
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'CREATE ACCOUNT ' || GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME) || '.');
                 END IF;
@@ -1431,7 +1428,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
           || 'START WITH 1 '
           || 'INCREMENT BY 1 '
           || 'NOCACHE '
-          || 'NOCYCLE';      
+          || 'NOCYCLE';    
+          
+        COMMIT;  
                   
     EXCEPTION WHEN OTHERS THEN
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en RESTART_SEQUENCE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
@@ -1470,7 +1469,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
           || 'START WITH 1 '
           || 'INCREMENT BY 1 '
           || 'NOCACHE '
-          || 'NOCYCLE';      
+          || 'NOCYCLE';   
+          
+        COMMIT;   
                   
     EXCEPTION WHEN OTHERS THEN
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en CREATE_SEQUENCE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
@@ -1544,6 +1545,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         
     EXCEPTION WHEN OTHERS THEN
+        
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_CODE_COMBINATION_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_CODE_COMBINATION_ID;
     
@@ -2287,7 +2289,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                SYSDATE,
                                                var_user_id);
         
-        COMMIT;
 
     EXCEPTION WHEN OTHERS THEN
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en SET_LOAN_BALANCE ' || SQLCODE || ' -ERROR- ' || SQLERRM);
@@ -2983,12 +2984,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                            ASST.LAST_UPDATED_BY = var_user_id
                      WHERE 1 = 1 
                        AND ASST.SAVING_TRANSACTION_ID = detail_saving.SAVING_TRANSACTION_ID;
-                       
-                    COMMIT;
                     
                 END LOOP;
-                
-                
             
             END LOOP;
             
@@ -3128,8 +3125,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                            ASLT.LAST_UPDATED_BY = var_user_id
                      WHERE 1 = 1 
                        AND ASLT.LOAN_TRANSACTION_ID = detail_loan.LOAN_TRANSACTION_ID;
-                       
-                    COMMIT;
                                                                      
                 END LOOP;       
                 
@@ -3170,8 +3165,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                            ASLT.LAST_UPDATED_BY = var_user_id
                      WHERE 1 = 1 
                        AND ASLT.LOAN_TRANSACTION_ID = detail_interest.LOAN_TRANSACTION_ID;
-                       
-                    COMMIT;
                                                                      
                 END LOOP;  
                 
@@ -3325,8 +3318,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                            ASLT.LAST_UPDATED_BY = var_user_id
                      WHERE 1 = 1 
                        AND ASLT.LOAN_TRANSACTION_ID = detail_interest_late.LOAN_TRANSACTION_ID;
-                       
-                    COMMIT;
                                                                      
                 END LOOP;  
             
@@ -3334,6 +3325,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         END IF;
         
+        
+        COMMIT;
         ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
     EXCEPTION WHEN OTHERS THEN
@@ -3606,6 +3599,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_user_id             NUMBER := FND_GLOBAL.USER_ID;
         var_validate            NUMBER;
     BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SETTLEMENT_LOAN(P_LOAN_ID => ' || P_LOAN_ID || ')');
         
         SELECT ASL.LOAN_ID,
                ASL.MEMBER_ID,
@@ -3729,7 +3724,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_final_balance           NUMBER;
         
         var_saving_retirement_seq   NUMBER;
+        var_saving_transaction_id   NUMBER;
         
+        var_check_id                NUMBER;
         
         CURSOR SAVINGS_DETAILS IS
             SELECT ASST.EARNED_DATE,
@@ -3743,6 +3740,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
              ORDER BY ASST.SAVING_TRANSACTION_ID;
              
     BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SAVING_RETIREMENT(P_MEMBER_ID => ' || P_MEMBER_ID ||
+                                                         ',P_AMOUNT_SAVED => ' || P_AMOUNT_SAVED ||
+                                                         ',P_PERCENTAGE_RETIREMENT => ' || P_PERCENTAGE_RETIREMENT ||
+                                                         ',P_SAVING_RETIREMENT => ' || P_SAVING_RETIREMENT ||
+                                                         ',P_IS_MEMBER_END => ' || P_IS_MEMBER_END || ')'); 
 
         var_member_account_id := GET_SAVING_MEMBER_ACCOUNT_ID(P_MEMBER_ID,
                                                               GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAV_CODE_COMB'),
@@ -3860,18 +3863,44 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                            
                     END IF;
                     
+                    
+                    /**********************************************************/
+                    /*******      CONSULTA DE SAVING_TRANSACTION_ID        ****/
+                    /**********************************************************/
+                    
+                    SELECT ASST.SAVING_TRANSACTION_ID
+                      INTO var_saving_transaction_id
+                      FROM ATET_SB_SAVINGS_TRANSACTIONS ASST
+                     WHERE 1 = 1
+                       AND ASST.MEMBER_ACCOUNT_ID = var_member_account_id
+                       AND ASST.MEMBER_ID = P_MEMBER_ID
+                       AND ASST.PERSON_ID = var_person_id
+                       AND ASST.EARNED_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR')
+                       AND ASST.PERIOD_NAME = 'RETIRO'
+                       AND ASST.ELEMENT_NAME = 'RETIRO DE AHORRO'
+                       AND ASST.ENTRY_VALUE = P_SAVING_RETIREMENT
+                       AND ASST.TRANSACTION_CODE = 'RETIREMENT'
+                       AND ASST.DEBIT_AMOUNT = var_debit_amount
+                       AND ASST.CREDIT_AMOUNT = var_credit_amount
+                       AND ASST.ATTRIBUTE1 = var_saving_retirement_seq;
                                         
                     /**********************************************************/
                     /*******             IMPRESIÓN DE RECIBO               ****/
                     /**********************************************************/
+                       
+                    PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID => var_saving_transaction_id);                       
                     
                     /**********************************************************/
                     /*******             CREACIÓN DE CHEQUE                ****/
                     /**********************************************************/
                     
+                    CREATE_SAVING_RETIREMENT_CHECK(P_SAVING_TRANSACTION_ID => var_saving_transaction_id, P_CHECK_ID => var_check_id);
+                    
                     /**********************************************************/
                     /*******             IMPRESIÓN DE CHEQUE               ****/
                     /**********************************************************/
+                    
+                    ATET_SB_BACK_OFFICE_PKG.PRINT_CHECK(var_check_id);
                     
                     /**********************************************************/
                     /*******             CREACIÓN DE POLIZA                ****/
@@ -3936,6 +3965,228 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     EXCEPTION WHEN OTHERS THEN
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en SAVING_RETIREMENT ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END SAVING_RETIREMENT;
+    
+    
+    PROCEDURE   PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID    NUMBER)
+    IS
+        add_layout_boolean   BOOLEAN;
+        v_request_id         NUMBER;
+        waiting              BOOLEAN;
+        phase                VARCHAR2 (80 BYTE);
+        status               VARCHAR2 (80 BYTE);
+        dev_phase            VARCHAR2 (80 BYTE);
+        dev_status           VARCHAR2 (80 BYTE);
+        V_message            VARCHAR2 (4000 BYTE);
+    BEGIN
+        
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID => ' || P_SAVING_TRANSACTION_ID || ')');    
+    
+        add_layout_boolean :=
+            fnd_request.add_layout (
+               template_appl_name   => 'PER',
+               template_code        => 'ATET_SB_PRINT_WITHDRAW',
+               template_language    => 'Spanish', --Use language from template definition
+               template_territory   => 'Mexico', --Use territory from template definition
+               output_format        => 'PDF' --Use output format from template definition
+                                            );
+
+
+
+         v_request_id :=
+            fnd_request.submit_request ('PER',                  -- application
+                                        'ATET_SB_PRINT_WITHDRAW', -- program short name
+                                        '',                     -- description
+                                        '',                      -- start time
+                                        FALSE,                  -- sub request
+                                        TO_CHAR (P_SAVING_TRANSACTION_ID),     -- argument1
+                                        CHR (0) -- represents end of arguments
+                                               );
+         
+         STANDARD.COMMIT;
+         
+         waiting := fnd_concurrent.wait_for_request (v_request_id,
+                                             1,
+                                             0,
+                                             phase,
+                                             status,
+                                             dev_phase,
+                                             dev_status,
+                                             V_message);
+    EXCEPTION WHEN OTHERS THEN
+        RAISE;
+    END PRINT_SAVING_TRANSACTION;
+    
+    
+    PROCEDURE   CREATE_SAVING_RETIREMENT_CHECK(P_SAVING_TRANSACTION_ID     NUMBER,
+                                               P_CHECK_ID                  OUT NOCOPY NUMBER)
+    IS
+        LN_BANK_ACCOUNT_ID           NUMBER;
+        LC_BANK_ACCOUNT_NAME         VARCHAR2 (150);
+        LC_BANK_ACCOUNT_NUM          VARCHAR2 (150);
+        LC_BANK_NAME                 VARCHAR2 (150);
+        LC_CURRENCY_CODE             VARCHAR2 (150);
+        
+        LN_SAVING_TRANSACTION_AMOUNT NUMBER;
+        LN_MEMBER_ID                 NUMBER;
+        LC_EMPLOYEE_FULL_NAME        VARCHAR2 (300);
+        
+        LD_TRANSACTION_DATE          DATE;
+        LN_CHECK_NUMBER              NUMBER;
+        LN_CHECK_ID                  NUMBER;
+
+        INPUT_STRING                 VARCHAR2 (200);
+        OUTPUT_STRING                VARCHAR2 (200);
+        ENCRYPTED_RAW                RAW (2000); -- stores encrypted binary text
+        DECRYPTED_RAW                RAW (2000); -- stores decrypted binary text
+        NUM_KEY_BYTES                NUMBER := 256 / 8; -- key length 256 bits (32 bytes)
+        KEY_BYTES_RAW                RAW (32);  -- stores 256-bit encryption key
+        ENCRYPTION_TYPE              PLS_INTEGER 
+         :=                                           -- total encryption type
+           DBMS_CRYPTO.ENCRYPT_AES256
+            + DBMS_CRYPTO.CHAIN_CBC
+            + DBMS_CRYPTO.PAD_PKCS5;
+    BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'CREATE_SAVING_RETIREMENT_CHECK(P_SAVING_TRANSACTION_ID => ' || P_SAVING_TRANSACTION_ID ||
+                                                                      ',P_CHECK_ID => ' || P_CHECK_ID || ')');
+        
+        BEGIN
+         SELECT BANK_ACCOUNT_ID,
+                BANK_ACCOUNT_NAME,
+                BANK_ACCOUNT_NUM,
+                BANK_NAME,
+                CURRENCY_CODE
+           INTO LN_BANK_ACCOUNT_ID,
+                LC_BANK_ACCOUNT_NAME,
+                LC_BANK_ACCOUNT_NUM,
+                LC_BANK_NAME,
+                LC_CURRENCY_CODE
+           FROM ATET_SB_BANK_ACCOUNTS;
+        EXCEPTION
+         WHEN OTHERS
+         THEN
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'ERROR AL BUSCAR LA CUENTA BANCARIA');
+            RAISE;
+        END;
+      
+        BEGIN
+            SELECT ASM.EMPLOYEE_FULL_NAME,
+                   ASM.MEMBER_ID,
+                   ASST.ENTRY_VALUE,
+                   ASST.EARNED_DATE
+              INTO LC_EMPLOYEE_FULL_NAME,
+                   LN_MEMBER_ID,
+                   LN_SAVING_TRANSACTION_AMOUNT,
+                   LD_TRANSACTION_DATE
+              FROM ATET_SB_MEMBERS              ASM,
+                   ATET_SB_SAVINGS_TRANSACTIONS ASST
+             WHERE ASM.MEMBER_ID = ASST.MEMBER_ID
+               AND ASST.SAVING_TRANSACTION_ID = P_SAVING_TRANSACTION_ID;
+        EXCEPTION
+        WHEN OTHERS
+        THEN
+           FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'ERROR AL BUSCAR EL MIEMBRO');
+           RAISE;
+        END;
+        
+        
+        SELECT ATET_SB_CHECKS_ALL_SEQ.NEXTVAL 
+          INTO LN_CHECK_ID 
+          FROM DUAL;
+
+        SELECT ATET_SB_CHECK_NUMBER_SEQ.NEXTVAL
+          INTO LN_CHECK_NUMBER
+          FROM DUAL;
+
+        BEGIN
+            INPUT_STRING :=
+                  TO_CHAR (LN_SAVING_TRANSACTION_AMOUNT)
+               || ','
+               || LN_CHECK_ID
+               || ','
+               || LN_CHECK_NUMBER
+               || ','
+               || LN_MEMBER_ID
+               || ','
+               || FND_GLOBAL.USER_ID
+               || ','
+               || TO_CHAR (CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS.FF');
+
+            DBMS_OUTPUT.PUT_LINE ('Original string: ' || input_string);
+            key_bytes_raw := DBMS_CRYPTO.RANDOMBYTES (num_key_bytes);
+            encrypted_raw :=
+               DBMS_CRYPTO.ENCRYPT (
+                  src   => UTL_I18N.STRING_TO_RAW (input_string, 'AL32UTF8'),
+                  typ   => encryption_type,
+                  key   => key_bytes_raw);
+            -- The encrypted value "encrypted_raw" can be used here
+
+            decrypted_raw :=
+               DBMS_CRYPTO.DECRYPT (src   => encrypted_raw,
+                                    typ   => encryption_type,
+                                    key   => key_bytes_raw);
+            output_string := UTL_I18N.RAW_TO_CHAR (decrypted_raw, 'AL32UTF8');
+            DBMS_OUTPUT.PUT_LINE ('Cadena a encriptar: ' || input_string);
+            DBMS_OUTPUT.PUT_LINE ('Cadena encriptada: ' || encrypted_raw);
+            DBMS_OUTPUT.PUT_LINE ('LLave: ' || key_bytes_raw);
+            DBMS_OUTPUT.PUT_LINE ('Decrypted string: ' || output_string);
+        EXCEPTION
+        WHEN OTHERS
+        THEN
+           FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'ERROR AL GENERAR FIRMA DIGITAL');
+        END;
+
+        BEGIN
+            INSERT 
+              INTO ATET_SB_CHECKS_ALL (CHECK_ID,
+                                       AMOUNT,
+                                       BANK_ACCOUNT_ID,
+                                       BANK_ACCOUNT_NAME,
+                                       CHECK_DATE,
+                                       CHECK_NUMBER,
+                                       CURRENCY_CODE,
+                                       PAYMENT_TYPE_FLAG,
+                                       STATUS_LOOKUP_CODE,
+                                       MEMBER_ID,
+                                       MEMBER_NAME,
+                                       BANK_ACCOUNT_NUM,
+                                       DIGITAL_SIGNATURE,
+                                       DECRYPT_KEY,
+                                       LAST_UPDATED_BY,
+                                       LAST_UPDATE_DATE,
+                                       CREATED_BY,
+                                       CREATION_DATE)
+                             VALUES (LN_CHECK_ID,
+                                     LN_SAVING_TRANSACTION_AMOUNT,
+                                     LN_BANK_ACCOUNT_ID,
+                                     LC_BANK_ACCOUNT_NAME,
+                                     SYSDATE,
+                                     LN_CHECK_NUMBER,
+                                     LC_CURRENCY_CODE,
+                                     'CHECK_LOAN',
+                                     'CREATED',
+                                     LN_MEMBER_ID,
+                                     LC_EMPLOYEE_FULL_NAME,
+                                     LC_BANK_ACCOUNT_NUM,
+                                     ENCRYPTED_RAW,
+                                     KEY_BYTES_RAW,
+                                     FND_GLOBAL.USER_ID,
+                                     SYSDATE,
+                                     FND_GLOBAL.USER_ID,
+                                     SYSDATE);
+
+                    P_CHECK_ID := LN_CHECK_ID;
+
+        EXCEPTION
+        WHEN OTHERS
+        THEN
+           FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Error : INSERT INTO ATET_SB_CHECKS_ALL :' || SQLERRM);
+           RAISE;
+        END;
+    
+    EXCEPTION WHEN OTHERS THEN
+        RAISE;
+    END CREATE_SAVING_RETIREMENT_CHECK;
                                  
 
 END ATET_SAVINGS_BANK_PKG;
