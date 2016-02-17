@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     FUNCTION    GET_SAVING_BANK_ID
       RETURN    NUMBER
@@ -3725,16 +3724,35 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_debit_amount            NUMBER;
         var_credit_amount           NUMBER;
         
+        var_debit_balance           NUMBER;
+        var_credit_balance          NUMBER;
+        var_final_balance           NUMBER;
+        
         var_saving_retirement_seq   NUMBER;
+        
+        
+        CURSOR SAVINGS_DETAILS IS
+            SELECT ASST.EARNED_DATE,
+                   ASST.PERIOD_NAME,
+                   ASST.ELEMENT_NAME,
+                   ASST.DEBIT_AMOUNT,
+                   ASST.CREDIT_AMOUNT
+              FROM ATET_SB_SAVINGS_TRANSACTIONS ASST
+             WHERE 1 = 1
+               AND ASST.MEMBER_ID = P_MEMBER_ID
+             ORDER BY ASST.SAVING_TRANSACTION_ID;
+             
     BEGIN
 
         var_member_account_id := GET_SAVING_MEMBER_ACCOUNT_ID(P_MEMBER_ID,
                                                               GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAV_CODE_COMB'),
                                                               GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME'));
-                                                              
+                                                          
+            
         SELECT ATET_SB_SAVING_RETIREMENT_SEQ.NEXTVAL
           INTO var_saving_retirement_seq 
           FROM DUAL;
+        
         
         SELECT ASMA.FINAL_BALANCE,
                ASM.EMPLOYEE_NUMBER,
@@ -3751,7 +3769,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASM.MEMBER_ID = ASMA.MEMBER_ID
            AND ASMA.LOAN_ID IS NULL
            AND ASMA.ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO';
-                                                              
+                             
+                                            
         SELECT COUNT(1)
           INTO var_validate
           FROM ATET_SB_MEMBERS      ASM,
@@ -3761,12 +3780,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASM.MEMBER_ID = P_MEMBER_ID
            AND ASL.LOAN_STATUS_FLAG = 'ACTIVE';
            
+           
         IF var_validate > 0 THEN
             var_percentage_retirement := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'PER_RET_LOAN_BALANCE');
         ELSE
             var_percentage_retirement := P_PERCENTAGE_RETIREMENT;
         END IF;
            
+        
         IF var_percentage_retirement = P_PERCENTAGE_RETIREMENT THEN
         
             IF var_amount_saved = P_AMOUNT_SAVED THEN
@@ -3798,7 +3819,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                               P_MEMBER_ID,
                                                               -1,
                                                               var_person_id,
-                                                              TO_CHAR(SYSDATE, 'DD/MM/RRRR'),
+                                                              TO_DATE(SYSDATE, 'DD/MM/RRRR'),
                                                               'RETIRO',
                                                               'RETIRO DE AHORRO',
                                                               P_SAVING_RETIREMENT,
@@ -3856,6 +3877,45 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     /*******             CREACIÓN DE POLIZA                ****/
                     /**********************************************************/
                                 
+                    /**********************************************************/
+                    /*******                   OUTPUT                      ****/
+                    /**********************************************************/
+                    
+                    SELECT ASMA.DEBIT_BALANCE,
+                           ASMA.CREDIT_BALANCE,
+                           ASMA.FINAL_BALANCE
+                      INTO var_debit_balance,
+                           var_credit_balance,
+                           var_final_balance
+                      FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+                     WHERE 1 = 1
+                       AND ASMA.MEMBER_ID = P_MEMBER_ID
+                       AND ASMA.MEMBER_ACCOUNT_ID = var_member_account_id;
+                    
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 95, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('FECHA', 15, ' ') ||
+                                                       RPAD('PERIODO', 20, ' ') ||
+                                                       RPAD('DESCRIPCION',20, ' ') ||
+                                                       LPAD('CARGO',20, ' ') ||
+                                                       LPAD('ABONO',20, ' '));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 95, '*'));
+                    
+                    FOR detail IN SAVINGS_DETAILS LOOP
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(detail.EARNED_DATE, 15, ' ') ||
+                                                           RPAD(detail.PERIOD_NAME, 20, ' ') ||
+                                                           RPAD(detail.ELEMENT_NAME,20, ' ') ||
+                                                           LPAD(detail.DEBIT_AMOUNT,20, ' ') ||
+                                                           LPAD(detail.CREDIT_AMOUNT,20, ' '));
+                    END LOOP;
+                    
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 95, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('RESUMEN : ', 55, ' ') ||
+                                                       LPAD(var_debit_balance,20, ' ') ||
+                                                       LPAD(var_credit_balance,20, ' '));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 95, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('SALDO : ', 55, ' ') ||
+                                                       LPAD(var_final_balance,40, ' '));
+                    
                 ELSE
                     P_ERRBUF := 'EL PROCESO DE RETIRO DE AHORRO PARA EL EMPLEADO (' || var_employee_number || ')-' || var_employee_full_name ||' ENCONTRO DIFERENCIAS ENTRE EL CALCULO DE PORCENTAJE DE RETIRO Y EL INGRESADO COMO PARAMETRO.';
                     P_RETCODE := 1;
