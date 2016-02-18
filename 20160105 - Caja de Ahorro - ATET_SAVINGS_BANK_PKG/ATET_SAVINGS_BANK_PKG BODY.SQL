@@ -3268,7 +3268,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
                                                              P_ROW_NUMBER              => var_index,
                                                              P_CODE_COMBINATION_ID     => var_deb_pac_account_id,
-                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_LOANS',
+                                                             P_ACCOUNTING_CLASS_CODE   => 'PAYROLL_INTEREST_LATE',
                                                              P_ACCOUNTED_DR            => var_loan_debit_amount,
                                                              P_ACCOUNTED_CR            => var_loan_credit_amount,
                                                              P_DESCRIPTION             => var_description,
@@ -3726,6 +3726,13 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_saving_retirement_seq   NUMBER;
         var_saving_transaction_id   NUMBER;
         
+        var_bank_code_comb          VARCHAR2(100);
+        var_sav_code_comb           VARCHAR2(100);
+        var_bank_account_id         NUMBER;
+        var_sav_account_id          NUMBER;
+        
+        var_header_id               NUMBER;
+        
         var_check_id                NUMBER;
         
         CURSOR SAVINGS_DETAILS IS
@@ -3856,7 +3863,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     
                         UPDATE ATET_SB_MEMBERS  ASM
                            SET ASM.IS_SAVER = 'N',
-                               ASM.MEMBER_END_DATE = TO_CHAR(SYSDATE, 'DD/MM/RRRR'),
+                               ASM.MEMBER_END_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR'),
                                ASM.AMOUNT_TO_SAVE = NULL
                          WHERE 1 = 1
                            AND ASM.MEMBER_ID = P_MEMBER_ID;
@@ -3900,11 +3907,41 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     /*******             IMPRESIÓN DE CHEQUE               ****/
                     /**********************************************************/
                     
-                    ATET_SB_BACK_OFFICE_PKG.PRINT_CHECK(var_check_id);
+                    PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID => var_check_id);
                     
                     /**********************************************************/
                     /*******             CREACIÓN DE POLIZA                ****/
                     /**********************************************************/
+                    var_bank_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'BANK_CODE_COMB');
+                    var_sav_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAV_CODE_COMB');
+                    var_bank_account_id := GET_CODE_COMBINATION_ID(var_bank_code_comb);
+                    var_sav_account_id := GET_CODE_COMBINATION_ID(var_sav_code_comb);
+                    
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'SAVINGS',
+                                                               P_EVENT_TYPE_CODE    => 'SAVING_RETIREMENT',
+                                                               P_BATCH_NAME         => 'RETIRO DE AHORRO',
+                                                               P_JOURNAL_NAME       => 'RETIRO DE CAJA DE AHORRO : ' || var_employee_number || '-' || var_employee_full_name,
+                                                               P_HEADER_ID          => var_header_id);
+                                                               
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => 1,
+                                                             P_CODE_COMBINATION_ID     => var_sav_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'SAVING_RETIREMENT',
+                                                             P_ACCOUNTED_DR            => var_debit_amount,
+                                                             P_ACCOUNTED_CR            => var_credit_amount,
+                                                             P_DESCRIPTION             => 'RETIRO DE CAJA DE AHORRO : ' || var_employee_number || '-' || var_employee_full_name,
+                                                             P_SOURCE_ID               => var_saving_transaction_id,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
+                                                             
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => 2,
+                                                             P_CODE_COMBINATION_ID     => var_bank_account_id,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'SAVING_RETIREMENT',
+                                                             P_ACCOUNTED_DR            => var_credit_amount,
+                                                             P_ACCOUNTED_CR            => var_debit_amount,
+                                                             P_DESCRIPTION             => 'RETIRO DE CAJA DE AHORRO : ' || var_employee_number || '-' || var_employee_full_name,
+                                                             P_SOURCE_ID               => var_check_id,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_CHECKS_ALL');                                                      
                                 
                     /**********************************************************/
                     /*******                   OUTPUT                      ****/
@@ -3961,8 +3998,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
         
         COMMIT;
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
             
     EXCEPTION WHEN OTHERS THEN
+        ROLLBACK;
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en SAVING_RETIREMENT ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END SAVING_RETIREMENT;
     
@@ -4160,10 +4199,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                      LN_SAVING_TRANSACTION_AMOUNT,
                                      LN_BANK_ACCOUNT_ID,
                                      LC_BANK_ACCOUNT_NAME,
-                                     SYSDATE,
+                                     LD_TRANSACTION_DATE,
                                      LN_CHECK_NUMBER,
                                      LC_CURRENCY_CODE,
-                                     'CHECK_LOAN',
+                                     'CHECK_SAVING_RETIREMENT',
                                      'CREATED',
                                      LN_MEMBER_ID,
                                      LC_EMPLOYEE_FULL_NAME,
@@ -4187,6 +4226,56 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     EXCEPTION WHEN OTHERS THEN
         RAISE;
     END CREATE_SAVING_RETIREMENT_CHECK;
+    
+    
+    PROCEDURE   PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID    NUMBER)
+    IS
+      add_layout_boolean   BOOLEAN;
+      v_request_id         NUMBER;
+      waiting              BOOLEAN;
+      phase                VARCHAR2 (80 BYTE);
+      status               VARCHAR2 (80 BYTE);
+      dev_phase            VARCHAR2 (80 BYTE);
+      dev_status           VARCHAR2 (80 BYTE);
+      V_message            VARCHAR2 (4000 BYTE);
+   BEGIN
+      BEGIN
+         add_layout_boolean :=
+            fnd_request.add_layout (
+               template_appl_name   => 'PER',
+               template_code        => 'ATET_SB_PRINT_CHECK',
+               template_language    => 'Spanish', --Use language from template definition
+               template_territory   => 'Mexico', --Use territory from template definition
+               output_format        => 'PDF' --Use output format from template definition
+                                            );
+
+
+
+         v_request_id :=
+            fnd_request.submit_request ('PER',                  -- application
+                                        'ATET_SB_PRINT_CHECK', -- program short name
+                                        '',                     -- description
+                                        '',                      -- start time
+                                        FALSE,                  -- sub request
+                                        TO_CHAR (P_CHECK_ID),     -- argument1
+                                        CHR (0) -- represents end of arguments
+                                               );
+         STANDARD.COMMIT;
+         waiting :=
+            fnd_concurrent.wait_for_request (v_request_id,
+                                             1,
+                                             0,
+                                             phase,
+                                             status,
+                                             dev_phase,
+                                             dev_status,
+                                             V_message);
+      EXCEPTION
+         WHEN OTHERS
+         THEN
+            RAISE;
+      END;
+    END PRINT_SAVING_RETIREMENT_CHECK;
                                  
 
 END ATET_SAVINGS_BANK_PKG;
