@@ -61,8 +61,14 @@ BEFORE INSERT
    ON ATET_SB_LOANS
    FOR EACH ROW
 DECLARE
-
+    var_next_id  NUMBER;
 BEGIN
+
+--    SELECT ATET_SB_LOANS_SEQ.NEXTVAL
+--      INTO var_next_id
+--      FROM dual;        
+--      
+--    :NEW.LOAN_ID := var_next_id;
 
     NULL;
 
