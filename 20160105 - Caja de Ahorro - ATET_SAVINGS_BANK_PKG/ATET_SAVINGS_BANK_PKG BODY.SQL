@@ -1429,6 +1429,15 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
           || 'INCREMENT BY 1 '
           || 'NOCACHE '
           || 'NOCYCLE';    
+        
+        EXECUTE IMMEDIATE 'DROP SEQUENCE ATET_SB_PREPAID_SEQ';  
+          
+        EXECUTE IMMEDIATE
+             'CREATE SEQUENCE ATET_SB_PREPAID_SEQ '
+          || 'START WITH 1 '
+          || 'INCREMENT BY 1 '
+          || 'NOCACHE '
+          || 'NOCYCLE';
           
         COMMIT;  
                   
@@ -1470,6 +1479,13 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
           || 'INCREMENT BY 1 '
           || 'NOCACHE '
           || 'NOCYCLE';   
+          
+        EXECUTE IMMEDIATE
+             'CREATE SEQUENCE ATET_SB_PREPAID_SEQ '
+          || 'START WITH 1 '
+          || 'INCREMENT BY 1 '
+          || 'NOCACHE '
+          || 'NOCYCLE';
           
         COMMIT;   
                   
