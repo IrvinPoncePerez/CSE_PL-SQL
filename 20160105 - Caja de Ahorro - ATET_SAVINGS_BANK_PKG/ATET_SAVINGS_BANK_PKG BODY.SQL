@@ -3720,20 +3720,150 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                   P_SAVING_RETIREMENT       NUMBER,
                                   P_IS_MEMBER_END           VARCHAR2)
     IS
-        var_employee_number         VARCHAR2(50);
-        var_employee_full_name      VARCHAR2(500);
+        var_validate                NUMBER;    
+        var_loan_balance            NUMBER;
+        var_percentage_retirement   NUMBER;
+        
+        var_user_id                 NUMBER := FND_GLOBAL.USER_ID;
+        var_hold_comment            VARCHAR2(500);
+    BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SAVING_RETIREMENT(P_MEMBER_ID => ' || P_MEMBER_ID ||
+                                                         ',P_AMOUNT_SAVED => ' || P_AMOUNT_SAVED ||
+                                                         ',P_PERCENTAGE_RETIREMENT => ' || P_PERCENTAGE_RETIREMENT ||
+                                                         ',P_SAVING_RETIREMENT => ' || P_SAVING_RETIREMENT ||
+                                                         ',P_IS_MEMBER_END => ' || P_IS_MEMBER_END || ')'); 
+                           
+          
+        SELECT COUNT(ASL.LOAN_ID),
+               SUM(ASL.LOAN_BALANCE)
+          INTO var_validate,
+               var_loan_balance
+          FROM ATET_SB_MEMBERS      ASM,
+               ATET_SB_LOANS        ASL
+         WHERE 1 = 1
+           AND ASL.MEMBER_ID = ASM.MEMBER_ID
+           AND ASM.MEMBER_ID = P_MEMBER_ID
+           AND ASL.LOAN_STATUS_FLAG = 'ACTIVE';
+                             
+        FND_FILE.PUT_LINE( FND_FILE.LOG, 'QUERY : ' || var_validate);           
+           
+        IF var_validate > 0 THEN
+        
+            var_percentage_retirement := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'PER_RET_LOAN_BALANCE');    
+        
+            IF P_PERCENTAGE_RETIREMENT IS NOT NULL THEN
+                IF P_PERCENTAGE_RETIREMENT > var_percentage_retirement THEN
+                    var_hold_comment := 'EL PORCENTAJE DE RETIRO INGRESADO DEBE DE SER MENOR O IGUAL AL ESTABLECIDO EN EL PARAMETRO DE PORCENTAJE DE RETIRO CON SALDO DE CRÉDITOS. SALDO RESTANTE :' || TO_CHAR(var_loan_balance, '$999,999.00');
+                    P_ERRBUF := var_hold_comment;
+                    P_RETCODE := 1; 
+                ELSE
+                    var_hold_comment := 'EL RETIRO DEBE SER LIBERADO PORQUE EL EMPLEADO TIENE PRESTAMOS ACTIVOS.';
+                    P_ERRBUF := var_hold_comment;
+                    P_RETCODE := 1;    
+                END IF;
+            ELSIF P_SAVING_RETIREMENT IS NOT NULL THEN
+                IF (P_SAVING_RETIREMENT * 100) / P_AMOUNT_SAVED > var_percentage_retirement THEN
+                    var_hold_comment := 'LA CANTIDAD DE RETIRO INGRESADA DEBE DE SER MENOR O IGUAL AL PORCENTAJE ESTABLECIDO EN EL PARAMETRO DE PORCENTAJE DE RETIRO CON SALDO DE CRÉDITOS. SALDO RESTANTE :' || TO_CHAR(var_loan_balance, '$999,999.00');
+                    P_ERRBUF := var_hold_comment;
+                    P_RETCODE := 1;
+                ELSE
+                    var_hold_comment := 'EL RETIRO DEBE SER LIBERADO PORQUE EL EMPLEADO TIENE PRESTAMOS ACTIVOS.';
+                    P_ERRBUF := var_hold_comment;
+                    P_RETCODE := 1;  
+                END IF; 
+            END IF;         
+            
+            INSERT 
+              INTO ATET_SB_TRANSACTIONS_HOLDS (HOLD_REASON_CODE,
+                                               HOLD_COMMENT,
+                                               SOURCE_ID,
+                                               SOURCE_TABLE,
+                                               ATTRIBUTE6,
+                                               ATTRIBUTE7,
+                                               ATTRIBUTE8,
+                                               ATTRIBUTE9,
+                                               ATTRIBUTE10,
+                                               RELEASED_FLAG,
+                                               CREATION_DATE,
+                                               CREATED_BY,
+                                               LAST_UPDATE_DATE,
+                                               LAST_UPDATED_BY)
+                                       VALUES ('SAVING_RETIREMENT',
+                                               var_hold_comment,
+                                               P_MEMBER_ID,
+                                               'ATET_SB_MEMBERS',
+                                               'P_MEMBER_ID=>' || P_MEMBER_ID,
+                                               'P_AMOUNT_SAVED=>' || P_AMOUNT_SAVED,
+                                               'P_PERCENTAGE_RETIREMENT=>' || P_PERCENTAGE_RETIREMENT,
+                                               'P_SAVING_RETIREMENT=>' || P_SAVING_RETIREMENT,
+                                               'P_IS_MEMBER_END=>' || P_IS_MEMBER_END,
+                                               'P',
+                                               SYSDATE,
+                                               var_user_id,
+                                               SYSDATE,
+                                               var_user_id);
+                                               
+            FND_FILE.PUT_LINE( FND_FILE.LOG, 'INSERT : ATET_SB_TRANSACTIONS_HOLDS');           
+                                                                      
+            COMMIT;                                   
+            RETURN;                  
+        
+        ELSE
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXCEUTE : PROCESS_SAVING_RETIREMENT');
+            
+            PROCESS_SAVING_RETIREMENT(P_MEMBER_ID             => P_MEMBER_ID,
+                                      P_AMOUNT_SAVED          => P_AMOUNT_SAVED,
+                                      P_PERCENTAGE_RETIREMENT => P_PERCENTAGE_RETIREMENT,
+                                      P_SAVING_RETIREMENT     => P_SAVING_RETIREMENT,
+                                      P_IS_MEMBER_END         => P_IS_MEMBER_END);
+            
+        END IF;
+           
+                
+            
+    EXCEPTION WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en SAVING_RETIREMENT ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+    END SAVING_RETIREMENT;
+    
+    
+    PROCEDURE   RELEASE_SAVING_RETIREMENT(ERRBUF                    OUT NOCOPY VARCHAR2,
+                                          RETCODE                   OUT NOCOPY VARCHAR2,
+                                          P_TRANSACTION_HOLD_ID                NUMBER,
+                                          P_REASON_DESCRIPTION                 VARCHAR2,
+                                          P_RELEASE_FLAG                       VARCHAR2)
+    IS
+    BEGIN
+        
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'RELEASE_SAVING_RETIREMENT(P_TRANSACTION_HOLD_ID => ' || P_TRANSACTION_HOLD_ID ||
+                                                                 ',P_REASON_DESCRIPTION => ' || P_REASON_DESCRIPTION ||
+                                                                 ',P_RELEASE_FLAG => ' || P_RELEASE_FLAG || ')');
+                                                                 
+                                                                 
+    
+    END RELEASE_SAVING_RETIREMENT;
+    
+    
+    PROCEDURE   PROCESS_SAVING_RETIREMENT(P_MEMBER_ID               NUMBER,
+                                          P_AMOUNT_SAVED            NUMBER,
+                                          P_PERCENTAGE_RETIREMENT   NUMBER,
+                                          P_SAVING_RETIREMENT       NUMBER,
+                                          P_IS_MEMBER_END           VARCHAR2)
+    IS
+        SAVING_RETIREMENT_EXCEPTION EXCEPTION;
+        
         var_amount_saved            NUMBER;
         var_saving_retirement       NUMBER;
         var_person_id               NUMBER;
         var_member_account_id       NUMBER;
-        var_percentage_retirement   NUMBER;
         var_seniority               NUMBER;
+
+        var_employee_number         VARCHAR2(50);
+        var_employee_full_name      VARCHAR2(500);
         
         var_request_id              NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
         var_user_id                 NUMBER := FND_GLOBAL.USER_ID;
-        
-        var_validate                NUMBER;
-        var_loan_balance            NUMBER;
         
         var_debit_amount            NUMBER;
         var_credit_amount           NUMBER;
@@ -3764,19 +3894,17 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
              WHERE 1 = 1
                AND ASST.MEMBER_ID = P_MEMBER_ID
              ORDER BY ASST.SAVING_TRANSACTION_ID;
-             
     BEGIN
     
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SAVING_RETIREMENT(P_MEMBER_ID => ' || P_MEMBER_ID ||
-                                                         ',P_AMOUNT_SAVED => ' || P_AMOUNT_SAVED ||
-                                                         ',P_PERCENTAGE_RETIREMENT => ' || P_PERCENTAGE_RETIREMENT ||
-                                                         ',P_SAVING_RETIREMENT => ' || P_SAVING_RETIREMENT ||
-                                                         ',P_IS_MEMBER_END => ' || P_IS_MEMBER_END || ')'); 
-
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'PROCESS_SAVING_RETIREMENT(P_MEMBER_ID => ' || P_MEMBER_ID ||
+                                                                 ',P_AMOUNT_SAVED => ' || P_AMOUNT_SAVED ||
+                                                                 ',P_PERCENTAGE_RETIREMENT => ' || P_PERCENTAGE_RETIREMENT ||
+                                                                 ',P_SAVING_RETIREMENT => ' || P_SAVING_RETIREMENT ||
+                                                                 ',P_IS_MEMBER_END => ' || P_IS_MEMBER_END || ')');
+    
         var_member_account_id := GET_SAVING_MEMBER_ACCOUNT_ID(P_MEMBER_ID,
                                                               GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAV_CODE_COMB'),
                                                               GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME'));                                                          
-        
         
         SELECT ASMA.FINAL_BALANCE,
                ASM.EMPLOYEE_NUMBER,
@@ -3795,45 +3923,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASM.MEMBER_ID = ASMA.MEMBER_ID
            AND ASMA.LOAN_ID IS NULL
            AND ASMA.ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO';
-               
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'QUERY: FINAL_BALANCE, EMPLOYEE_NUMBER, EMPLOYEE_FULL_NAME, PERSON_ID, SENIORITY_YEARS');                           
-          
-        SELECT COUNT(ASL.LOAN_ID),
-               SUM(ASL.LOAN_BALANCE)
-          INTO var_validate,
-               var_loan_balance
-          FROM ATET_SB_MEMBERS      ASM,
-               ATET_SB_LOANS        ASL
-         WHERE 1 = 1
-           AND ASL.MEMBER_ID = ASM.MEMBER_ID
-           AND ASM.MEMBER_ID = P_MEMBER_ID
-           AND ASL.LOAN_STATUS_FLAG = 'ACTIVE';
-
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'QUERY: var_validate');
-                                        
-           
-        IF var_validate > 0 THEN
-        
-            var_percentage_retirement := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'PER_RET_LOAN_BALANCE');    
-        
-            IF P_PERCENTAGE_RETIREMENT IS NOT NULL THEN
-                IF P_PERCENTAGE_RETIREMENT > var_percentage_retirement THEN
-                    P_ERRBUF := 'EL PORCENTAJE DE RETIRO INGRESADO DEBE DE SER MENOR O IGUAL AL ESTABLECIDO EN EL PARAMETRO DE PORCENTAJE DE RETIRO CON SALDO DE CRÉDITOS. SALDO RESTANTE :' || TO_CHAR(var_loan_balance, '$999,999.00');
-                    P_RETCODE := 1;
-                    RETURN;
-                END IF;
-            ELSIF P_SAVING_RETIREMENT IS NOT NULL THEN
-                IF (P_SAVING_RETIREMENT * 100) / P_AMOUNT_SAVED > var_percentage_retirement THEN
-                    P_ERRBUF := 'LA CANTIDAD DE RETIRO INGRESADA DEBE DE SER MENOR O IGUAL AL PORCENTAJE ESTABLECIDO EN EL PARAMETRO DE PORCENTAJE DE RETIRO CON SALDO DE CRÉDITOS. SALDO RESTANTE :' || TO_CHAR(var_loan_balance, '$999,999.00');
-                    P_RETCODE := 1;
-                    RETURN;
-                END IF; 
-            END IF;            
-        
-        ELSE
-            var_percentage_retirement := P_PERCENTAGE_RETIREMENT;
-        END IF;
-           
         
         IF P_PERCENTAGE_RETIREMENT IS NOT NULL OR P_SAVING_RETIREMENT IS NOT NULL THEN
         
@@ -3848,19 +3937,15 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     var_saving_retirement := P_SAVING_RETIREMENT;
                       
                 ELSE
-                    P_ERRBUF := 'SOLO SE PUEDE SELECCIONAR UN PARAMETRO A LA VEZ, PORCENTAJE DE RETIRO/MONTO DE RETIRO.';
-                    P_RETCODE := 1;
-                    RETURN;
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'SOLO SE PUEDE SELECCIONAR UN PARAMETRO A LA VEZ, PORCENTAJE DE RETIRO/MONTO DE RETIRO.');
+                    RAISE SAVING_RETIREMENT_EXCEPTION;
                 END IF;
                 
                 
                 
                 SELECT ATET_SB_SAVING_RETIREMENT_SEQ.NEXTVAL
                   INTO var_saving_retirement_seq 
-                  FROM DUAL;
-                
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'QUERY: var_saving_retirement_seq');
-                                         
+                  FROM DUAL;                         
                     
                 var_debit_amount := var_saving_retirement;
                 var_credit_amount := 0;
@@ -3898,7 +3983,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                           SYSDATE,
                                                           var_user_id);
 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'INSERT: ATET_SB_SAVINGS_TRANSACTIONS');
                                                       
                 UPDATE ATET_SB_MEMBERS_ACCOUNTS
                    SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
@@ -3907,7 +3991,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                  WHERE MEMBER_ID = P_MEMBER_ID
                    AND MEMBER_ACCOUNT_ID = var_member_account_id;
 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'UPDATE: ATET_SB_MEMBERS_ACCOUNTS DEBIT_BALANCE - CREDIT_BALANCE');
               
                 UPDATE ATET_SB_MEMBERS_ACCOUNTS
                    SET FINAL_BALANCE = CREDIT_BALANCE - DEBIT_BALANCE,
@@ -3916,9 +3999,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                  WHERE MEMBER_ID = P_MEMBER_ID
                    AND MEMBER_ACCOUNT_ID = var_member_account_id;
 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'UPDATE: ATET_SB_MEMBERS_ACCOUNTS FINAL_BALANCE');
                 
-                IF P_IS_MEMBER_END = 'Y' AND P_AMOUNT_SAVED = P_SAVING_RETIREMENT THEN
+                IF P_IS_MEMBER_END = 'Y' AND P_AMOUNT_SAVED = var_saving_retirement THEN
                     
                     UPDATE ATET_SB_MEMBERS  ASM
                        SET ASM.IS_SAVER = 'N',
@@ -3927,7 +4009,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                      WHERE 1 = 1
                        AND ASM.MEMBER_ID = P_MEMBER_ID;
                        
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'UPDATE: ATET_SB_MEMBERS');
                            
                 END IF;
                     
@@ -3950,32 +4031,24 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    AND ASST.DEBIT_AMOUNT = var_debit_amount
                    AND ASST.CREDIT_AMOUNT = var_credit_amount
                    AND ASST.ATTRIBUTE1 = var_saving_retirement_seq;
-                   
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'QUERY: var_saving_transaction_id');
                                         
                 /**********************************************************/
                 /*******             IMPRESIÓN DE RECIBO               ****/
                 /**********************************************************/
                        
-                PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID => var_saving_transaction_id);   
-                
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXECUTE: PRINT_SAVING_TRANSACTION');                    
+                PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID => var_saving_transaction_id);                    
                     
                 /**********************************************************/
                 /*******             CREACIÓN DE CHEQUE                ****/
                 /**********************************************************/
                     
                 CREATE_SAVING_RETIREMENT_CHECK(P_SAVING_TRANSACTION_ID => var_saving_transaction_id, P_CHECK_ID => var_check_id);
-                
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXECUTE: CREATE_SAVING_RETIREMENT_CHECK');
                     
                 /**********************************************************/
                 /*******             IMPRESIÓN DE CHEQUE               ****/
                 /**********************************************************/
                     
                 PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID => var_check_id);
-                
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXECUTE: PRINT_SAVING_RETIREMENT_CHECK');
                     
                 /**********************************************************/
                 /*******             CREACIÓN DE POLIZA                ****/
@@ -4051,24 +4124,25 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                    LPAD(var_final_balance,40, ' '));
                 
             ELSE
-                P_ERRBUF := 'EL PROCESO DE RETIRO DE AHORRO PARA EL EMPLEADO (' || var_employee_number || ')-' || var_employee_full_name ||' ENCONTRO DIFERENCIAS ENTRE EL AHORRO ACUMULADO Y EL INGRESADO COMO PARAMETRO.';
-                P_RETCODE := 1;
-                RETURN;
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'EL PROCESO DE RETIRO DE AHORRO PARA EL EMPLEADO (' || var_employee_number || ')-' || var_employee_full_name ||' ENCONTRO DIFERENCIAS ENTRE EL AHORRO ACUMULADO Y EL INGRESADO COMO PARAMETRO.');
+                RAISE SAVING_RETIREMENT_EXCEPTION;
             END IF;
         
         ELSE
-            P_ERRBUF := 'EL PROCESO DE RETIRO DE AHORRO PARA EL EMPLEADO (' || var_employee_number || ')-' || var_employee_full_name ||' ENCONTRO DIFERENCIAS ENTRE EL PORCENTAJE DE RETIRO PERMITIDO Y EL INGRESADO COMO PARAMETRO.';
-            P_RETCODE := 1;
-            RETURN;
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'EL PROCESO DE RETIRO DE AHORRO PARA EL EMPLEADO (' || var_employee_number || ')-' || var_employee_full_name ||' ENCONTRO DIFERENCIAS ENTRE EL PORCENTAJE DE RETIRO PERMITIDO Y EL INGRESADO COMO PARAMETRO.');
+            RAISE SAVING_RETIREMENT_EXCEPTION;
         END IF;
         
         COMMIT;
         ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
-            
---    EXCEPTION WHEN OTHERS THEN
---        ROLLBACK;
---        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en SAVING_RETIREMENT ' || SQLCODE || ' -ERROR- ' || SQLERRM);
-    END SAVING_RETIREMENT;
+    EXCEPTION 
+        WHEN SAVING_RETIREMENT_EXCEPTION THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : SAVING_RETIREMENT_EXCEPTION');
+            ROLLBACK;
+        WHEN OTHERS THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : OTHERS');
+            ROLLBACK;
+    END PROCESS_SAVING_RETIREMENT;
     
     
     PROCEDURE   PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID    NUMBER)

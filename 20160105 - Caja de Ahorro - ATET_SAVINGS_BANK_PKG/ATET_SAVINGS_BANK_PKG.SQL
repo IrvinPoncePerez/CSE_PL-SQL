@@ -184,6 +184,18 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                   P_SAVING_RETIREMENT       NUMBER,
                                   P_IS_MEMBER_END           VARCHAR2);
                                   
+    PROCEDURE   RELEASE_SAVING_RETIREMENT(ERRBUF                    OUT NOCOPY VARCHAR2,
+                                          RETCODE                   OUT NOCOPY VARCHAR2,
+                                          P_TRANSACTION_HOLD_ID                NUMBER,
+                                          P_REASON_DESCRIPTION                 VARCHAR2,
+                                          P_RELEASE_FLAG                       VARCHAR2);
+                                  
+    PROCEDURE   PROCESS_SAVING_RETIREMENT(P_MEMBER_ID               NUMBER,
+                                          P_AMOUNT_SAVED            NUMBER,
+                                          P_PERCENTAGE_RETIREMENT   NUMBER,
+                                          P_SAVING_RETIREMENT       NUMBER,
+                                          P_IS_MEMBER_END           VARCHAR2);
+                                  
                                              
     PROCEDURE   PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID    NUMBER);
     
