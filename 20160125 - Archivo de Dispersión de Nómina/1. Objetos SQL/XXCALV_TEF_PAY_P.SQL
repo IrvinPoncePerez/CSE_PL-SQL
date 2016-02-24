@@ -434,7 +434,7 @@ BEGIN
             END IF;
             
             l_linea := lpad(l_pago.cuenta,10,'0') || ',' ||
-                       l_emp.importe || ',' ||
+                       TRIM(TO_CHAR(l_emp.importe, '999999.99')) || ',' ||
                        UPPER (l_referencia_lote || ' ' || l_period_name) || ',' ||
                        TRIM(RPAD(REPLACE(l_emp.full_name, 'Ñ', 'N'), 30));          
             
