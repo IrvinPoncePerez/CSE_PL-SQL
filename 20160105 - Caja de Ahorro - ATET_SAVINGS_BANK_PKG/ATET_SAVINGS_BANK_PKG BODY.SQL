@@ -3834,14 +3834,106 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                           P_REASON_DESCRIPTION                 VARCHAR2,
                                           P_RELEASE_FLAG                       VARCHAR2)
     IS
+        var_user_id                 NUMBER := FND_GLOBAL.USER_ID;
+        var_hold_release_id         NUMBER;
+        
+        var_member_id               VARCHAR2(100);
+        var_amount_saved            VARCHAR2(100);
+        var_percentage_retirement   VARCHAR2(100);
+        var_saving_retirement       VARCHAR2(100);
+        var_is_member_end           VARCHAR2(100);
+        
     BEGIN
         
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'RELEASE_SAVING_RETIREMENT(P_TRANSACTION_HOLD_ID => ' || P_TRANSACTION_HOLD_ID ||
                                                                  ',P_REASON_DESCRIPTION => ' || P_REASON_DESCRIPTION ||
                                                                  ',P_RELEASE_FLAG => ' || P_RELEASE_FLAG || ')');
                                                                  
-                                                                 
+        IF P_RELEASE_FLAG = 'Y' THEN
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'CONDITION : Y');
+            
+            INSERT 
+              INTO ATET_SB_HOLD_RELEASES (CREATION_DATE,
+                                          CREATED_BY,
+                                          LAST_UPDATE_DATE,
+                                          LAST_UPDATED_BY,
+                                          HOLD_SOURCE_ID,
+                                          RELEASE_REASON_CODE,
+                                          RELEASE_COMMENT)
+                                  VALUES (SYSDATE,
+                                          var_user_id,
+                                          SYSDATE,
+                                          var_user_id,
+                                          P_TRANSACTION_HOLD_ID,
+                                          'ATET_SB_TRANSACTIONS_HOLDS',
+                                          P_REASON_DESCRIPTION);
+                                          
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INSERT : ATET_SB_HOLD_RELEASES');
+                                          
+                                          
+            SELECT ASHR.HOLD_RELEASE_ID
+              INTO var_hold_release_id
+              FROM ATET_SB_HOLD_RELEASES ASHR
+             WHERE 1 = 1
+               AND ASHR.HOLD_SOURCE_ID = P_TRANSACTION_HOLD_ID
+               AND ASHR.RELEASE_REASON_CODE = 'ATET_SB_TRANSACTIONS_HOLDS'
+               AND ASHR.RELEASE_COMMENT = P_REASON_DESCRIPTION;
+            
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'QUERY : var_hold_release_id');   
+               
+            UPDATE ATET_SB_TRANSACTIONS_HOLDS
+               SET HOLD_RELEASE_ID = var_hold_release_id,
+                   RELEASED_FLAG = 'Y',
+                   LAST_UPDATE_DATE = SYSDATE,
+                   LAST_UPDATED_BY = var_user_id
+             WHERE 1 = 1
+               AND TRANSACTION_HOLD_ID = P_TRANSACTION_HOLD_ID;
+                   
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'UPDATE : ATET_SB_TRANSACTIONS_HOLDS');
+               
+            SELECT REPLACE(ASTH.ATTRIBUTE6, 'P_MEMBER_ID=>', ''),
+                   REPLACE(ASTH.ATTRIBUTE7, 'P_AMOUNT_SAVED=>', ''),
+                   REPLACE(ASTH.ATTRIBUTE8, 'P_PERCENTAGE_RETIREMENT=>', ''),
+                   REPLACE(ASTH.ATTRIBUTE9, 'P_SAVING_RETIREMENT=>', ''),
+                   REPLACE(ASTH.ATTRIBUTE10, 'P_IS_MEMBER_END=>', '')
+              INTO var_member_id,
+                   var_amount_saved,
+                   var_percentage_retirement,
+                   var_saving_retirement,
+                   var_is_member_end 
+              FROM ATET_SB_TRANSACTIONS_HOLDS ASTH
+             WHERE 1 = 1
+               AND TRANSACTION_HOLD_ID = P_TRANSACTION_HOLD_ID;
+               
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'QUERY : ATET_SB_TRANSACTIONS_HOLDS');                
+               
+            PROCESS_SAVING_RETIREMENT(
+                          P_MEMBER_ID => var_member_id,
+                          P_AMOUNT_SAVED => var_amount_saved,
+                          P_PERCENTAGE_RETIREMENT => var_percentage_retirement, 
+                          P_SAVING_RETIREMENT => var_saving_retirement,
+                          P_IS_MEMBER_END => var_is_member_end);
+                   
+                       
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXECUTE: PROCESS_SAVING_RETIREMENT');                            
+            
+        ELSIF P_RELEASE_FLAG = 'N' THEN
+        
+            UPDATE ATET_SB_TRANSACTIONS_HOLDS
+               SET RELEASED_FLAG = 'N',
+                   LAST_UPDATE_DATE = SYSDATE,
+                   LAST_UPDATED_BY = var_user_id
+             WHERE 1 = 1
+               AND TRANSACTION_HOLD_ID = P_TRANSACTION_HOLD_ID;     
+               
+        END IF;
+        
+        COMMIT;                                                                  
     
+    EXCEPTION WHEN OTHERS THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXCEPTION : OTHERS' || SQLERRM);
+        ROLLBACK;
     END RELEASE_SAVING_RETIREMENT;
     
     
