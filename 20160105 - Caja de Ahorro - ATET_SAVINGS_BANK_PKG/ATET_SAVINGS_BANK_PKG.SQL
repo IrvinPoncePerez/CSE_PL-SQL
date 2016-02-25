@@ -174,6 +174,9 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                          P_PAYMENT_INTEREST_LATE    NUMBER);
                                          
     PROCEDURE   SETTLEMENT_LOAN(P_LOAN_ID           NUMBER); 
+    
+    PROCEDURE   SETTLEMENT_LOAN(P_LOAN_ID           NUMBER,
+                                P_MEMBER_ID         NUMBER);
 
     
     PROCEDURE   SAVING_RETIREMENT(P_ERRBUF                  OUT NOCOPY  VARCHAR2,
@@ -184,8 +187,8 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                   P_SAVING_RETIREMENT       NUMBER,
                                   P_IS_MEMBER_END           VARCHAR2);
                                   
-    PROCEDURE   RELEASE_SAVING_RETIREMENT(ERRBUF                    OUT NOCOPY VARCHAR2,
-                                          RETCODE                   OUT NOCOPY VARCHAR2,
+    PROCEDURE   RELEASE_SAVING_RETIREMENT(P_ERRBUF                  OUT NOCOPY  VARCHAR2,
+                                          P_RETCODE                 OUT NOCOPY  VARCHAR2,
                                           P_TRANSACTION_HOLD_ID                NUMBER,
                                           P_REASON_DESCRIPTION                 VARCHAR2,
                                           P_RELEASE_FLAG                       VARCHAR2);
@@ -205,5 +208,14 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     
     
     PROCEDURE   PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID    NUMBER);
+    
+   
+    PROCEDURE   PROCESS_PREPAYMENT(P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                                   P_RETCODE        OUT NOCOPY  VARCHAR2,
+                                   P_MEMBER_ID      NUMBER,
+                                   P_LOAN_ID        NUMBER);
+    
+    PROCEDURE   PRINT_PREPAID(P_LOAN_ID     NUMBER,
+                              P_FOLIO       NUMBER);
 
 END ATET_SAVINGS_BANK_PKG;
