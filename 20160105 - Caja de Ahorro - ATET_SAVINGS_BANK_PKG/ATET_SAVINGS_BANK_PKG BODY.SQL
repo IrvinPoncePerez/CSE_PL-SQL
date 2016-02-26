@@ -3711,8 +3711,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                
     END SETTLEMENT_LOAN;
     
-    PROCEDURE   SETTLEMENT_LOAN(P_LOAN_ID           NUMBER,
-                                P_MEMBER_ID         NUMBER)
+    PROCEDURE   SETTLEMENT_LOAN(P_LOAN_ID               NUMBER,
+                                P_MEMBER_ID             NUMBER,
+                                P_PREPAID_SEQ           NUMBER,
+                                P_LOAN_TRANSACTION_ID   OUT NOCOPY NUMBER)
     IS
         var_member_account_id   NUMBER;
         var_person_id           NUMBER;
@@ -3756,6 +3758,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                 TRANSACTION_CODE,
                                                 DEBIT_AMOUNT,
                                                 CREDIT_AMOUNT,
+                                                ATTRIBUTE1,
                                                 CREATION_DATE,
                                                 CREATED_BY,
                                                 LAST_UPDATE_DATE,
@@ -3771,10 +3774,28 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                  'SETTLEMENT_LOAN',
                                                  0,
                                                  var_loan_balance,
+                                                 P_PREPAID_SEQ,
                                                  SYSDATE,
                                                  var_user_id,
                                                  SYSDATE,
                                                  var_user_id);
+        
+        
+        SELECT ASLT.LOAN_TRANSACTION_ID
+          INTO P_LOAN_TRANSACTION_ID
+          FROM ATET_SB_LOANS_TRANSACTIONS ASLT 
+         WHERE 1 = 1
+           AND MEMBER_ACCOUNT_ID = var_member_account_id
+           AND MEMBER_ID = P_MEMBER_ID
+           AND PAYROLL_RESULT_ID = -1
+           AND LOAN_ID = P_LOAN_ID
+           AND PERSON_ID = var_person_id
+           AND PERIOD_NAME = 'LIQUIDACION'
+           AND ELEMENT_NAME = 'LIQUIDACION DE PRESTAMO'
+           AND TRANSACTION_CODE = 'SETTLEMENT_LOAN'
+           AND DEBIT_AMOUNT = 0
+           AND CREDIT_AMOUNT = var_loan_balance
+           AND ATTRIBUTE1 = P_PREPAID_SEQ;
                                                   
                                                  
         UPDATE ATET_SB_MEMBERS_ACCOUNTS
@@ -4647,6 +4668,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         PRINT_PREPAID_EXCEPTION         EXCEPTION;
         SETTLEMENT_LOAN_EXCEPTION       EXCEPTION; 
         CREATION_GL_EXCEPTION           EXCEPTION;
+        MEMBER_ACCOUNT_EXCEPTION        EXCEPTION;
         
         var_employee_number             VARCHAR2(100);
         var_employee_full_name          VARCHAR2(1000);
@@ -4674,12 +4696,18 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_une_int_code_comb           VARCHAR2(100);
         var_int_rec_code_comb           VARCHAR2(100);
         
+        var_member_account_id           NUMBER;
+        
         var_bank_account_id             NUMBER;
         var_not_rec_account_id          NUMBER;
         var_une_int_account_id          NUMBER;
         var_int_rec_account_id          NUMBER;
         
         var_header_id                   NUMBER;
+        
+        var_description                 VARCHAR2(200);
+        
+        var_loan_transaction_id         NUMBER;
         
     BEGIN
     
@@ -4791,7 +4819,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 BEGIN
                     SETTLEMENT_LOAN(
                         P_LOAN_ID => P_LOAN_ID,
-                        P_MEMBER_ID => P_MEMBER_ID
+                        P_MEMBER_ID => P_MEMBER_ID,
+                        P_PREPAID_SEQ => var_prepaid_seq,
+                        P_LOAN_TRANSACTION_ID => var_loan_transaction_id
                                    );
                     
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXECUTE : SETTLEMENT_LOAN');
@@ -4803,29 +4833,91 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 /***          CREACION DE POLIZA           ***/
                 /*********************************************/
                 BEGIN
+                
+                    BEGIN
+                    
+                        var_member_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(P_MEMBER_ID, P_LOAN_ID);
+                                            
+                        SELECT ASMA.CODE_COMBINATION_ID
+                          INTO var_not_rec_account_id
+                          FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+                         WHERE 1 = 1
+                           AND ASMA.MEMBER_ACCOUNT_ID = var_member_account_id
+                           AND ASMA.MEMBER_ID = P_MEMBER_ID
+                           AND ASMA.LOAN_ID = P_LOAN_ID;
+                           
+                    EXCEPTION WHEN OTHERS THEN
+                        RAISE MEMBER_ACCOUNT_EXCEPTION;    
+                    END;
                     
                     var_bank_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'BANK_CODE_COMB');
                     var_une_int_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'UNE_INT_CODE_COMB');
                     var_int_rec_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INT_REC_CODE_COMB');
                     
                     var_bank_account_id := GET_CODE_COMBINATION_ID(var_bank_code_comb);
-                    var_not_rec_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(P_MEMBER_ID, P_LOAN_ID);
                     var_une_int_account_id := GET_CODE_COMBINATION_ID(var_une_int_code_comb);
                     var_int_rec_account_id := GET_CODE_COMBINATION_ID(var_int_rec_code_comb);
                     
-                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'LOANS',
-                                                               P_EVENT_TYPE_CODE    => 'LOAN_PREPAID',
-                                                               P_BATCH_NAME         => 'PAGO ANTICIPADO',
-                                                               P_JOURNAL_NAME       => 'PAGO ANTICIPADO : ' || var_employee_number      || 
-                                                                                                        '|' || var_employee_full_name   ||
-                                                                                                        '|' || var_loan_number          ||
-                                                                                                        '|' || TRIM(TO_CHAR(var_loan_balance,'$999,999.99')),
-                                                               P_HEADER_ID          => var_header_id);
+                    var_description := 'PAGO ANTICIPADO : ' || var_employee_number      || 
+                                                        '|' || var_employee_full_name   ||
+                                                        '|' || var_loan_number          ||
+                                                        '|' || TRIM(TO_CHAR(var_loan_balance,'$999,999.99'));
+                    
+                    
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (
+                        P_ENTITY_CODE        => 'LOANS',
+                        P_EVENT_TYPE_CODE    => 'LOAN_PREPAID',
+                        P_BATCH_NAME         => 'PAGO ANTICIPADO',
+                        P_JOURNAL_NAME       => var_description,
+                        P_HEADER_ID          => var_header_id );
                                                                
                     /*********  CARGO : BANCOS                  *********/
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
+                        P_HEADER_ID => var_header_id,
+                        P_ROW_NUMBER => 1,
+                        P_CODE_COMBINATION_ID => var_bank_account_id,
+                        P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
+                        P_ACCOUNTED_DR => var_asps_loan_balance,
+                        P_ACCOUNTED_CR => 0,
+                        P_DESCRIPTION => var_description,
+                        P_SOURCE_ID => NULL,
+                        P_SOURCE_LINK_TABLE => NULL);
+                        
                     /*********  ABONO : DOCUMENTOS POR COBRAR   *********/
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
+                        P_HEADER_ID => var_header_id,
+                        P_ROW_NUMBER => 2,
+                        P_CODE_COMBINATION_ID => var_not_rec_account_id,
+                        P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
+                        P_ACCOUNTED_DR => 0,
+                        P_ACCOUNTED_CR => var_loan_balance,
+                        P_DESCRIPTION => var_description,
+                        P_SOURCE_ID => var_loan_transaction_id,
+                        P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');
+                    
                     /*********  CARGO : INTERESES POR DEVENGAR  *********/
-                    /*********  ABONO : INTERESES COBRADOS      *********/  
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
+                        P_HEADER_ID => var_header_id,
+                        P_ROW_NUMBER => 3,
+                        P_CODE_COMBINATION_ID => var_une_int_account_id,
+                        P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
+                        P_ACCOUNTED_DR => var_asps_payment_interest,
+                        P_ACCOUNTED_CR => 0,
+                        P_DESCRIPTION => var_description,
+                        P_SOURCE_ID => NULL,
+                        P_SOURCE_LINK_TABLE => NULL);
+                    
+                    /*********  ABONO : INTERESES COBRADOS      *********/
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
+                        P_HEADER_ID => var_header_id,
+                        P_ROW_NUMBER => 4,
+                        P_CODE_COMBINATION_ID => var_int_rec_account_id,
+                        P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
+                        P_ACCOUNTED_DR => 0,
+                        P_ACCOUNTED_CR => var_asps_payment_interest,
+                        P_DESCRIPTION => var_description,
+                        P_SOURCE_ID => NULL,
+                        P_SOURCE_LINK_TABLE => NULL);  
                 
                 EXCEPTION WHEN OTHERS THEN
                     RAISE CREATION_GL_EXCEPTION;
@@ -4872,6 +4964,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         WHEN CREATION_GL_EXCEPTION THEN
             ROLLBACK;
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: AL CREAR LA CONTABILIDAD.');
+            P_RETCODE := 2;
+        WHEN MEMBER_ACCOUNT_EXCEPTION THEN
+            ROLLBACK;
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: AL CONSULTAR LA CUENTA DE DOCUMENTOS POR COBRAR DEL PRESTAMO.');
             P_RETCODE := 2;
     END PROCESS_PREPAYMENT;
     
