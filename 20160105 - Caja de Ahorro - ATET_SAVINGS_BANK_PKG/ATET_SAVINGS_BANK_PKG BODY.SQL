@@ -3664,7 +3664,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                  -1,
                                                  var_loan_id,
                                                  var_person_id,
-                                                 TO_DATE(SYSDATE, 'DD/MM/YYYY'),
+                                                 TO_DATE(SYSDATE, 'DD/MM/RRRR'),
                                                  'LIQUIDACION',
                                                  'LIQUIDACION DE PRESTAMO',
                                                  'SETTLEMENT_LOAN',
@@ -3691,7 +3691,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
         UPDATE ATET_SB_LOANS ASL
            SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - var_loan_balance,
-               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/YYYY')
+               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR')
          WHERE 1 = 1
            AND ASL.LOAN_ID = var_loan_id;
            
@@ -3768,7 +3768,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                  -1,
                                                  P_LOAN_ID,
                                                  var_person_id,
-                                                 TO_DATE(SYSDATE, 'DD/MM/YYYY'),
+                                                 TO_DATE(SYSDATE, 'DD/MM/RRRR'),
                                                  'LIQUIDACION',
                                                  'LIQUIDACION DE PRESTAMO',
                                                  'SETTLEMENT_LOAN',
@@ -3816,7 +3816,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
         UPDATE ATET_SB_LOANS ASL
            SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - var_loan_balance,
-               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/YYYY')
+               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR')
          WHERE 1 = 1
            AND ASL.LOAN_ID = P_LOAN_ID;
            
