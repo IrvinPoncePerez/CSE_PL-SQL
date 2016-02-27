@@ -1540,20 +1540,34 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_result  NUMBER;
     BEGIN
     
-        SELECT GL.CODE_COMBINATION_ID
+        
+         SELECT ASAM.ACCOUNT_MAPPING_ID
           INTO var_result
-          FROM GL_CODE_COMBINATIONS_V  GL
+          FROM ATET_SB_ACCOUNT_MAPPING  ASAM
          WHERE 1 = 1
-           AND GL.TEMPLATE_ID IS NULL
-           AND GL.SEGMENT1 = '07'
-           AND (GL.SEGMENT1 ||
-                GL.SEGMENT2 ||
-                GL.SEGMENT3 ||
-                GL.SEGMENT4 ||
-                GL.SEGMENT5 ||
-                GL.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
+           AND (ASAM.SEGMENT1 ||
+                ASAM.SEGMENT2 ||
+                ASAM.SEGMENT3 ||
+                ASAM.SEGMENT4 ||
+                ASAM.SEGMENT5 ||
+                ASAM.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
+        
+    
+--        SELECT GL.CODE_COMBINATION_ID
+--          INTO var_result
+--          FROM GL_CODE_COMBINATIONS_V  GL
+--         WHERE 1 = 1
+--           AND GL.TEMPLATE_ID IS NULL
+--           AND GL.SEGMENT1 = '07'
+--           AND (GL.SEGMENT1 ||
+--                GL.SEGMENT2 ||
+--                GL.SEGMENT3 ||
+--                GL.SEGMENT4 ||
+--                GL.SEGMENT5 ||
+--                GL.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
                 
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_CODE_COMBINATION_ID(P_CODE_COMBINATION => ' || P_CODE_COMBINATION || ') RETURN ' || var_result); 
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_CODE_COMBINATION_ID(P_CODE_COMBINATION => ' || P_CODE_COMBINATION || 
+                                                               ') RETURN ' || var_result); 
                 
         RETURN var_result;
 
@@ -3343,7 +3357,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         
         COMMIT;
-        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        --ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
     EXCEPTION WHEN OTHERS THEN
         ROLLBACK;
@@ -4369,7 +4383,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
         
         COMMIT;
-        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        --ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
     EXCEPTION 
         WHEN SAVING_RETIREMENT_EXCEPTION THEN
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : SAVING_RETIREMENT_EXCEPTION');
@@ -4936,7 +4950,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
         
         COMMIT;
-        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        --ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
     EXCEPTION
         WHEN QRY_LOAN_BALANCE THEN
