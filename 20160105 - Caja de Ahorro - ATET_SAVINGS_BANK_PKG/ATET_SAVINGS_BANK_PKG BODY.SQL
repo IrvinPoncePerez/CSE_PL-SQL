@@ -1513,6 +1513,25 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_MEMBER_ID;
     
     
+    FUNCTION    GET_PERSON_ID(P_MEMBER_ID   NUMBER)
+      RETURN    NUMBER
+    IS
+        var_person_id   NUMBER;
+    BEGIN
+         SELECT ASM.PERSON_ID
+          INTO var_person_id
+          FROM ATET_SB_MEMBERS ASM
+         WHERE ASM.MEMBER_ID = P_MEMBER_ID
+           AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+           
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_PERSON_ID(P_MEMBER_ID => ' || P_MEMBER_ID || ') RETURN ' || var_person_id);
+           
+        RETURN var_person_id;   
+    EXCEPTION WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_PERSON_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+    END GET_PERSON_ID;
+    
+    
     FUNCTION    GET_MEMBER_IS_SAVER(P_MEMBER_ID     NUMBER)
       RETURN    VARCHAR2
     IS
@@ -3357,7 +3376,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         
         COMMIT;
-        --ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
     EXCEPTION WHEN OTHERS THEN
         ROLLBACK;
@@ -4383,14 +4402,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
         
         COMMIT;
-        --ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
-    EXCEPTION 
-        WHEN SAVING_RETIREMENT_EXCEPTION THEN
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : SAVING_RETIREMENT_EXCEPTION');
-            ROLLBACK;
-        WHEN OTHERS THEN
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : OTHERS');
-            ROLLBACK;
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        
+    EXCEPTION WHEN SAVING_RETIREMENT_EXCEPTION THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : SAVING_RETIREMENT_EXCEPTION');
+                ROLLBACK;
+              WHEN OTHERS THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : OTHERS');
+                ROLLBACK;
     END PROCESS_SAVING_RETIREMENT;
     
     
@@ -4950,7 +4969,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
         
         COMMIT;
-        --ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
     EXCEPTION
         WHEN QRY_LOAN_BALANCE THEN
@@ -5041,6 +5060,328 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     EXCEPTION WHEN OTHERS THEN
         RAISE;  
     END PRINT_PREPAID;
+    
+    
+    PROCEDURE   VOLUNTARY_CONTRIBUTION(P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                                       P_RETCODE        OUT NOCOPY  VARCHAR2,
+                                       P_MEMBER_ID      NUMBER,
+                                       P_SAVING_AMOUNT  NUMBER,
+                                       P_DEPOSIT_DATE   VARCHAR2)
+    IS    
+       
+        var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
+        var_request_id                  NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
+        
+        var_voluntary_contribution_seq  NUMBER;
+        var_receipts_all_seq            NUMBER;
+        
+        var_member_account_id           NUMBER;
+        var_debit_amount                NUMBER := 0;
+        var_credit_amount               NUMBER := P_SAVING_AMOUNT;
+        var_voluntary_contribution      NUMBER := P_SAVING_AMOUNT;
+        var_deposit_date                DATE := TRUNC(TO_DATE(P_DEPOSIT_DATE,'RRRR/MM/DD HH24:MI:SS'));
+        var_person_id                   NUMBER := GET_PERSON_ID(P_MEMBER_ID);
+        var_employee_number             VARCHAR2(100);
+        var_employee_full_name          VARCHAR2(500);
+        
+        var_saving_transaction_id       NUMBER;
+        
+        var_bank_code_comb              VARCHAR2(100);
+        var_sav_code_comb               VARCHAR2(100);
+        var_bank_account_id             NUMBER;
+        var_sav_account_id              NUMBER;
+        var_header_id                   NUMBER;
+        
+        var_debit_balance               NUMBER;
+        var_credit_balance              NUMBER;
+        var_final_balance               NUMBER;
+        
+        var_banks_account_id            NUMBER;
+        var_banks_account_name          VARCHAR2(100);
+        var_banks_account_num           VARCHAR2(100);
+        var_banks_currency_code          VARCHAR2(13);
+        
+        CURSOR SAVINGS_DETAILS IS
+            SELECT ASST.EARNED_DATE,
+                   ASST.PERIOD_NAME,
+                   ASST.ELEMENT_NAME,
+                   ASST.DEBIT_AMOUNT,
+                   ASST.CREDIT_AMOUNT
+              FROM ATET_SB_SAVINGS_TRANSACTIONS ASST
+             WHERE 1 = 1
+               AND ASST.MEMBER_ID = P_MEMBER_ID
+             ORDER BY ASST.SAVING_TRANSACTION_ID;
+             
+        PRE_PROCESSING_EXCEPTION     EXCEPTION;
+        SAVING_TRANSACTION_EXCEPTION EXCEPTION;
+    
+    BEGIN
+        
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'VOLUNTARY_CONTRIBUTION(P_MEMBER_ID => ' || P_MEMBER_ID ||
+                                                              ',P_SAVING_AMOUNT => ' || P_SAVING_AMOUNT ||
+                                                              ')');    
+                            
+        var_member_account_id := GET_SAVING_MEMBER_ACCOUNT_ID(P_MEMBER_ID,
+                                                              GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAV_CODE_COMB'),
+                                                              GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME'));   
+
+        BEGIN           
+                                                           
+            SELECT ATET_SB_RECEIPT_NUMBER_SEQ.NEXTVAL
+              INTO var_voluntary_contribution_seq 
+              FROM DUAL;                         
+             
+             
+            SELECT ATET_SB_RECEIPTS_ALL_SEQ.NEXTVAL
+              INTO var_receipts_all_seq
+              FROM DUAL;                 
+            
+              
+            SELECT ASM.EMPLOYEE_NUMBER,
+                   ASM.EMPLOYEE_FULL_NAME
+              INTO var_employee_number,
+                   var_employee_full_name
+              FROM ATET_SB_MEMBERS  ASM
+             WHERE ASM.MEMBER_ID = P_MEMBER_ID;    
+             
+                      
+             SELECT BANK_ACCOUNT_ID,
+                    BANK_ACCOUNT_NAME,
+                    BANK_ACCOUNT_NUM,
+                    CURRENCY_CODE
+               INTO var_banks_account_id,
+                    var_banks_account_name,
+                    var_banks_account_num,
+                    var_banks_currency_code
+               FROM ATET_SB_BANK_ACCOUNTS
+              WHERE 1 = 1
+                AND ROWNUM = 1;
+                
+        EXCEPTION WHEN OTHERS THEN
+            RAISE PRE_PROCESSING_EXCEPTION;
+        END;       
+
+        
+        /**********************************************************/
+        /*******      INSERT ATET_SB_SAVINGS_TRANSACTIONS      ****/
+        /**********************************************************/
+       
+        BEGIN
+        
+            INSERT INTO ATET_SB_SAVINGS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
+                                                      MEMBER_ID,
+                                                      PAYROLL_RESULT_ID,
+                                                      PERSON_ID,
+                                                      EARNED_DATE,
+                                                      PERIOD_NAME,
+                                                      ELEMENT_NAME,
+                                                      ENTRY_VALUE,
+                                                      TRANSACTION_CODE,
+                                                      DEBIT_AMOUNT,
+                                                      CREDIT_AMOUNT,
+                                                      ATTRIBUTE1,
+                                                      CREATION_DATE,
+                                                      CREATED_BY,
+                                                      LAST_UPDATE_DATE,
+                                                      LAST_UPDATED_BY)
+                                              VALUES (var_member_account_id,
+                                                      P_MEMBER_ID,
+                                                      -1,
+                                                      var_person_id,
+                                                      TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                                                      'APORTACION',
+                                                      'APORTACION VOLUNTARIA',
+                                                      var_voluntary_contribution,
+                                                      'CONTRIBUTION',
+                                                      var_debit_amount,
+                                                      var_credit_amount,
+                                                      var_voluntary_contribution_seq,
+                                                      SYSDATE,
+                                                      var_user_id,
+                                                      SYSDATE,
+                                                      var_user_id);
+
+                                                          
+            UPDATE ATET_SB_MEMBERS_ACCOUNTS
+               SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
+                   CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                   LAST_TRANSACTION_DATE = SYSDATE               
+             WHERE MEMBER_ID = P_MEMBER_ID
+               AND MEMBER_ACCOUNT_ID = var_member_account_id;
+
+                  
+            UPDATE ATET_SB_MEMBERS_ACCOUNTS
+               SET FINAL_BALANCE = CREDIT_BALANCE - DEBIT_BALANCE,
+                   LAST_UPDATE_DATE = SYSDATE,
+                   LAST_UPDATED_BY = var_user_id             
+             WHERE MEMBER_ID = P_MEMBER_ID
+               AND MEMBER_ACCOUNT_ID = var_member_account_id;
+               
+        EXCEPTION WHEN OTHERS THEN
+            RAISE SAVING_TRANSACTION_EXCEPTION;
+        END;
+        /**********************************************************/
+        /*******      CONSULTA DE SAVING_TRANSACTION_ID        ****/
+        /**********************************************************/
+                    
+        SELECT ASST.SAVING_TRANSACTION_ID
+          INTO var_saving_transaction_id
+          FROM ATET_SB_SAVINGS_TRANSACTIONS ASST
+         WHERE 1 = 1
+           AND ASST.MEMBER_ACCOUNT_ID = var_member_account_id
+           AND ASST.MEMBER_ID = P_MEMBER_ID
+           AND ASST.PERSON_ID = var_person_id
+           AND ASST.PERIOD_NAME = 'APORTACION'
+           AND ASST.ELEMENT_NAME = 'APORTACION VOLUNTARIA'
+           AND ASST.ENTRY_VALUE = var_voluntary_contribution
+           AND ASST.TRANSACTION_CODE = 'CONTRIBUTION'
+           AND ASST.DEBIT_AMOUNT = var_debit_amount
+           AND ASST.CREDIT_AMOUNT = var_credit_amount
+           AND ASST.ATTRIBUTE1 = var_voluntary_contribution_seq;
+
+        /**********************************************************/
+        /*******             CREACIÓN DE POLIZA                ****/
+        /**********************************************************/
+        
+        var_bank_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'BANK_CODE_COMB');
+        var_sav_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAV_CODE_COMB');
+        var_bank_account_id := GET_CODE_COMBINATION_ID(var_bank_code_comb);
+        var_sav_account_id := GET_CODE_COMBINATION_ID(var_sav_code_comb);
+             
+        ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'SAVINGS',
+                                                   P_EVENT_TYPE_CODE    => 'VOLUNTARY_CONTRIBUTION',
+                                                   P_BATCH_NAME         => 'APORTACION VOLUNTARIA',
+                                                   P_JOURNAL_NAME       => 'APORTACION VOLUNTARIA : ' || var_employee_number || '-' || var_employee_full_name,
+                                                   P_HEADER_ID          => var_header_id);
+
+        ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,    
+                                                 P_ROW_NUMBER              => 1,
+                                                 P_CODE_COMBINATION_ID     => var_bank_account_id,
+                                                 P_ACCOUNTING_CLASS_CODE   => 'VOLUNTARY_CONTRIBUTION',
+                                                 P_ACCOUNTED_DR            => var_credit_amount,
+                                                 P_ACCOUNTED_CR            => var_debit_amount,
+                                                 P_DESCRIPTION             => var_employee_number || '|' 
+                                                                           || var_employee_full_name || '|' 
+                                                                           || var_voluntary_contribution || '|'
+                                                                           || var_deposit_date,
+                                                 P_SOURCE_ID               => NULL,
+                                                 P_SOURCE_LINK_TABLE       => NULL);  
+                                                               
+        ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                 P_ROW_NUMBER              => 2,
+                                                 P_CODE_COMBINATION_ID     => var_sav_account_id,
+                                                 P_ACCOUNTING_CLASS_CODE   => 'VOLUNTARY_CONTRIBUTION',
+                                                 P_ACCOUNTED_DR            => var_debit_amount,
+                                                 P_ACCOUNTED_CR            => var_credit_amount,
+                                                 P_DESCRIPTION             => var_employee_number || '|' 
+                                                                           || var_employee_full_name || '|' 
+                                                                           || var_voluntary_contribution || '|'
+                                                                           || var_deposit_date,
+                                                 P_SOURCE_ID               => var_saving_transaction_id,
+                                                 P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
+                                                             
+        /**********************************************************/
+        /*******          INSERT ATET_SB_RECEIPTS_ALL          ****/
+        /**********************************************************/
+        INSERT 
+          INTO ATET_SB_RECEIPTS_ALL (RECEIPT_ID,
+                                     RECEIPT_NUMBER,
+                                     RECEIPT_DATE,
+                                     STATUS_LOOKUP_CODE,
+                                     RECEIPT_TYPE_FLAG,
+                                     MEMBER_ID,
+                                     MEMBER_NAME,
+                                     CURRENCY_CODE,
+                                     AMOUNT,
+                                     COMMENTS,
+                                     BANK_ACCOUNT_ID,
+                                     BANK_ACCOUNT_NUM,
+                                     BANK_ACCOUNT_NAME,
+                                     DEPOSIT_DATE,
+                                     ATTRIBUTE1,
+                                     REQUEST_ID,
+                                     REFERENCE_TYPE,
+                                     REFERENCE_ID,
+                                     LAST_UPDATED_BY,
+                                     LAST_UPDATE_DATE,
+                                     CREATED_BY,
+                                     CREATION_DATE)
+                             VALUES (var_receipts_all_seq,
+                                     var_voluntary_contribution_seq,
+                                     TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                                     'CREATED',
+                                     'VOLUNTARY_CONTRIBUTION',
+                                     P_MEMBER_ID,
+                                     var_employee_full_name,
+                                     var_banks_currency_code,
+                                     var_voluntary_contribution,
+                                     var_employee_number || '|' || var_employee_full_name || '|' || var_voluntary_contribution || '|' || var_deposit_date,
+                                     var_banks_account_id,
+                                     var_banks_account_num,
+                                     var_banks_account_name,
+                                     var_deposit_date,
+                                     var_header_id,
+                                     var_request_id,
+                                     'ATET_SB_SAVINGS_TRANSACTIONS',
+                                     var_saving_transaction_id,
+                                     var_user_id,
+                                     SYSDATE,
+                                     var_user_id,
+                                     SYSDATE);                                                                                                                                                         
+
+        /**********************************************************/
+        /*******             IMPRESIÓN DE RECIBO               ****/
+        /**********************************************************/
+                                                       
+                                
+        /**********************************************************/
+        /*******                   OUTPUT                      ****/
+        /**********************************************************/
+                    
+        SELECT ASMA.DEBIT_BALANCE,
+               ASMA.CREDIT_BALANCE,
+               ASMA.FINAL_BALANCE
+          INTO var_debit_balance,
+               var_credit_balance,
+               var_final_balance
+          FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+         WHERE 1 = 1
+           AND ASMA.MEMBER_ID = P_MEMBER_ID
+           AND ASMA.MEMBER_ACCOUNT_ID = var_member_account_id;
+                    
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 95, '*'));
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('FECHA', 15, ' ') ||
+                                           RPAD('PERIODO', 20, ' ') ||
+                                           RPAD('DESCRIPCION',20, ' ') ||
+                                           LPAD('CARGO',20, ' ') ||
+                                           LPAD('ABONO',20, ' '));
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 95, '*'));
+                    
+        FOR detail IN SAVINGS_DETAILS LOOP
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(detail.EARNED_DATE, 15, ' ') ||
+                                               RPAD(detail.PERIOD_NAME, 20, ' ') ||
+                                               RPAD(detail.ELEMENT_NAME,20, ' ') ||
+                                               LPAD(detail.DEBIT_AMOUNT,20, ' ') ||
+                                               LPAD(detail.CREDIT_AMOUNT,20, ' '));
+        END LOOP;
+                    
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 95, '*'));
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('RESUMEN : ', 55, ' ') ||
+                                           LPAD(var_debit_balance,20, ' ') ||
+                                           LPAD(var_credit_balance,20, ' '));
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 95, '*'));
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('SALDO : ', 55, ' ') ||
+                                           LPAD(var_final_balance,40, ' '));
+                
+        /**********************************************************/
+        /*******                   COMMIT                      ****/
+        /**********************************************************/    
+        
+        COMMIT;
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;                                  
+                                                                      
+    
+    END VOLUNTARY_CONTRIBUTION;
                                  
 
 END ATET_SAVINGS_BANK_PKG;

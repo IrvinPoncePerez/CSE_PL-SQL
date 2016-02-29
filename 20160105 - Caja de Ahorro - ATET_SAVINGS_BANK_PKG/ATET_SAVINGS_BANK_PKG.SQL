@@ -78,6 +78,9 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     FUNCTION    GET_MEMBER_ID(P_PERSON_ID   NUMBER)
       RETURN    NUMBER;
       
+    FUNCTION    GET_PERSON_ID(P_MEMBER_ID   NUMBER)
+      RETURN    NUMBER;
+      
     FUNCTION    GET_MEMBER_IS_SAVER(P_MEMBER_ID     NUMBER)
       RETURN    VARCHAR2;
       
@@ -219,5 +222,13 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     
     PROCEDURE   PRINT_PREPAID(P_LOAN_ID     NUMBER,
                               P_FOLIO       NUMBER);
+                              
+
+    PROCEDURE   VOLUNTARY_CONTRIBUTION(P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                                       P_RETCODE        OUT NOCOPY  VARCHAR2,
+                                       P_MEMBER_ID      NUMBER,
+                                       P_SAVING_AMOUNT  NUMBER,
+                                       P_DEPOSIT_DATE   VARCHAR2);
+
 
 END ATET_SAVINGS_BANK_PKG;
