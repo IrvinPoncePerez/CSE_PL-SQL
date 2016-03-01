@@ -40,7 +40,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_SAVING_BANK_YEAR;
     
     
-    FUNCTION    GET_AVAILABLE_PERIODS(P_MEMBER_ID   NUMBER)
+    FUNCTION    GET_AVAILABLE_PERIODS(
+                    P_MEMBER_ID   NUMBER)
       RETURN    NUMBER
     IS
         var_count_periods   NUMBER;
@@ -130,7 +131,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_AVAILABLE_PERIODS;
     
     
-    FUNCTION    GET_PERIOD_TYPE(P_PERSON_ID             NUMBER)
+    FUNCTION    GET_PERIOD_TYPE(
+                    P_PERSON_ID             NUMBER)
       RETURN    VARCHAR2
     IS
         var_period_type     VARCHAR2(100);
@@ -177,8 +179,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_REGISTRATION_DATE;
     
     
-    FUNCTION    GET_PARAMETER_VALUE(P_SAVING_BANK_ID          NUMBER,
-                                    P_PARAMETER_CODE          VARCHAR2)
+    FUNCTION    GET_PARAMETER_VALUE(
+                    P_SAVING_BANK_ID          NUMBER,
+                    P_PARAMETER_CODE          VARCHAR2)
       RETURN    VARCHAR2
     IS
         var_parameter_value     VARCHAR2(100);
@@ -204,7 +207,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_PARAMETER_VALUE;
     
     
-    FUNCTION    IF_MEMBER_EXIST(P_EMPLOYEE_NUMBER      NUMBER)
+    FUNCTION    IF_MEMBER_EXIST(
+                    P_EMPLOYEE_NUMBER      NUMBER)
       RETURN    NUMBER
     IS
         var_result  NUMBER;
@@ -226,8 +230,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END IF_MEMBER_EXIST;
     
     
-    FUNCTION GET_MAX_ASSIGNMENT_ACTION_ID(P_ASSIGNMENT_ID        NUMBER,
-                                          P_PAYROLL_ID           NUMBER)
+    FUNCTION GET_MAX_ASSIGNMENT_ACTION_ID(
+                P_ASSIGNMENT_ID        NUMBER,
+                P_PAYROLL_ID           NUMBER)
         RETURN NUMBER                                                        
     IS
               
@@ -266,8 +271,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_MAX_ASSIGNMENT_ACTION_ID;
     
     
-    FUNCTION GET_SUBTBR(P_ASSIGNMENT_ACTION_ID      NUMBER)
-        RETURN NUMBER
+    FUNCTION GET_SUBTBR(
+                P_ASSIGNMENT_ACTION_ID      NUMBER)
+      RETURN NUMBER
     IS 
         var_result_value    NUMBER;
     BEGIN
@@ -327,8 +333,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_SUBTBR;
 
 
-    FUNCTION GET_ISRRET(P_ASSIGNMENT_ACTION_ID      NUMBER)
-    RETURN NUMBER
+    FUNCTION GET_ISRRET(
+                P_ASSIGNMENT_ACTION_ID      NUMBER)
+      RETURN NUMBER
     IS 
         var_result_value    NUMBER;
     BEGIN
@@ -359,8 +366,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_ISRRET;
     
     
-    FUNCTION GET_MONDET(P_ASSIGNMENT_ACTION_ID      NUMBER)
-    RETURN NUMBER
+    FUNCTION GET_MONDET(
+                P_ASSIGNMENT_ACTION_ID      NUMBER)
+      RETURN NUMBER
     IS 
         var_result_value    NUMBER;
     BEGIN
@@ -400,7 +408,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_MONDET;
     
     
-    FUNCTION    GET_PERSON_TERMINATION_DATE(P_PERSON_ID     NUMBER)
+    FUNCTION    GET_PERSON_TERMINATION_DATE(
+                    P_PERSON_ID     NUMBER)
       RETURN    VARCHAR2
     IS
         var_actual_termination_date VARCHAR2(50) := 'NOTHING';
@@ -432,7 +441,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_PERSON_TERMINATION_DATE;
     
       
-    FUNCTION    GET_MEMBER_TERMINATION_DATE(P_PERSON_ID     NUMBER)
+    FUNCTION    GET_MEMBER_TERMINATION_DATE(
+                    P_PERSON_ID     NUMBER)
       RETURN    VARCHAR2
     IS
         var_member_termination_date VARCHAR2(50) := 'NOTHING';
@@ -458,12 +468,13 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_MEMBER_TERMINATION_DATE;
     
     
-    PROCEDURE   EXPORT_PAYROLL_RESULTS(P_ERRBUF         OUT NOCOPY  VARCHAR2,
-                                       P_RETCODE        OUT NOCOPY  VARCHAR2,
-                                       P_PERIOD_TYPE    VARCHAR2,
-                                       P_YEAR           NUMBER,
-                                       P_MONTH          NUMBER,
-                                       P_PERIOD_NAME    VARCHAR2)
+    PROCEDURE   EXPORT_PAYROLL_RESULTS(
+                    P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                    P_RETCODE        OUT NOCOPY  VARCHAR2,
+                    P_PERIOD_TYPE    VARCHAR2,
+                    P_YEAR           NUMBER,
+                    P_MONTH          NUMBER,
+                    P_PERIOD_NAME    VARCHAR2)
     IS
     
         CURSOR  DETAIL_LIST IS
@@ -644,9 +655,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END EXPORT_PAYROLL_RESULTS;
     
     
-    PROCEDURE   IMPORT_PAYROLL_RESULTS(P_ERRBUF            OUT NOCOPY  VARCHAR2,
-                                       P_RETCODE           OUT NOCOPY  VARCHAR2,
-                                       P_EXPORT_REQUEST_ID NUMBER)
+    PROCEDURE   IMPORT_PAYROLL_RESULTS(
+                    P_ERRBUF            OUT NOCOPY  VARCHAR2,
+                    P_RETCODE           OUT NOCOPY  VARCHAR2,
+                    P_EXPORT_REQUEST_ID NUMBER)
     IS
         var_import_request_id       NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
         var_log                     VARCHAR2(1000);
@@ -991,9 +1003,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
     
     
-    PROCEDURE   CREATE_ACCOUNT(P_PERSON_ID              NUMBER,
-                               P_PARAM_ELEMENT_NAME     VARCHAR2,
-                               P_PARAM_CODE_COMBINATION VARCHAR2)
+    PROCEDURE   CREATE_ACCOUNT(
+                    P_PERSON_ID              NUMBER,
+                    P_PARAM_ELEMENT_NAME     VARCHAR2,
+                    P_PARAM_CODE_COMBINATION VARCHAR2)
     IS
         var_have_account    NUMBER;
         var_user_id         NUMBER := FND_GLOBAL.USER_ID;
@@ -1133,9 +1146,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END CREATE_ACCOUNT;
     
     
-    FUNCTION GET_LOOKUP_MEANING(P_LOOKUP_TYPE    VARCHAR2,
-                                P_LOOKUP_CODE    VARCHAR2)
-      RETURN VARCHAR2
+    FUNCTION    GET_LOOKUP_MEANING(
+                    P_LOOKUP_TYPE    VARCHAR2,
+                    P_LOOKUP_CODE    VARCHAR2)
+      RETURN    VARCHAR2
    --
    AS
       V_MEANING   HR_LOOKUPS.MEANING%TYPE;
@@ -1173,9 +1187,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
    END GET_LOOKUP_MEANING;
    
    
-    PROCEDURE   ROLLBACK_EXPORT_PAYRESULT(P_ERRBUF            OUT NOCOPY  VARCHAR2,
-                                          P_RETCODE           OUT NOCOPY  VARCHAR2,
-                                          P_EXPORT_REQUEST_ID NUMBER)
+    PROCEDURE   ROLLBACK_EXPORT_PAYRESULT(
+                    P_ERRBUF            OUT NOCOPY  VARCHAR2,
+                    P_RETCODE           OUT NOCOPY  VARCHAR2,
+                    P_EXPORT_REQUEST_ID NUMBER)
     IS
     
         CURSOR DETAIL_LIST  IS
@@ -1270,10 +1285,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END ROLLBACK_EXPORT_PAYRESULT;
     
     
-    PROCEDURE   CHANGE_AMOUNT_TO_SAVE(P_ERRBUF            OUT NOCOPY  VARCHAR2,
-                                      P_RETCODE           OUT NOCOPY  VARCHAR2,
-                                      P_EMPLOYEE_NUMBER   NUMBER,
-                                      P_AMOUNT_TO_SAVE    NUMBER)
+    PROCEDURE   CHANGE_AMOUNT_TO_SAVE(
+                    P_ERRBUF            OUT NOCOPY  VARCHAR2,
+                    P_RETCODE           OUT NOCOPY  VARCHAR2,
+                    P_EMPLOYEE_NUMBER   NUMBER,
+                    P_AMOUNT_TO_SAVE    NUMBER)
     IS
         var_amount_to_save      NUMBER;
         var_next_discount       NUMBER;
@@ -1494,7 +1510,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END CREATE_SEQUENCE;  
     
     
-    FUNCTION    GET_MEMBER_ID(P_PERSON_ID   NUMBER)
+    FUNCTION    GET_MEMBER_ID(
+                    P_PERSON_ID   NUMBER)
       RETURN    NUMBER
     IS
         var_member_id   NUMBER;
@@ -1513,7 +1530,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_MEMBER_ID;
     
     
-    FUNCTION    GET_PERSON_ID(P_MEMBER_ID   NUMBER)
+    FUNCTION    GET_PERSON_ID(
+                    P_MEMBER_ID   NUMBER)
       RETURN    NUMBER
     IS
         var_person_id   NUMBER;
@@ -1532,7 +1550,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_PERSON_ID;
     
     
-    FUNCTION    GET_MEMBER_IS_SAVER(P_MEMBER_ID     NUMBER)
+    FUNCTION    GET_MEMBER_IS_SAVER(
+                    P_MEMBER_ID     NUMBER)
       RETURN    VARCHAR2
     IS
         var_result  VARCHAR2(50);
@@ -1553,7 +1572,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_MEMBER_IS_SAVER;
       
    
-    FUNCTION    GET_CODE_COMBINATION_ID(P_CODE_COMBINATION   VARCHAR2)
+    FUNCTION    GET_CODE_COMBINATION_ID(
+                    P_CODE_COMBINATION   VARCHAR2)
       RETURN    NUMBER
     IS
         var_result  NUMBER;
@@ -1599,17 +1619,18 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_CODE_COMBINATION_ID;
     
     
-    FUNCTION    INSERT_SAVING_TRANSACTION(P_PAYROLL_RESULT_ID   NUMBER,
-                                          P_PERSON_ID           NUMBER,
-                                          P_EARNED_DATE         DATE,
-                                          P_TIME_PERIOD_ID      NUMBER,
-                                          P_PERIOD_NAME         VARCHAR2,
-                                          P_ELEMENT_NAME        VARCHAR2,
-                                          P_ENTRY_NAME          VARCHAR2,
-                                          P_ENTRY_UNITS         VARCHAR2,
-                                          P_ENTRY_VALUE         NUMBER,
-                                          P_DEBIT_AMOUNT        NUMBER,
-                                          P_CREDIT_AMOUNT       NUMBER)
+    FUNCTION    INSERT_SAVING_TRANSACTION(
+                    P_PAYROLL_RESULT_ID   NUMBER,
+                    P_PERSON_ID           NUMBER,
+                    P_EARNED_DATE         DATE,
+                    P_TIME_PERIOD_ID      NUMBER,
+                    P_PERIOD_NAME         VARCHAR2,
+                    P_ELEMENT_NAME        VARCHAR2,
+                    P_ENTRY_NAME          VARCHAR2,
+                    P_ENTRY_UNITS         VARCHAR2,
+                    P_ENTRY_VALUE         NUMBER,
+                    P_DEBIT_AMOUNT        NUMBER,
+                    P_CREDIT_AMOUNT       NUMBER)
     RETURN VARCHAR2
     IS
         var_import_request_id       NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
@@ -1760,19 +1781,20 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
     
   
-    FUNCTION   INSERT_LOAN_TRANSACTION(P_EXPORT_REQUEST_ID   NUMBER,
-                                       P_PAYROLL_RESULT_ID   NUMBER,
-                                       P_PERSON_ID           NUMBER,
-                                       P_RUN_RESULT_ID       NUMBER,
-                                       P_EARNED_DATE         DATE,
-                                       P_TIME_PERIOD_ID      NUMBER,
-                                       P_PERIOD_NAME         VARCHAR2,
-                                       P_ELEMENT_NAME        VARCHAR2,
-                                       P_ENTRY_NAME          VARCHAR2,
-                                       P_ENTRY_UNITS         VARCHAR2,
-                                       P_ENTRY_VALUE         NUMBER,
-                                       P_DEBIT_AMOUNT        NUMBER,
-                                       P_CREDIT_AMOUNT       NUMBER)
+    FUNCTION   INSERT_LOAN_TRANSACTION(
+                    P_EXPORT_REQUEST_ID   NUMBER,
+                    P_PAYROLL_RESULT_ID   NUMBER,
+                    P_PERSON_ID           NUMBER,
+                    P_RUN_RESULT_ID       NUMBER,
+                    P_EARNED_DATE         DATE,
+                    P_TIME_PERIOD_ID      NUMBER,
+                    P_PERIOD_NAME         VARCHAR2,
+                    P_ELEMENT_NAME        VARCHAR2,
+                    P_ENTRY_NAME          VARCHAR2,
+                    P_ENTRY_UNITS         VARCHAR2,
+                    P_ENTRY_VALUE         NUMBER,
+                    P_DEBIT_AMOUNT        NUMBER,
+                    P_CREDIT_AMOUNT       NUMBER)
       RETURN    VARCHAR2
     IS
         var_import_request_id       NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
@@ -2178,9 +2200,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         RETURN 'N';
     END INSERT_LOAN_TRANSACTION;
 
-    FUNCTION    GET_SAVING_MEMBER_ACCOUNT_ID(P_MEMBER_ID            NUMBER,
-                                             P_ACCOUNT_NUMBER       VARCHAR2,
-                                             P_ACCOUNT_DESCRIPTION  VARCHAR2)
+    FUNCTION    GET_SAVING_MEMBER_ACCOUNT_ID(
+                    P_MEMBER_ID            NUMBER,
+                    P_ACCOUNT_NUMBER       VARCHAR2,
+                    P_ACCOUNT_DESCRIPTION  VARCHAR2)
       RETURN    NUMBER
     IS
         var_member_account_id   NUMBER;
@@ -2206,8 +2229,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_SAVING_MEMBER_ACCOUNT_ID;
     
     
-    FUNCTION    GET_LOAN_MEMBER_ACCOUNT_ID(P_MEMBER_ID          NUMBER,
-                                           P_LOAN_ID            NUMBER)
+    FUNCTION    GET_LOAN_MEMBER_ACCOUNT_ID(
+                    P_MEMBER_ID          NUMBER,
+                    P_LOAN_ID            NUMBER)
       RETURN    NUMBER
     IS
         var_member_account_id   NUMBER;
@@ -2259,9 +2283,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_LOAN_MEMBER_ACCOUNT_ID;
 
 
-    PROCEDURE   SET_LOAN_BALANCE(P_LOAN_ID            NUMBER,
-                                 P_LOAN_AMOUNT        NUMBER,
-                                 P_PERSON_ID          NUMBER)
+    PROCEDURE   SET_LOAN_BALANCE(
+                    P_LOAN_ID            NUMBER,
+                    P_LOAN_AMOUNT        NUMBER,
+                    P_PERSON_ID          NUMBER)
     IS
         var_member_id           NUMBER := GET_MEMBER_ID(P_PERSON_ID);
         var_member_account_id   NUMBER;
@@ -2344,11 +2369,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END SET_LOAN_BALANCE;
     
     
-    PROCEDURE   INSERT_EXTEMPORANEOUS_SAVING(P_ERRBUF               OUT NOCOPY  VARCHAR2,
-                                             P_RETCODE              OUT NOCOPY  VARCHAR2,
-                                             P_PERSON_ID            NUMBER,
-                                             P_SAVING_AMOUNT        NUMBER,
-                                             P_PENDING_PAYMENT      NUMBER)
+    PROCEDURE   INSERT_EXTEMPORANEOUS_SAVING(
+                    P_ERRBUF               OUT NOCOPY  VARCHAR2,
+                    P_RETCODE              OUT NOCOPY  VARCHAR2,
+                    P_PERSON_ID            NUMBER,
+                    P_SAVING_AMOUNT        NUMBER,
+                    P_PENDING_PAYMENT      NUMBER)
     IS
     
          var_person_id                  NUMBER;
@@ -2584,7 +2610,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END INSERT_EXTEMPORANEOUS_SAVING;
     
     
-    FUNCTION    GET_POSIBILITY_SAVING(P_PERSON_ID           NUMBER)
+    FUNCTION    GET_POSIBILITY_SAVING(
+                    P_PERSON_ID           NUMBER)
       RETURN    NUMBER
     IS
          var_period_type                VARCHAR2(100);
@@ -2646,10 +2673,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_POSIBILITY_SAVING;
         
     
-    FUNCTION    GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID                 NUMBER,
-                                               P_EXPORT_REQUEST_ID         NUMBER,
-                                               P_RUN_RESULT_ID             NUMBER,
-                                               P_ENTRY_NAME                VARCHAR2)
+    FUNCTION    GET_RESULT_FROM_PAYROLL_RESULT(
+                    P_PERSON_ID                 NUMBER,
+                    P_EXPORT_REQUEST_ID         NUMBER,
+                    P_RUN_RESULT_ID             NUMBER,
+                    P_ENTRY_NAME                VARCHAR2)
       RETURN    NUMBER
     IS
         var_result      NUMBER;
@@ -2677,8 +2705,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_RESULT_FROM_PAYROLL_RESULT;
     
     
-    FUNCTION    GET_LOAN_ID(P_MEMBER_ID     NUMBER,
-                            P_LOAN_NUMBER   NUMBER)
+    FUNCTION    GET_LOAN_ID(
+                    P_MEMBER_ID     NUMBER,
+                    P_LOAN_NUMBER   NUMBER)
       RETURN    NUMBER
     IS
         var_result  NUMBER;
@@ -2705,8 +2734,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END GET_LOAN_ID;
     
     
-    FUNCTION    GET_LOAN_ID(P_PERSON_ID         NUMBER,
-                            P_PAYMENT_AMOUNT    NUMBER)
+    FUNCTION    GET_LOAN_ID(
+                    P_PERSON_ID         NUMBER,
+                    P_PAYMENT_AMOUNT    NUMBER)
       RETURN    NUMBER
     IS
         var_result  NUMBER;
@@ -2736,13 +2766,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
       
     
     
-    PROCEDURE   SEND_TO_XLA(P_ERRBUF         OUT NOCOPY  VARCHAR2,
-                            P_RETCODE        OUT NOCOPY  VARCHAR2,
-                            P_PERIOD_TYPE    VARCHAR2,
-                            P_YEAR           NUMBER,
-                            P_MONTH          NUMBER,
-                            P_PERIOD_NAME    VARCHAR2,
-                            P_ELEMENT_NAME   VARCHAR2)
+    PROCEDURE   SEND_TO_XLA(
+                    P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                    P_RETCODE        OUT NOCOPY  VARCHAR2,
+                    P_PERIOD_TYPE    VARCHAR2,
+                    P_YEAR           NUMBER,
+                    P_MONTH          NUMBER,
+                    P_PERIOD_NAME    VARCHAR2,
+                    P_ELEMENT_NAME   VARCHAR2)
     IS
     
         CURSOR DETAILS_COMPANIES IS
@@ -3384,8 +3415,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END SEND_TO_XLA;
     
     
-    FUNCTION    HAS_DISABILITIES(P_PERSON_ID        NUMBER,
-                                 P_TIME_PERIOD_ID   NUMBER)
+    FUNCTION    HAS_DISABILITIES(
+                    P_PERSON_ID        NUMBER,
+                    P_TIME_PERIOD_ID   NUMBER)
       RETURN    VARCHAR2
     IS
         var_result  VARCHAR2(100);
@@ -3444,14 +3476,15 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END HAS_DISABILITIES;
     
     
-    PROCEDURE   EXTEND_PAYMENTS_SCHEDULE(P_LOAN_ID                  NUMBER,
-                                         P_PERSON_ID                NUMBER,
-                                         P_MEMBER_ID                NUMBER,
-                                         P_TIME_PERIOD_ID           NUMBER,
-                                         P_ACTUAL_DATE_EARNED       DATE,
-                                         P_PAYMENT_CAPITAL          NUMBER,
-                                         P_PAYMENT_INTEREST         NUMBER,
-                                         P_PAYMENT_INTEREST_LATE    NUMBER)
+    PROCEDURE   EXTEND_PAYMENTS_SCHEDULE(
+                    P_LOAN_ID                  NUMBER,
+                    P_PERSON_ID                NUMBER,
+                    P_MEMBER_ID                NUMBER,
+                    P_TIME_PERIOD_ID           NUMBER,
+                    P_ACTUAL_DATE_EARNED       DATE,
+                    P_PAYMENT_CAPITAL          NUMBER,
+                    P_PAYMENT_INTEREST         NUMBER,
+                    P_PAYMENT_INTEREST_LATE    NUMBER)
     IS
     
         CURSOR  DETAILS(PP_TIME_PERIOD_ID       NUMBER,
@@ -3638,7 +3671,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END EXTEND_PAYMENTS_SCHEDULE;
     
     
-    PROCEDURE   SETTLEMENT_LOAN(P_LOAN_ID           NUMBER)
+    PROCEDURE   SETTLEMENT_LOAN(
+                    P_LOAN_ID           NUMBER)
     IS
         var_loan_id             NUMBER;
         var_member_id           NUMBER;
@@ -3744,10 +3778,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                
     END SETTLEMENT_LOAN;
     
-    PROCEDURE   SETTLEMENT_LOAN(P_LOAN_ID               NUMBER,
-                                P_MEMBER_ID             NUMBER,
-                                P_PREPAID_SEQ           NUMBER,
-                                P_LOAN_TRANSACTION_ID   OUT NOCOPY NUMBER)
+    PROCEDURE   SETTLEMENT_LOAN(
+                    P_LOAN_ID               NUMBER,
+                    P_MEMBER_ID             NUMBER,
+                    P_PREPAID_SEQ           NUMBER,
+                    P_LOAN_TRANSACTION_ID   OUT NOCOPY NUMBER)
     IS
         var_member_account_id   NUMBER;
         var_person_id           NUMBER;
@@ -3888,13 +3923,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END SETTLEMENT_LOAN;
     
     
-    PROCEDURE   SAVING_RETIREMENT(P_ERRBUF                  OUT NOCOPY  VARCHAR2,
-                                  P_RETCODE                 OUT NOCOPY  VARCHAR2,
-                                  P_MEMBER_ID               NUMBER,
-                                  P_AMOUNT_SAVED            NUMBER,
-                                  P_PERCENTAGE_RETIREMENT   NUMBER,
-                                  P_SAVING_RETIREMENT       NUMBER,
-                                  P_IS_MEMBER_END           VARCHAR2)
+    PROCEDURE   SAVING_RETIREMENT(
+                    P_ERRBUF                  OUT NOCOPY  VARCHAR2,
+                    P_RETCODE                 OUT NOCOPY  VARCHAR2,
+                    P_MEMBER_ID               NUMBER,
+                    P_AMOUNT_SAVED            NUMBER,
+                    P_PERCENTAGE_RETIREMENT   NUMBER,
+                    P_SAVING_RETIREMENT       NUMBER,
+                    P_IS_MEMBER_END           VARCHAR2)
     IS
         var_validate                NUMBER;    
         var_loan_balance            NUMBER;
@@ -4004,11 +4040,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END SAVING_RETIREMENT;
     
     
-    PROCEDURE   RELEASE_SAVING_RETIREMENT(P_ERRBUF                    OUT NOCOPY VARCHAR2,
-                                          P_RETCODE                   OUT NOCOPY VARCHAR2,
-                                          P_TRANSACTION_HOLD_ID                NUMBER,
-                                          P_REASON_DESCRIPTION                 VARCHAR2,
-                                          P_RELEASE_FLAG                       VARCHAR2)
+    PROCEDURE   RELEASE_SAVING_RETIREMENT(
+                    P_ERRBUF                    OUT NOCOPY VARCHAR2,
+                    P_RETCODE                   OUT NOCOPY VARCHAR2,
+                    P_TRANSACTION_HOLD_ID                NUMBER,
+                    P_REASON_DESCRIPTION                 VARCHAR2,
+                    P_RELEASE_FLAG                       VARCHAR2)
     IS
         var_user_id                 NUMBER := FND_GLOBAL.USER_ID;
         var_hold_release_id         NUMBER;
@@ -4113,11 +4150,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END RELEASE_SAVING_RETIREMENT;
     
     
-    PROCEDURE   PROCESS_SAVING_RETIREMENT(P_MEMBER_ID               NUMBER,
-                                          P_AMOUNT_SAVED            NUMBER,
-                                          P_PERCENTAGE_RETIREMENT   NUMBER,
-                                          P_SAVING_RETIREMENT       NUMBER,
-                                          P_IS_MEMBER_END           VARCHAR2)
+    PROCEDURE   PROCESS_SAVING_RETIREMENT(
+                    P_MEMBER_ID               NUMBER,
+                    P_AMOUNT_SAVED            NUMBER,
+                    P_PERCENTAGE_RETIREMENT   NUMBER,
+                    P_SAVING_RETIREMENT       NUMBER,
+                    P_IS_MEMBER_END           VARCHAR2)
     IS
         SAVING_RETIREMENT_EXCEPTION EXCEPTION;
         
@@ -4413,7 +4451,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END PROCESS_SAVING_RETIREMENT;
     
     
-    PROCEDURE   PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID    NUMBER)
+    PROCEDURE   PRINT_SAVING_TRANSACTION(
+                    P_SAVING_TRANSACTION_ID    NUMBER)
     IS
         add_layout_boolean   BOOLEAN;
         v_request_id         NUMBER;
@@ -4463,8 +4502,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END PRINT_SAVING_TRANSACTION;
     
     
-    PROCEDURE   CREATE_SAVING_RETIREMENT_CHECK(P_SAVING_TRANSACTION_ID     NUMBER,
-                                               P_CHECK_ID                  OUT NOCOPY NUMBER)
+    PROCEDURE   CREATE_SAVING_RETIREMENT_CHECK(
+                    P_SAVING_TRANSACTION_ID     NUMBER,
+                    P_CHECK_ID                  OUT NOCOPY NUMBER)
     IS
         LN_BANK_ACCOUNT_ID           NUMBER;
         LC_BANK_ACCOUNT_NAME         VARCHAR2 (150);
@@ -4635,7 +4675,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END CREATE_SAVING_RETIREMENT_CHECK;
     
     
-    PROCEDURE   PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID    NUMBER)
+    PROCEDURE   PRINT_SAVING_RETIREMENT_CHECK(
+                    P_CHECK_ID    NUMBER)
     IS
       add_layout_boolean   BOOLEAN;
       v_request_id         NUMBER;
@@ -4688,10 +4729,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END PRINT_SAVING_RETIREMENT_CHECK;
     
     
-    PROCEDURE   PROCESS_PREPAYMENT(P_ERRBUF           OUT NOCOPY VARCHAR2,
-                                   P_RETCODE          OUT NOCOPY VARCHAR2,
-                                   P_MEMBER_ID      NUMBER,
-                                   P_LOAN_ID        NUMBER)
+    PROCEDURE   PROCESS_PREPAYMENT(
+                    P_ERRBUF           OUT NOCOPY VARCHAR2,
+                    P_RETCODE          OUT NOCOPY VARCHAR2,
+                    P_MEMBER_ID      NUMBER,
+                    P_LOAN_ID        NUMBER)
     IS
         QRY_LOAN_BALANCE                EXCEPTION;
         QRY_ASPS_PAYMENT_BALANCE        EXCEPTION;
@@ -5005,8 +5047,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END PROCESS_PREPAYMENT;
     
     
-    PROCEDURE   PRINT_PREPAID(P_LOAN_ID     NUMBER,
-                              P_FOLIO       NUMBER)
+    PROCEDURE   PRINT_PREPAID(
+                    P_LOAN_ID     NUMBER,
+                    P_FOLIO       NUMBER)
     IS
         add_layout_boolean   BOOLEAN;
         v_request_id         NUMBER;
@@ -5062,11 +5105,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END PRINT_PREPAID;
     
     
-    PROCEDURE   VOLUNTARY_CONTRIBUTION(P_ERRBUF         OUT NOCOPY  VARCHAR2,
-                                       P_RETCODE        OUT NOCOPY  VARCHAR2,
-                                       P_MEMBER_ID      NUMBER,
-                                       P_SAVING_AMOUNT  NUMBER,
-                                       P_DEPOSIT_DATE   VARCHAR2)
+    PROCEDURE   VOLUNTARY_CONTRIBUTION(
+                    P_ERRBUF         OUT NOCOPY  VARCHAR2,
+                    P_RETCODE        OUT NOCOPY  VARCHAR2,
+                    P_MEMBER_ID      NUMBER,
+                    P_SAVING_AMOUNT  NUMBER,
+                    P_DEPOSIT_DATE   VARCHAR2)
     IS    
        
         var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
@@ -5335,7 +5379,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                          var_voluntary_contribution_seq,
                                          TO_DATE(SYSDATE, 'DD/MM/RRRR'),
                                          'CREATED',
-                                         'VOLUNTARY_CONTRIBUTION',
+                                         'SAVINGS',
                                          P_MEMBER_ID,
                                          var_employee_full_name,
                                          var_banks_currency_code,
