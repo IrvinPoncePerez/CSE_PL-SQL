@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE PAC_CFDI_NOMINA_PRC(
+CREATE OR REPLACE PROCEDURE APPS.PAC_CFDI_NOMINA_PRC(
             P_ERRBUF    OUT NOCOPY  VARCHAR2,
             P_RETCODE   OUT NOCOPY  VARCHAR2,
             P_COMPANY_ID            VARCHAR2,
@@ -177,8 +177,6 @@ IS
                AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID   
                AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
                AND PAPF.PERSON_ID = PAAF.PERSON_ID
-               AND PPA.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
-               AND PPA.EFFECTIVE_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
                AND PPA.CONSOLIDATION_SET_ID = PCS.CONSOLIDATION_SET_ID
                AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID 
                AND PAA.ASSIGNMENT_ID = PAAF.ASSIGNMENT_ID
@@ -186,6 +184,11 @@ IS
                AND PAAF.ORGANIZATION_ID = NVL(HOUV.ORGANIZATION_ID, PAAF.ORGANIZATION_ID) 
                AND PAAF.POSITION_ID = NVL(HAPD.POSITION_ID, PAAF.POSITION_ID)
                AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
+               AND PPA.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
+               AND PPA.EFFECTIVE_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
+               AND PPA.EFFECTIVE_DATE BETWEEN HAPD.EFFECTIVE_START_DATE AND HAPD.EFFECTIVE_END_DATE
+               AND PPA.EFFECTIVE_DATE BETWEEN PRTX.EFFECTIVE_START_DATE AND PRTX.EFFECTIVE_END_DATE
+               AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
              GROUP BY PPF.PAYROLL_NAME,
                       FLV1.LOOKUP_CODE,
                       OI.ORG_INFORMATION2,
@@ -497,6 +500,8 @@ BEGIN
                                                                                    AND LANGUAGE = USERENV('LANG')))
                                                AND PIVF.UOM = 'M'
                                                AND (PIVF.NAME = 'ISR Subject' OR PIVF.NAME = 'ISR Exempt')
+                                               AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                               AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE 
                                              GROUP BY PETF.ELEMENT_NAME,
                                                       PETF.REPORTING_NAME,
                                                       PETF.ELEMENT_INFORMATION11,
@@ -542,9 +547,12 @@ BEGIN
                                                AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
                                                                           'P080_FONDO AHORRO TR ACUM',
                                                                           'P017_PRIMA DE ANTIGUEDAD',
-                                                                          'P032_SUBSIDIO_PARA_EMPLEO')
+                                                                          'P032_SUBSIDIO_PARA_EMPLEO',
+                                                                          'P047_ISPT ANUAL A FAVOR')
                                                AND PIVF.UOM = 'M'
                                                AND PIVF.NAME = 'Pay Value'
+                                               AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                               AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
                                              GROUP BY PETF.ELEMENT_NAME,
                                                       PETF.REPORTING_NAME,
                                                       PETF.ELEMENT_INFORMATION11,
@@ -600,7 +608,9 @@ BEGIN
                                                                          WHERE LOOKUP_TYPE = 'XX_DEDUCCIONES_INFORMATIVAS'
                                                                            AND LANGUAGE = USERENV('LANG')))
                                        AND PIVF.UOM = 'M'
-                                       AND PIVF.NAME = 'Pay Value')
+                                       AND PIVF.NAME = 'Pay Value'
+                                       AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                       AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE)
                                WHERE 1 = 1
                                  AND (   NOM_DED_IMPGRA <> 0
                                       OR NOM_DED_IMPEXE <> 0)
@@ -694,3 +704,4 @@ EXCEPTION WHEN OTHERS THEN
     dbms_output.put_line('**Error al Ejecutar el Procedure PAC_CFDI_NOMINA_PRC. ' || SQLERRM);
     FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Ejecutar el Procedure PAC_CFDI_NOMINA_PRC. ' || SQLERRM);
 END;
+/

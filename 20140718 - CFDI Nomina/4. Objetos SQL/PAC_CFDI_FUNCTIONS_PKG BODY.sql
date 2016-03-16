@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
+CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
 
     /*
     Suma de todas las percepciones suma de gravado mas excento
@@ -32,6 +32,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
                                                        AND LANGUAGE = USERENV('LANG')))
                    AND PIVF.UOM = 'M'
                    AND (PIVF.NAME = 'ISR Subject' OR PIVF.NAME = 'ISR Exempt')
+                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
                 UNION
                 SELECT SUM(PRRV.RESULT_VALUE) AS RESULT                    
                   FROM PAY_RUN_RESULTS              PRR,
@@ -47,9 +49,12 @@ CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
                    AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
                                               'P080_FONDO AHORRO TR ACUM',
                                               'P017_PRIMA DE ANTIGUEDAD',
-                                              'P032_SUBSIDIO_PARA_EMPLEO')
+                                              'P032_SUBSIDIO_PARA_EMPLEO',
+                                              'P047_ISPT ANUAL A FAVOR')
                    AND PIVF.UOM = 'M'
-                   AND PIVF.NAME = 'Pay Value');
+                   AND PIVF.NAME = 'Pay Value'
+                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE);
     
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
@@ -76,7 +81,9 @@ CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
             AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
             AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
             AND PETF.ELEMENT_NAME = 'D055_ISPT'
-            AND PIVF.NAME = 'Pay Value';
+            AND PIVF.NAME = 'Pay Value'
+            AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+            AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;
     
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
@@ -112,7 +119,9 @@ CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
                                                AND LANGUAGE = USERENV('LANG')))
            AND PETF.ELEMENT_NAME <> 'D055_ISPT'
            AND PIVF.UOM = 'M'
-           AND PIVF.NAME = 'Pay Value';
+           AND PIVF.NAME = 'Pay Value'
+           AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;
     
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
@@ -141,7 +150,9 @@ CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
            AND (PETF.ELEMENT_NAME = 'P001_SUELDO NORMAL'
              OR PETF.ELEMENT_NAME = 'P005_VACACIONES')
            AND (PIVF.NAME = 'Dias Recibo'
-             OR PIVF.NAME = 'Dias Normales');
+             OR PIVF.NAME = 'Dias Normales')
+           AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;
     
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
@@ -213,9 +224,12 @@ CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
                    OR PETF.ELEMENT_NAME IN ('FINAN_TRABAJO_RET',
                                             'P080_FONDO AHORRO TR ACUM',
                                             'P017_PRIMA DE ANTIGUEDAD',
-                                            'P032_SUBSIDIO_PARA_EMPLEO'))
+                                            'P032_SUBSIDIO_PARA_EMPLEO',
+                                            'P047_ISPT ANUAL A FAVOR'))
            AND (PIVF.NAME = 'ISR Subject')
-           AND PIVF.UOM = 'M';
+           AND PIVF.UOM = 'M'
+           AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;
     
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
@@ -254,6 +268,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
                                                        AND LANGUAGE = USERENV('LANG'))))
                    AND PIVF.UOM = 'M'
                    AND PIVF.NAME = 'ISR Exempt'
+                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
                 UNION
                 SELECT SUM(PRRV.RESULT_VALUE) AS RESULT                    
                   FROM PAY_RUN_RESULTS              PRR,
@@ -269,9 +285,12 @@ CREATE OR REPLACE PACKAGE BODY PAC_CFDI_FUNCTIONS_PKG AS
                    AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
                                               'P080_FONDO AHORRO TR ACUM',
                                               'P017_PRIMA DE ANTIGUEDAD',
-                                              'P032_SUBSIDIO_PARA_EMPLEO')
+                                              'P032_SUBSIDIO_PARA_EMPLEO',
+                                              'P047_ISPT ANUAL A FAVOR')
                    AND PIVF.UOM = 'M'
-                   AND PIVF.NAME = 'Pay Value');
+                   AND PIVF.NAME = 'Pay Value'
+                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE);
     
     
         RETURN var_result_value;

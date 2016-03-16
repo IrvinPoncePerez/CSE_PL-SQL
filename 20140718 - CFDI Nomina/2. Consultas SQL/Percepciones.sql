@@ -1,4 +1,4 @@
-                             SELECT NOM_PER_TIP,
+SELECT NOM_PER_TIP,
                                     NOM_PER_CVE,
                                     NOM_PER_DESCRI,
                                     NOM_PER_IMPGRA,
@@ -62,8 +62,17 @@
                                                                                   FROM FND_LOOKUP_VALUES 
                                                                                  WHERE LOOKUP_TYPE = 'XX_PERCEPCIONES_INFORMATIVAS'
                                                                                    AND LANGUAGE = USERENV('LANG')))
+                                               AND PETF.ELEMENT_NAME NOT IN (SELECT MEANING
+                                                                               FROM FND_LOOKUP_VALUES_VL 
+                                                                              WHERE LOOKUP_TYPE = 'XXCALV_AUSENCIAS')
+                                               AND PETF.ELEMENT_NAME NOT IN (SELECT MEANING
+                                                                               FROM FND_LOOKUP_VALUES_VL 
+                                                                              WHERE LOOKUP_TYPE = 'XXCALV_EXCLUIR_ELEMENTO')
+                                               AND PETF.ELEMENT_NAME NOT IN ('Ajuste D056_IMSS', 'P039_DESPENSA')
                                                AND PIVF.UOM = 'M'
                                                AND (PIVF.NAME = 'ISR Subject' OR PIVF.NAME = 'ISR Exempt')
+                                               AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
+                                               AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
                                              GROUP BY PETF.ELEMENT_NAME,
                                                       PETF.REPORTING_NAME,
                                                       PETF.ELEMENT_INFORMATION11,
@@ -106,12 +115,25 @@
                                                AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
                                                AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
                                                AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
-                                               AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
-                                                                          'P080_FONDO AHORRO TR ACUM',
-                                                                          'P017_PRIMA DE ANTIGUEDAD',
-                                                                          'P032_SUBSIDIO_PARA_EMPLEO')
+                                               AND (PEC.CLASSIFICATION_NAME IN ('Earnings', 
+                                                                                'Supplemental Earnings', 
+                                                                                'Amends', 
+                                                                                'Imputed Earnings') 
+                                                      OR PETF.ELEMENT_NAME  IN (SELECT MEANING
+                                                                                  FROM FND_LOOKUP_VALUES 
+                                                                                 WHERE LOOKUP_TYPE = 'XX_PERCEPCIONES_INFORMATIVAS'
+                                                                                   AND LANGUAGE = USERENV('LANG')))
+                                               AND PETF.ELEMENT_NAME NOT IN (SELECT MEANING
+                                                                               FROM FND_LOOKUP_VALUES_VL 
+                                                                              WHERE LOOKUP_TYPE = 'XXCALV_AUSENCIAS')
+                                               AND PETF.ELEMENT_NAME NOT IN (SELECT MEANING
+                                                                               FROM FND_LOOKUP_VALUES_VL 
+                                                                              WHERE LOOKUP_TYPE = 'XXCALV_EXCLUIR_ELEMENTO')
+                                               AND PETF.ELEMENT_NAME NOT IN ('Ajuste D056_IMSS', 'P039_DESPENSA')
                                                AND PIVF.UOM = 'M'
                                                AND PIVF.NAME = 'Pay Value'
+                                               AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
+                                               AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
                                              GROUP BY PETF.ELEMENT_NAME,
                                                       PETF.REPORTING_NAME,
                                                       PETF.ELEMENT_INFORMATION11,

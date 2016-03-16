@@ -1,8 +1,13 @@
-                     SELECT NOM_DED_TIP,
-                            NOM_DED_CVE,
-                            NOM_DED_DESCRI,
-                            NOM_DED_IMPGRA,
-                            NOM_DED_IMPEXE
+             SELECT NOM_DED_TIP,
+                    NOM_DED_CVE,
+                    NOM_DED_DESCRI,
+                    NOM_DED_IMPGRA,
+                    NOM_DED_IMPEXE
+               FROM (SELECT D.NOM_DED_TIP,
+                            D.NOM_DED_CVE,
+                            D.NOM_DED_DESCRI,
+                            TO_NUMBER(D.NOM_DED_IMPGRA) NOM_DED_IMPGRA,
+                            TO_NUMBER(D.NOM_DED_IMPEXE) NOM_DED_IMPEXE
                        FROM(SELECT 
                                     NVL((SELECT DISTINCT
                                                 DESCRIPTION
@@ -22,13 +27,17 @@
                                           6,
                                           LENGTH(PETF.ELEMENT_NAME))AS  NOM_DED_DESCRI,
                                    0                                AS  NOM_DED_IMPGRA,
-                                   PRRV.RESULT_VALUE                AS  NOM_DED_IMPEXE  
-                              FROM PAY_RUN_RESULTS              PRR,
+                                   TO_NUMBER(PRRV.RESULT_VALUE)        AS  NOM_DED_IMPEXE  
+                              FROM PAY_ASSIGNMENT_ACTIONS       PAA,
+                                   PAY_RUN_RESULTS              PRR,
                                    PAY_ELEMENT_TYPES_F          PETF,
                                    PAY_RUN_RESULT_VALUES        PRRV,
                                    PAY_INPUT_VALUES_F           PIVF,
                                    PAY_ELEMENT_CLASSIFICATIONS  PEC
-                             WHERE PRR.ASSIGNMENT_ACTION_ID = :P_ASSIGNMENT_ACTION_ID
+                             WHERE 1 = 1
+                               AND PAA.PAYROLL_ACTION_ID = :PAYROLL_ACTION_ID 
+                               AND PAA.ASSIGNMENT_ID = :ASSIGNMENT_ID
+                               AND PRR.ASSIGNMENT_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID
                                AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
                                AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
                                AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
@@ -40,8 +49,8 @@
                                                                  WHERE LOOKUP_TYPE = 'XX_DEDUCCIONES_INFORMATIVAS'
                                                                    AND LANGUAGE = USERENV('LANG')))
                                AND PIVF.UOM = 'M'
-                               AND PIVF.NAME = 'Pay Value')
-                       WHERE 1 = 1
-                         AND (   NOM_DED_IMPGRA <> 0
-                              OR NOM_DED_IMPEXE <> 0)
-                       ORDER BY NOM_DED_DESCRI;
+                               AND PIVF.NAME = 'Pay Value') D) F
+              WHERE 1 = 1
+--                AND (   F.NOM_DED_IMPGRA <> 0 
+--                     OR F.NOM_DED_IMPEXE <> 0)
+              ORDER BY F.NOM_DED_DESCRI;
