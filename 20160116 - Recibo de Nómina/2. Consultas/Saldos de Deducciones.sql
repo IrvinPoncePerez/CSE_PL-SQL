@@ -1,9 +1,11 @@
-SELECT F.BALANCE_ASSIGNMENT_ACTION_ID,
+SELECT F.BALANCE_PAYROLL_ACTION_ID,
+       F.BALANCE_ASSIGNMENT_ID,
        F.BALANCE_ELEMENT_NAME,
        F.BALANCE_LAST_BALANCE,
        F.BALANCE_VALUE,
        F.BALANCE_FINAL_BALANCE
-  FROM (SELECT PRR.ASSIGNMENT_ACTION_ID                             AS  BALANCE_ASSIGNMENT_ACTION_ID,
+  FROM (SELECT PAA.PAYROLL_ACTION_ID                                AS  BALANCE_PAYROLL_ACTION_ID, 
+               PAA.ASSIGNMENT_ID                                    AS  BALANCE_ASSIGNMENT_ID,
                PETF.ELEMENT_NAME                                    AS  BALANCE_ELEMENT_NAME,
                SUM(CASE WHEN PIVF.NAME = 'Saldo Anterior' THEN 
                              TO_NUMBER(PRRV.RESULT_VALUE) 
@@ -14,13 +16,16 @@ SELECT F.BALANCE_ASSIGNMENT_ACTION_ID,
                SUM(CASE WHEN PIVF.NAME = 'Saldo Restante' THEN 
                              PRRV.RESULT_VALUE 
                    END)                                             AS  BALANCE_FINAL_BALANCE
-          FROM PAY_RUN_RESULTS              PRR,
+          FROM PAY_ASSIGNMENT_ACTIONS       PAA,
+               PAY_RUN_RESULTS              PRR,
                PAY_ELEMENT_TYPES_F          PETF,
                PAY_RUN_RESULT_VALUES        PRRV,
                PAY_INPUT_VALUES_F           PIVF,
                PAY_ELEMENT_CLASSIFICATIONS  PEC
          WHERE 1 = 1 
-           AND PRR.ASSIGNMENT_ACTION_ID = :ASSIGNMENT_ACTION_ID
+           AND PAA.PAYROLL_ACTION_ID = :PAYROLL_ACTION_ID 
+           AND PAA.ASSIGNMENT_ID = :ASSIGNMENT_ID
+           AND PRR.ASSIGNMENT_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID
            AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
            AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
            AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
@@ -35,18 +40,22 @@ SELECT F.BALANCE_ASSIGNMENT_ACTION_ID,
            AND PETF.ELEMENT_NAME NOT LIKE '%Special Features%'
            AND PIVF.NAME IN ('Pay Value', 'Saldo Anterior', 'Saldo Restante')
          GROUP BY PRR.ASSIGNMENT_ACTION_ID,
+                  PAA.PAYROLL_ACTION_ID,
+                  PAA.ASSIGNMENT_ID,
                   PETF.ELEMENT_NAME  
         UNION   
-        SELECT BALANCE_ASSIGNMENT_ACTION_ID,
+        SELECT BALANCE_PAYROLL_ACTION_ID,
+               BALANCE_ASSIGNMENT_ID,
                BALANCE_ELEMENT_NAME,
                BALANCE_LAST_BALANCE,
                BALANCE_VALUE,
                BALANCE_FINAL_BALANCE
-          FROM (SELECT D.ASSIGNMENT_ACTION_ID           BALANCE_ASSIGNMENT_ACTION_ID,
+          FROM (SELECT D.PAYROLL_ACTION_ID          AS  BALANCE_PAYROLL_ACTION_ID, 
+                       D.ASSIGNMENT_ID              AS  BALANCE_ASSIGNMENT_ID,
                        D.ELEMENT_NAME                   BALANCE_ELEMENT_NAME,
                        (CASE WHEN D.ASSIGNMENT_ACTION_ID IN (SELECT DISTINCT PAA2.ASSIGNMENT_ACTION_ID
                                                                FROM PAY_ASSIGNMENT_ACTIONS PAA2
-                                                              WHERE PAA2.SOURCE_ACTION_ID = :ASSIGNMENT_ACTION_ID) THEN
+                                                              WHERE PAA2.SOURCE_ACTION_ID = D.ASSIGNMENT_ACTION_ID) THEN
                                TO_NUMBER(NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(D.ASSIGNMENT_ACTION_ID,    
                                                                                        'P047_ISPT ANUAL A FAVOR',  
                                                                                        'Saldo_Pendiente'),   '0')) 
@@ -60,7 +69,7 @@ SELECT F.BALANCE_ASSIGNMENT_ACTION_ID,
                                 END)                    BALANCE_LAST_BALANCE,
                       (CASE WHEN D.ASSIGNMENT_ACTION_ID IN (SELECT DISTINCT PAA2.ASSIGNMENT_ACTION_ID
                                                               FROM PAY_ASSIGNMENT_ACTIONS PAA2
-                                                             WHERE PAA2.SOURCE_ACTION_ID = :ASSIGNMENT_ACTION_ID)  THEN
+                                                             WHERE PAA2.SOURCE_ACTION_ID = D.ASSIGNMENT_ACTION_ID)  THEN
                               TO_NUMBER(NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(D.ASSIGNMENT_ACTION_ID,
                                                                                     'P047_ISPT ANUAL A FAVOR',
                                                                                     'Pay Value'),         '0'))
@@ -72,6 +81,8 @@ SELECT F.BALANCE_ASSIGNMENT_ACTION_ID,
                                PRRV.RESULT_VALUE,
                                PIVF.NAME,
                                PETF.ELEMENT_NAME,
+                               PAA.PAYROLL_ACTION_ID, 
+                               PAA.ASSIGNMENT_ID,
                                PAA.ASSIGNMENT_ACTION_ID
                           FROM PAY_ASSIGNMENT_ACTIONS       PAA,
                                PAY_PAYROLL_ACTIONS          PPA,
@@ -82,10 +93,9 @@ SELECT F.BALANCE_ASSIGNMENT_ACTION_ID,
                                PAY_INPUT_VALUES_F           PIVF,
                                PAY_ELEMENT_CLASSIFICATIONS  PEC
                          WHERE 1 = 1
-                           AND PAA.ASSIGNMENT_ID = (SELECT DISTINCT PA.ASSIGNMENT_ID 
-                                                      FROM PAY_ASSIGNMENT_ACTIONS PA 
-                                                     WHERE PA.SOURCE_ACTION_ID = :ASSIGNMENT_ACTION_ID )
-                           AND PPA.PAYROLL_ACTION_ID = PAA.PAYROLL_ACTION_ID
+                           AND PAA.PAYROLL_ACTION_ID = :PAYROLL_ACTION_ID 
+                           AND PAA.ASSIGNMENT_ID = :ASSIGNMENT_ID
+                           AND PRR.ASSIGNMENT_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID
                            AND PRTX.RUN_TYPE_ID = PAA.RUN_TYPE_ID        
                            AND PRR.ASSIGNMENT_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID
                            AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
@@ -100,7 +110,7 @@ SELECT F.BALANCE_ASSIGNMENT_ACTION_ID,
                                                      FROM PAY_ASSIGNMENT_ACTIONS PAA1,
                                                           PAY_PAYROLL_ACTIONS    PPA1
                                                     WHERE PAA1.PAYROLL_ACTION_ID = PPA1.PAYROLL_ACTION_ID
-                                                      AND PAA1.SOURCE_ACTION_ID = :ASSIGNMENT_ACTION_ID )
+                                                      AND PAA1.SOURCE_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID )
                            AND PIVF.NAME = 'Saldo_Pendiente'
                          ORDER BY TO_DATE(PPA.DATE_EARNED) DESC) D
                  WHERE ROWNUM = 1 ) D

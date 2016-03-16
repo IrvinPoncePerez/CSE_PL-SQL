@@ -1,3 +1,4 @@
+
 --ALTER SESSION SET NLS_LANGUAGE = 'LATIN AMERICAN SPANISH';
 SELECT DISTINCT
        D.COMPANY_NAME,
@@ -33,11 +34,11 @@ SELECT DISTINCT
        D.ATTACHED_COMPANY_NAME,
        D.ATTACHED_COMPANY_DESC,
        ROW_NUMBER() OVER (PARTITION BY D.PAYROLL_ID ORDER BY D.PAYROLL_ID DESC) FOLIO,
-       D.ASSIGNMENT_ID,
-       D.ASSIGNMENT_ACTION_ID,
        D.PAYMENT_TYPE,
        D.PAYMENT_METHOD_GROCERIES,
-       D.ORGANIZATION_ID
+       D.ORGANIZATION_ID,
+       D.PAYROLL_ACTION_ID, 
+       D.ASSIGNMENT_ID
   FROM ( SELECT DISTINCT
                 UPPER(PAC_HR_PAY_PKG.GET_LOOKUP_MEANING('NOMINAS POR EMPLEADOR LEGAL', 
                                                         :P_COMPANY_ID))                                     AS  COMPANY_NAME,
@@ -72,7 +73,7 @@ SELECT DISTINCT
                 MAX(NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,
                                                                 'P001_SUELDO NORMAL',
                                                                 'Sueldo Diario'), '0'))                     AS  SALARY_JOURNAL, 
-                MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                  AS  PAYMENT_DAYS, 
+                MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.PAYROLL_ACTION_ID, PAA.ASSIGNMENT_ID), '0'))  AS  PAYMENT_DAYS, 
                 TO_CHAR(SYSDATE, 'DD/MON/YYYY')                                                             AS  PRINT_DATE,
                 MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
                                                             PPA.DATE_EARNED,
@@ -92,8 +93,6 @@ SELECT DISTINCT
                 :P_ANEXO                                                                                    AS  ATTACHED,
                 UPPER(PAC_HR_PAY_PKG.GET_LOOKUP_MEANING('NOMINAS POR EMPLEADOR LEGAL', :P_COMPANY_ID))      AS  ATTACHED_COMPANY_NAME,
                 'BONO CON DERECHO A COMPRA'                                                                 AS  ATTACHED_COMPANY_DESC,                                                                  
-                PAAF.ASSIGNMENT_ID                                                                          AS  ASSIGNMENT_ID,
-                PAA.ASSIGNMENT_ACTION_ID                                                                    AS  ASSIGNMENT_ACTION_ID,
                 (CASE 
                     WHEN PTP.PERIOD_TYPE IN ('Semana', 'Week') THEN
                         'SEMANAL'
@@ -112,7 +111,10 @@ SELECT DISTINCT
                     AND FLV.MEANING = OPM.ORG_PAYMENT_METHOD_NAME
                     AND PPM.ASSIGNMENT_ID = PAAF.ASSIGNMENT_ID 
                     AND ROWNUM = 1 )                                                                        AS  PAYMENT_METHOD_GROCERIES,
-                   HOUV.ORGANIZATION_ID
+                   HOUV.ORGANIZATION_ID,
+                   ---------------------
+                   PAA.PAYROLL_ACTION_ID                                                                    AS  PAYROLL_ACTION_ID, 
+                   PAA.ASSIGNMENT_ID                                                                        AS  ASSIGNMENT_ID
               FROM FND_LOOKUP_VALUES                FLV1,
                    HR_ALL_ORGANIZATION_UNITS        AOU,
                    HR_ORGANIZATION_INFORMATION      OI,
@@ -157,7 +159,7 @@ SELECT DISTINCT
                AND PPA.CONSOLIDATION_SET_ID = PCS.CONSOLIDATION_SET_ID
                AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID 
                AND PAA.ASSIGNMENT_ID = PAAF.ASSIGNMENT_ID
-               AND PRTX.RUN_TYPE_ID = PAA.RUN_TYPE_ID
+               AND PAA.RUN_TYPE_ID = PRTX.RUN_TYPE_ID
                AND PAAF.ORGANIZATION_ID = NVL(HOUV.ORGANIZATION_ID, PAAF.ORGANIZATION_ID) 
                AND PAAF.POSITION_ID = NVL(HAPD.POSITION_ID, PAAF.POSITION_ID)
                AND PPPM.ASSIGNMENT_ID = PAAF.ASSIGNMENT_ID
@@ -170,9 +172,12 @@ SELECT DISTINCT
                AND POPM.ORG_PAYMENT_METHOD_NAME NOT LIKE '%PENSIONES%')
                AND PPTV.LANGUAGE = 'ESA'
                AND HSCK.SOFT_CODING_KEYFLEX_ID = PAAF.SOFT_CODING_KEYFLEX_ID
-               AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
+               --AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
                AND PTP.END_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
                AND PTP.END_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE 
+               AND (   PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.PAYROLL_ACTION_ID, PAA.ASSIGNMENT_ID) <> 0
+                    OR PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.PAYROLL_ACTION_ID, PAA.ASSIGNMENT_ID) <> 0
+                    OR PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.PAYROLL_ACTION_ID, PAA.ASSIGNMENT_ID) <> 0)
              GROUP BY OI.ORG_INFORMATION2,
                       PTP.PERIOD_TYPE,
                       PTP.PERIOD_NUM, 
@@ -196,6 +201,8 @@ SELECT DISTINCT
                       PTP.TIME_PERIOD_ID,
                       PAPF.PERSON_ID,
                       PAA.ASSIGNMENT_ACTION_ID,
+                      PAA.PAYROLL_ACTION_ID, 
+                      PAA.ASSIGNMENT_ID,
                       PTP.START_DATE,
                       PTP.END_DATE,
                       HOUV.ORGANIZATION_ID
