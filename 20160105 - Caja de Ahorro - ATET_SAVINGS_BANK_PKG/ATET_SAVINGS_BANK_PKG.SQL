@@ -211,6 +211,9 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                                          
     PROCEDURE   SETTLEMENT_LOAN(
                     P_LOAN_ID                   NUMBER); 
+                    
+    PROCEDURE   CANCELLED_LOAN(
+                    P_LOAN_ID                   NUMBER);
     
     PROCEDURE   SETTLEMENT_LOAN(
                     P_LOAN_ID                   NUMBER,
@@ -226,6 +229,7 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_AMOUNT_SAVED              NUMBER,
                     P_PERCENTAGE_RETIREMENT     NUMBER,
                     P_SAVING_RETIREMENT         NUMBER,
+                    P_DESCRIPTION               VARCHAR2,
                     P_IS_MEMBER_END             VARCHAR2);
                                   
     PROCEDURE   RELEASE_SAVING_RETIREMENT(
@@ -240,6 +244,7 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_AMOUNT_SAVED              NUMBER,
                     P_PERCENTAGE_RETIREMENT     NUMBER,
                     P_SAVING_RETIREMENT         NUMBER,
+                    P_DESCRIPTION               VARCHAR2,
                     P_IS_MEMBER_END             VARCHAR2);
                                   
                                              
@@ -249,6 +254,7 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     
     PROCEDURE   CREATE_SAVING_RETIREMENT_CHECK(
                     P_SAVING_TRANSACTION_ID     NUMBER,
+                    P_DESCRIPTION               VARCHAR2,
                     P_CHECK_ID       OUT NOCOPY NUMBER);
     
     

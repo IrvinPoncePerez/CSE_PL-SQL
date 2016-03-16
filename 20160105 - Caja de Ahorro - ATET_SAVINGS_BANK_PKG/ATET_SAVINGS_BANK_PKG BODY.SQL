@@ -790,7 +790,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                                 P_CREDIT_AMOUNT => detail_saving.ENTRY_VALUE);
                         
                         UPDATE ATET_SB_PAYROLL_RESULTS ASPR
-                           SET ASPR.ATTRIBUTE7 = 'PROCESSED'
+                           SET ASPR.ATTRIBUTE7 = 'PROCESSED',
+                               ASPR.LAST_UPDATE_DATE = SYSDATE,
+                               ASPR.LAST_UPDATED_BY = var_user_id
                          WHERE ASPR.PAYROLL_RESULT_ID = detail_saving.PAYROLL_RESULT_ID;
                                                                     
                         IF var_result = 'N' THEN
@@ -852,8 +854,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         ROLLBACK;
                     
                         UPDATE ATET_SB_PAYROLL_RESULTS  ASPR
-                           SET IMPORT_REQUEST_ID = NULL,
-                               ATTRIBUTE6 = NULL
+                           SET ASPR.IMPORT_REQUEST_ID = NULL,
+                               ASPR.ATTRIBUTE6 = NULL,
+                               ASPR.LAST_UPDATE_DATE = SYSDATE,
+                               ASPR.LAST_UPDATED_BY = var_user_id
                          WHERE ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
                            AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
                            
@@ -900,7 +904,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                               
                                                               
                         UPDATE ATET_SB_PAYROLL_RESULTS ASPR
-                           SET ASPR.ATTRIBUTE7 = 'PROCESSED'
+                           SET ASPR.ATTRIBUTE7 = 'PROCESSED',
+                               ASPR.LAST_UPDATE_DATE = SYSDATE,
+                               ASPR.LAST_UPDATED_BY = var_user_id
                          WHERE ASPR.PAYROLL_RESULT_ID = detail_loan.PAYROLL_RESULT_ID;
                                                                                                                                   
                         IF var_result = 'N' THEN
@@ -962,8 +968,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         ROLLBACK;
                     
                         UPDATE ATET_SB_PAYROLL_RESULTS  ASPR
-                           SET IMPORT_REQUEST_ID = NULL,
-                               ATTRIBUTE6 = NULL
+                           SET ASPR.IMPORT_REQUEST_ID = NULL,
+                               ASPR.ATTRIBUTE6 = NULL,
+                               ASPR.LAST_UPDATE_DATE = SYSDATE,
+                               ASPR.LAST_UPDATED_BY = var_user_id
                          WHERE ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
                            AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
                            
@@ -1975,7 +1983,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
         UPDATE ATET_SB_LOANS ASL
            SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - (var_payment_capital + var_payment_interest),
-               ASL.LAST_PAYMENT_DATE = P_EARNED_DATE
+               ASL.LAST_PAYMENT_DATE = P_EARNED_DATE,
+               ASL.LAST_UPDATE_DATE = SYSDATE,
+               ASL.LAST_UPDATED_BY = var_user_id
          WHERE 1 = 1
            AND ASL.LOAN_ID = var_loan_id;
            
@@ -2111,7 +2121,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         IF var_validate = 0 THEN
         
             UPDATE ATET_SB_LOANS ASL
-               SET ASL.LOAN_STATUS_FLAG = 'PAYED'
+               SET ASL.LOAN_STATUS_FLAG = 'PAYED',
+                   ASL.LAST_UPDATE_DATE = SYSDATE,
+                   ASL.LAST_UPDATED_BY = var_user_id
              WHERE ASL.LOAN_ID = var_loan_id;
 
              
@@ -2120,7 +2132,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     ON (    ASE.LOAN_ID = var_loan_id
                         AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
             WHEN MATCHED THEN 
-            UPDATE SET ASM.IS_ENDORSEMENT = 'N';      
+            UPDATE SET ASM.IS_ENDORSEMENT = 'N',
+                       ASM.LAST_UPDATE_DATE = SYSDATE,
+                       ASM.LAST_UPDATED_BY = var_user_id;      
 
 
             SELECT COUNT(ASL.LOAN_ID)
@@ -2136,7 +2150,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         ON (    ASE.LOAN_ID = var_loan_id
                             AND ASE.MEMBER_BORROWER_ID = ASM.MEMBER_ID)
                 WHEN MATCHED THEN 
-                UPDATE SET ASM.IS_BORROWER = 'N';
+                UPDATE SET ASM.IS_BORROWER = 'N',
+                           ASM.LAST_UPDATE_DATE = SYSDATE,
+                           ASM.LAST_UPDATED_BY = var_user_id;
             END IF;
         
         END IF;
@@ -2253,7 +2269,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         EXCEPTION WHEN NO_DATA_FOUND THEN
            
             UPDATE ATET_SB_MEMBERS_ACCOUNTS ASMA
-               SET ASMA.LOAN_ID = P_LOAN_ID
+               SET ASMA.LOAN_ID = P_LOAN_ID,
+                   ASMA.LAST_UPDATE_DATE = SYSDATE,
+                   ASMA.LAST_UPDATED_BY = FND_GLOBAL.USER_ID
              WHERE 1 = 1
                AND ASMA.MEMBER_ID = P_MEMBER_ID
                AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
@@ -3659,7 +3677,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END LOOP;
         
         UPDATE ATET_SB_PAYMENTS_SCHEDULE    ASPS
-           SET ASPS.STATUS_FLAG = 'REFINANCED'
+           SET ASPS.STATUS_FLAG = 'REFINANCED',
+               ASPS.LAST_UPDATE_DATE = SYSDATE,
+               ASPS.LAST_UPDATED_BY = var_user_id
          WHERE 1 = 1
            AND ASPS.LOAN_ID = P_LOAN_ID
            AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL');
@@ -3704,7 +3724,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                             
         UPDATE ATET_SB_PAYMENTS_SCHEDULE    ASPS
            SET ASPS.STATUS_FLAG = 'PAYED',
-               ASPS.ATTRIBUTE6 = 'REFINANCED'
+               ASPS.ATTRIBUTE6 = 'REFINANCED',
+               ASPS.LAST_UPDATE_DATE = SYSDATE,
+               ASPS.LAST_UPDATED_BY = var_user_id
          WHERE 1 = 1
            AND ASPS.LOAN_ID = var_loan_id
            AND ASPS.STATUS_FLAG IN ('PARTIAL', 'SKIP', 'PENDING', 'EXPORTED');
@@ -3758,15 +3780,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
         UPDATE ATET_SB_LOANS ASL
            SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - var_loan_balance,
-               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR')
+               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+               ASL.LOAN_STATUS_FLAG = 'PAYED',
+               ASL.LAST_UPDATE_DATE = SYSDATE,
+               ASL.LAST_UPDATED_BY = var_user_id
          WHERE 1 = 1
            AND ASL.LOAN_ID = var_loan_id;
-           
-        
-        
-        UPDATE ATET_SB_LOANS ASL
-           SET ASL.LOAN_STATUS_FLAG = 'PAYED'
-         WHERE ASL.LOAN_ID = var_loan_id;
 
              
         MERGE INTO ATET_SB_MEMBERS      ASM
@@ -3774,9 +3793,119 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 ON (    ASE.LOAN_ID = var_loan_id
                     AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
         WHEN MATCHED THEN 
-        UPDATE SET ASM.IS_ENDORSEMENT = 'N';      
+        UPDATE SET ASM.IS_ENDORSEMENT = 'N',
+                   ASM.LAST_UPDATE_DATE = SYSDATE,
+                   ASM.LAST_UPDATED_BY = var_user_id;      
                
     END SETTLEMENT_LOAN;
+    
+    
+    PROCEDURE   CANCELLED_LOAN(
+                    P_LOAN_ID                   NUMBER)
+    IS
+        var_loan_id             NUMBER;
+        var_member_id           NUMBER;
+        var_member_account_id   NUMBER;
+        var_person_id           NUMBER;
+        var_loan_balance        NUMBER;
+        var_user_id             NUMBER := FND_GLOBAL.USER_ID;
+        var_validate            NUMBER;
+    BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'CANCEL_LOAN(P_LOAN_ID => ' || P_LOAN_ID || ')');
+        
+        SELECT ASL.LOAN_ID,
+               ASL.MEMBER_ID,
+               ASM.PERSON_ID,
+               ASL.LOAN_BALANCE
+          INTO var_loan_id,
+               var_member_id,
+               var_person_id,
+               var_loan_balance
+          FROM ATET_SB_LOANS    ASL,
+               ATET_SB_MEMBERS  ASM
+         WHERE 1 = 1
+           AND ASL.LOAN_ID = P_LOAN_ID
+           AND ASL.MEMBER_ID = ASM.MEMBER_ID;
+        
+        var_member_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(var_member_id, var_loan_id);
+                                                            
+                                                            
+        UPDATE ATET_SB_PAYMENTS_SCHEDULE    ASPS
+           SET ASPS.STATUS_FLAG = 'CANCELLED',
+               ASPS.LAST_UPDATE_DATE = SYSDATE,
+               ASPS.LAST_UPDATED_BY = var_user_id
+         WHERE 1 = 1
+           AND ASPS.LOAN_ID = var_loan_id;
+           
+        
+    
+        INSERT INTO ATET_SB_LOANS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
+                                                MEMBER_ID,
+                                                PAYROLL_RESULT_ID,
+                                                LOAN_ID,
+                                                PERSON_ID,
+                                                EARNED_DATE,
+                                                PERIOD_NAME,
+                                                ELEMENT_NAME,
+                                                TRANSACTION_CODE,
+                                                DEBIT_AMOUNT,
+                                                CREDIT_AMOUNT,
+                                                CREATION_DATE,
+                                                CREATED_BY,
+                                                LAST_UPDATE_DATE,
+                                                LAST_UPDATED_BY)
+                                         VALUES (var_member_account_id,
+                                                 var_member_id,
+                                                 -1,
+                                                 var_loan_id,
+                                                 var_person_id,
+                                                 TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                                                 'CANCELACION',
+                                                 'CANCELACION DE PRESTAMO',
+                                                 'CANCELLED_LOAN',
+                                                 0,
+                                                 var_loan_balance,
+                                                 SYSDATE,
+                                                 var_user_id,
+                                                 SYSDATE,
+                                                 var_user_id);
+                                                  
+        UPDATE ATET_SB_MEMBERS_ACCOUNTS
+           SET DEBIT_BALANCE = DEBIT_BALANCE + 0,
+               CREDIT_BALANCE = CREDIT_BALANCE + var_loan_balance,
+               LAST_TRANSACTION_DATE = SYSDATE               
+         WHERE MEMBER_ID = var_member_id
+           AND MEMBER_ACCOUNT_ID = var_member_account_id;
+           
+        UPDATE ATET_SB_MEMBERS_ACCOUNTS
+           SET FINAL_BALANCE = DEBIT_BALANCE - CREDIT_BALANCE,
+               LAST_UPDATE_DATE = SYSDATE,
+               LAST_UPDATED_BY = var_user_id             
+         WHERE MEMBER_ID = var_member_id
+           AND MEMBER_ACCOUNT_ID = var_member_account_id;
+           
+        UPDATE ATET_SB_LOANS ASL
+           SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - var_loan_balance,
+               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+               ASL.LOAN_STATUS_FLAG = 'CANCELLED',
+               ASL.LAST_UPDATE_DATE = SYSDATE,
+               ASL.LAST_UPDATED_BY = var_user_id
+         WHERE 1 = 1
+           AND ASL.LOAN_ID = var_loan_id;
+
+             
+        MERGE INTO ATET_SB_MEMBERS      ASM
+             USING ATET_SB_ENDORSEMENTS ASE
+                ON (    ASE.LOAN_ID = var_loan_id
+                    AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
+        WHEN MATCHED THEN 
+        UPDATE SET ASM.IS_ENDORSEMENT = 'N',
+                   ASM.LAST_UPDATE_DATE = SYSDATE,
+                   ASM.LAST_UPDATED_BY = var_user_id;      
+               
+    END CANCELLED_LOAN;
+    
     
     PROCEDURE   SETTLEMENT_LOAN(
                     P_LOAN_ID               NUMBER,
@@ -3808,7 +3937,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                             
         UPDATE ATET_SB_PAYMENTS_SCHEDULE    ASPS
            SET ASPS.STATUS_FLAG = 'PAYED',
-               ASPS.ATTRIBUTE6 = 'PREPAID'
+               ASPS.ATTRIBUTE6 = 'PREPAID',
+               ASPS.LAST_UPDATE_DATE = SYSDATE,
+               ASPS.LAST_UPDATED_BY = var_user_id
          WHERE 1 = 1
            AND ASPS.LOAN_ID = P_LOAN_ID
            AND ASPS.STATUS_FLAG IN ('PARTIAL', 'SKIP', 'PENDING', 'EXPORTED');
@@ -3884,14 +4015,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            
         UPDATE ATET_SB_LOANS ASL
            SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - var_loan_balance,
-               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR')
+               ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+               ASL.LOAN_STATUS_FLAG = 'PAYED',
+               ASL.LAST_UPDATE_DATE = SYSDATE,
+               ASL.LAST_UPDATED_BY = var_user_id    
          WHERE 1 = 1
            AND ASL.LOAN_ID = P_LOAN_ID;
-           
-        
-        UPDATE ATET_SB_LOANS ASL
-           SET ASL.LOAN_STATUS_FLAG = 'PAYED'
-         WHERE ASL.LOAN_ID = P_LOAN_ID;
 
              
         MERGE INTO ATET_SB_MEMBERS      ASM
@@ -3899,7 +4028,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 ON (    ASE.LOAN_ID = P_LOAN_ID
                     AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
         WHEN MATCHED THEN 
-        UPDATE SET ASM.IS_ENDORSEMENT = 'N';     
+        UPDATE SET ASM.IS_ENDORSEMENT = 'N',
+                   ASM.LAST_UPDATE_DATE = SYSDATE,
+                   ASM.LAST_UPDATED_BY = var_user_id;     
         
                      
         SELECT COUNT(ASL.LOAN_ID)
@@ -3916,7 +4047,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     ON (    ASE.LOAN_ID = P_LOAN_ID
                         AND ASE.MEMBER_BORROWER_ID = ASM.MEMBER_ID)
             WHEN MATCHED THEN 
-            UPDATE SET ASM.IS_BORROWER = 'N';
+            UPDATE SET ASM.IS_BORROWER = 'N',
+                       ASM.LAST_UPDATE_DATE = SYSDATE,
+                       ASM.LAST_UPDATED_BY = var_user_id;
         END IF;
          
                
@@ -3930,6 +4063,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_AMOUNT_SAVED            NUMBER,
                     P_PERCENTAGE_RETIREMENT   NUMBER,
                     P_SAVING_RETIREMENT       NUMBER,
+                    P_DESCRIPTION             VARCHAR2,
                     P_IS_MEMBER_END           VARCHAR2)
     IS
         var_validate                NUMBER;    
@@ -3944,6 +4078,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                          ',P_AMOUNT_SAVED => ' || P_AMOUNT_SAVED ||
                                                          ',P_PERCENTAGE_RETIREMENT => ' || P_PERCENTAGE_RETIREMENT ||
                                                          ',P_SAVING_RETIREMENT => ' || P_SAVING_RETIREMENT ||
+                                                         ',P_DESCRIPTION => ' || P_DESCRIPTION ||
                                                          ',P_IS_MEMBER_END => ' || P_IS_MEMBER_END || ')'); 
                            
           
@@ -3996,6 +4131,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                ATTRIBUTE8,
                                                ATTRIBUTE9,
                                                ATTRIBUTE10,
+                                               ATTRIBUTE11,
                                                RELEASED_FLAG,
                                                CREATION_DATE,
                                                CREATED_BY,
@@ -4010,6 +4146,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                'P_PERCENTAGE_RETIREMENT=>' || P_PERCENTAGE_RETIREMENT,
                                                'P_SAVING_RETIREMENT=>' || P_SAVING_RETIREMENT,
                                                'P_IS_MEMBER_END=>' || P_IS_MEMBER_END,
+                                               'P_DESCRIPTION=>' || P_DESCRIPTION,
                                                'P',
                                                SYSDATE,
                                                var_user_id,
@@ -4028,6 +4165,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                       P_AMOUNT_SAVED          => P_AMOUNT_SAVED,
                                       P_PERCENTAGE_RETIREMENT => P_PERCENTAGE_RETIREMENT,
                                       P_SAVING_RETIREMENT     => P_SAVING_RETIREMENT,
+                                      P_DESCRIPTION           => P_DESCRIPTION,
                                       P_IS_MEMBER_END         => P_IS_MEMBER_END);
             
         END IF;
@@ -4054,6 +4192,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_amount_saved            VARCHAR2(100);
         var_percentage_retirement   VARCHAR2(100);
         var_saving_retirement       VARCHAR2(100);
+        var_description             VARCHAR2(100);
         var_is_member_end           VARCHAR2(100);
         
     BEGIN
@@ -4109,12 +4248,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    REPLACE(ASTH.ATTRIBUTE7, 'P_AMOUNT_SAVED=>', ''),
                    REPLACE(ASTH.ATTRIBUTE8, 'P_PERCENTAGE_RETIREMENT=>', ''),
                    REPLACE(ASTH.ATTRIBUTE9, 'P_SAVING_RETIREMENT=>', ''),
-                   REPLACE(ASTH.ATTRIBUTE10, 'P_IS_MEMBER_END=>', '')
+                   REPLACE(ASTH.ATTRIBUTE10, 'P_IS_MEMBER_END=>', ''),
+                   REPLACE(ASTH.ATTRIBUTE11, 'P_DESCRIPTION=>', '')
               INTO var_member_id,
                    var_amount_saved,
                    var_percentage_retirement,
                    var_saving_retirement,
-                   var_is_member_end 
+                   var_is_member_end,
+                   var_description
               FROM ATET_SB_TRANSACTIONS_HOLDS ASTH
              WHERE 1 = 1
                AND TRANSACTION_HOLD_ID = P_TRANSACTION_HOLD_ID;
@@ -4126,6 +4267,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                           P_AMOUNT_SAVED => var_amount_saved,
                           P_PERCENTAGE_RETIREMENT => var_percentage_retirement, 
                           P_SAVING_RETIREMENT => var_saving_retirement,
+                          P_DESCRIPTION => var_description,
                           P_IS_MEMBER_END => var_is_member_end);
                    
                        
@@ -4155,6 +4297,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_AMOUNT_SAVED            NUMBER,
                     P_PERCENTAGE_RETIREMENT   NUMBER,
                     P_SAVING_RETIREMENT       NUMBER,
+                    P_DESCRIPTION             VARCHAR2,
                     P_IS_MEMBER_END           VARCHAR2)
     IS
         SAVING_RETIREMENT_EXCEPTION EXCEPTION;
@@ -4206,6 +4349,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                                  ',P_AMOUNT_SAVED => ' || P_AMOUNT_SAVED ||
                                                                  ',P_PERCENTAGE_RETIREMENT => ' || P_PERCENTAGE_RETIREMENT ||
                                                                  ',P_SAVING_RETIREMENT => ' || P_SAVING_RETIREMENT ||
+                                                                 ',P_DESCRIPTION => ' || P_DESCRIPTION ||
                                                                  ',P_IS_MEMBER_END => ' || P_IS_MEMBER_END || ')');
     
         var_member_account_id := GET_SAVING_MEMBER_ACCOUNT_ID(P_MEMBER_ID,
@@ -4268,6 +4412,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                           DEBIT_AMOUNT,
                                                           CREDIT_AMOUNT,
                                                           ATTRIBUTE1,
+                                                          ATTRIBUTE6,
                                                           CREATION_DATE,
                                                           CREATED_BY,
                                                           LAST_UPDATE_DATE,
@@ -4284,6 +4429,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                           var_debit_amount,
                                                           var_credit_amount,
                                                           var_saving_retirement_seq,
+                                                          P_DESCRIPTION,
                                                           SYSDATE,
                                                           var_user_id,
                                                           SYSDATE,
@@ -4311,7 +4457,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     UPDATE ATET_SB_MEMBERS  ASM
                        SET ASM.IS_SAVER = 'N',
                            ASM.MEMBER_END_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR'),
-                           ASM.AMOUNT_TO_SAVE = NULL
+                           ASM.AMOUNT_TO_SAVE = NULL,
+                           ASM.LAST_UPDATE_DATE = SYSDATE,
+                           ASM.LAST_UPDATED_BY = var_user_id
                      WHERE 1 = 1
                        AND ASM.MEMBER_ID = P_MEMBER_ID;
                        
@@ -4348,7 +4496,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 /*******             CREACIÓN DE CHEQUE                ****/
                 /**********************************************************/
                     
-                CREATE_SAVING_RETIREMENT_CHECK(P_SAVING_TRANSACTION_ID => var_saving_transaction_id, P_CHECK_ID => var_check_id);
+                CREATE_SAVING_RETIREMENT_CHECK(P_SAVING_TRANSACTION_ID => var_saving_transaction_id,
+                                               P_DESCRIPTION => P_DESCRIPTION, 
+                                               P_CHECK_ID => var_check_id);
                     
                 /**********************************************************/
                 /*******             IMPRESIÓN DE CHEQUE               ****/
@@ -4504,6 +4654,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
     PROCEDURE   CREATE_SAVING_RETIREMENT_CHECK(
                     P_SAVING_TRANSACTION_ID     NUMBER,
+                    P_DESCRIPTION               VARCHAR2,
                     P_CHECK_ID                  OUT NOCOPY NUMBER)
     IS
         LN_BANK_ACCOUNT_ID           NUMBER;
@@ -4638,6 +4789,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                        BANK_ACCOUNT_NUM,
                                        DIGITAL_SIGNATURE,
                                        DECRYPT_KEY,
+                                       PAYMENT_DESCRIPTION,
                                        LAST_UPDATED_BY,
                                        LAST_UPDATE_DATE,
                                        CREATED_BY,
@@ -4656,6 +4808,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                      LC_BANK_ACCOUNT_NUM,
                                      ENCRYPTED_RAW,
                                      KEY_BYTES_RAW,
+                                     P_DESCRIPTION,
                                      FND_GLOBAL.USER_ID,
                                      SYSDATE,
                                      FND_GLOBAL.USER_ID,
@@ -4979,8 +5132,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         P_ACCOUNTED_DR => var_asps_payment_interest,
                         P_ACCOUNTED_CR => 0,
                         P_DESCRIPTION => var_description,
-                        P_SOURCE_ID => NULL,
-                        P_SOURCE_LINK_TABLE => NULL);
+                        P_SOURCE_ID => var_loan_transaction_id,
+                        P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');
                     
                     /*********  ABONO : INTERESES COBRADOS      *********/
                     ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
@@ -4991,8 +5144,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         P_ACCOUNTED_DR => 0,
                         P_ACCOUNTED_CR => var_asps_payment_interest,
                         P_DESCRIPTION => var_description,
-                        P_SOURCE_ID => NULL,
-                        P_SOURCE_LINK_TABLE => NULL);  
+                        P_SOURCE_ID => var_loan_transaction_id,
+                        P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');  
                 
                 EXCEPTION WHEN OTHERS THEN
                     RAISE CREATION_GL_EXCEPTION;
@@ -5325,8 +5478,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                                                || var_employee_full_name || '|' 
                                                                                || var_voluntary_contribution || '|'
                                                                                || var_deposit_date,
-                                                     P_SOURCE_ID               => NULL,
-                                                     P_SOURCE_LINK_TABLE       => NULL);  
+                                                     P_SOURCE_ID               => var_saving_transaction_id,
+                                                     P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');  
                                                                    
             ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
                                                      P_ROW_NUMBER              => 2,
