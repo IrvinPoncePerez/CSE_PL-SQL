@@ -1907,6 +1907,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             ELSE
                 var_payment_capital := var_entry_value;
             END IF;
+            
+            var_entry_value := var_entry_value - var_payment_capital;
+            
         ELSE
             var_payment_amount := var_payment_amount;
             var_payment_capital := var_payment_capital;
@@ -2109,7 +2112,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
         
         /**********************************************************************/
+        /************                   PAGOS PARCIALES                ********/
+        /**********************************************************************/
         
+        IF_
+        
+        /**********************************************************************/
         
         SELECT COUNT(ASPS.PAYMENT_NUMBER)
           INTO var_validate
