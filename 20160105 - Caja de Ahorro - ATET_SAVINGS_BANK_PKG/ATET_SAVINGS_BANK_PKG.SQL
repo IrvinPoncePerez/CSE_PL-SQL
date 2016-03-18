@@ -136,6 +136,29 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_DEBIT_AMOUNT              NUMBER,
                     P_CREDIT_AMOUNT             NUMBER
                 ) RETURN    VARCHAR2;
+                
+    PROCEDURE   INSERT_LOAN_TRANSACTION(P_PAYMENT_NUMBER            NUMBER,
+                                        P_DEBIT_AMOUNT              NUMBER,
+                                        P_CREDIT_AMOUNT             NUMBER,
+                                        P_PAYMENT_AMOUNT            NUMBER,
+                                        P_PAYMENT_CAPITAL           NUMBER,
+                                        P_PAYMENT_INTEREST          NUMBER,
+                                        P_PAYMENT_INTEREST_LATE     NUMBER,
+                                        P_ELEMENT_NAME              VARCHAR2,
+                                        P_ENTRY_NAME                VARCHAR2,
+                                        P_ENTRY_UNITS               VARCHAR2,
+                                        P_MEMBER_ACCOUNT_ID         NUMBER,
+                                        P_MEMBER_ID                 NUMBER,
+                                        P_PAYROLL_RESULT_ID         NUMBER,
+                                        P_LOAN_ID                   NUMBER,
+                                        P_PERSON_ID                 NUMBER,
+                                        P_RUN_RESULT_ID             NUMBER,
+                                        P_EARNED_DATE               DATE,
+                                        P_TIME_PERIOD_ID            NUMBER,
+                                        P_PERIOD_NAME               VARCHAR2,
+                                        P_ENTRY_VALUE               NUMBER,
+                                        P_EXPECTED_PAYMENT_AMOUNT   NUMBER,
+                                        P_PAYMENT_SCHEDULE_ID       NUMBER);
      
     FUNCTION    GET_SAVING_MEMBER_ACCOUNT_ID(
                     P_MEMBER_ID                 NUMBER,
