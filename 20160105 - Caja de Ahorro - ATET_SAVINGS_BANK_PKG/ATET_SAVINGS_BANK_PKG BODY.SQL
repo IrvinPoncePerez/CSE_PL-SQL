@@ -676,6 +676,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_sum_loan_amount         NUMBER;
         var_sum_loan_pay_value      NUMBER;
         var_sum_loan_import         NUMBER;
+        
+        var_pp_payment_date         DATE;
+        var_pp_period_name          VARCHAR2(200);
+        var_skip_count              NUMBER;
+        
     BEGIN
     
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'IMPORT_PAYROLL_RESULTS(P_EXPORT_REQUEST_ID => ' || P_EXPORT_REQUEST_ID || ')');
@@ -749,7 +754,26 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                        AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
                        AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;   
                        
---                CURSOR SKIP_PAYMENTS_LIST () IS
+                CURSOR SKIP_PAYMENTS_LIST (PP_PAYMENT_DATE      DATE, 
+                                           PP_PERIOD_NAME       VARCHAR2) IS
+                    SELECT ASM.PERSON_ID                    AS  PERSON_ID,
+                           ASPS.PAYMENT_DATE                AS  EARNED_DATE,
+                           ASPS.TIME_PERIOD_ID              AS  TIME_PERIOD_ID,
+                           PP_PERIOD_NAME                   AS  PERIOD_NAME,
+                           0                                AS  ENTRY_VALUE,
+                           -1                               AS  PAYROLL_RESULT_ID,
+                           'D072_PRESTAMO CAJA DE AHORRO'   AS  ELEMENT_NAME,
+                           'Pay Value'                      AS  ENTRY_NAME,
+                           'Dinero'                         AS  ENTRY_UNITS
+                      FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS,
+                           ATET_SB_LOANS                ASL,
+                           ATET_SB_MEMBERS              ASM 
+                     WHERE 1 = 1
+                       AND ASPS.LOAN_ID = ASL.LOAN_ID
+                       AND ASL.MEMBER_ID = ASM.MEMBER_ID
+                       AND ASPS.PERIOD_NAME = PP_PERIOD_NAME
+                       AND ASPS.PAYMENT_DATE = PP_PAYMENT_DATE
+                       AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED');
                       
             
                     
@@ -987,6 +1011,90 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'********************************************SE REVIRTIERON TODOS LOS PROCESOS********************************************');
                            
                     END IF;
+                
+                END IF;
+                
+                IF var_result = 'Y' THEN
+                
+                    SELECT DISTINCT 
+                           ASPR.PERIOD_NAME,
+                           ASPR.EARNED_DATE
+                      INTO var_pp_period_name,
+                           var_pp_payment_date
+                      FROM ATET_SB_PAYROLL_RESULTS  ASPR
+                     WHERE 1 = 1
+                       AND ASPR.ELEMENT_NAME = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')
+                       AND ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                       AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                       
+                    var_skip_count := 0;
+                
+                    FOR detail_skip IN SKIP_PAYMENTS_LIST(var_pp_payment_date, var_pp_period_name) LOOP
+                        
+                        var_result := 'N';
+                        var_skip_count := var_skip_count + 1;
+                        
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, 'PROCESANDO: ' || detail_skip.PAYROLL_RESULT_ID  || ','
+                                                                       || detail_skip.PERSON_ID          || ','
+                                                                       || detail_skip.EARNED_DATE        || ','
+                                                                       || detail_skip.PERIOD_NAME        || ','
+                                                                       || detail_skip.ELEMENT_NAME       || ','
+                                                                       || detail_skip.ENTRY_NAME         || ','
+                                                                       || detail_skip.ENTRY_UNITS        || ','
+                                                                       || detail_skip.ENTRY_VALUE);    
+                    
+                        var_result := INSERT_LOAN_TRANSACTION(P_EXPORT_REQUEST_ID => P_EXPORT_REQUEST_ID,
+                                                              P_PAYROLL_RESULT_ID => detail_skip.PAYROLL_RESULT_ID,
+                                                              P_PERSON_ID => detail_skip.PERSON_ID,
+                                                              P_RUN_RESULT_ID => -1,
+                                                              P_EARNED_DATE => detail_skip.EARNED_DATE,
+                                                              P_TIME_PERIOD_ID => detail_skip.TIME_PERIOD_ID,
+                                                              P_PERIOD_NAME => detail_skip.PERIOD_NAME,
+                                                              P_ELEMENT_NAME => detail_skip.ELEMENT_NAME,
+                                                              P_ENTRY_NAME => detail_skip.ENTRY_NAME,
+                                                              P_ENTRY_UNITS => detail_skip.ENTRY_UNITS,
+                                                              P_ENTRY_VALUE => detail_skip.ENTRY_VALUE,
+                                                              P_DEBIT_AMOUNT => 0,
+                                                              P_CREDIT_AMOUNT => detail_skip.ENTRY_VALUE);
+                                                              
+                        IF var_result = 'N' THEN
+                            EXIT;
+                        END IF;
+                    
+                    END LOOP; 
+                    
+                    
+                    IF    var_result = 'Y' THEN
+                        
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '********************************************************');
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*');
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   '||GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME'));
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*   DESCUENTOS SALTADOS    : ' || TO_CHAR(var_skip_count));
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '*');
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '********************************************************');
+                        
+                    ELSIF var_result = 'N' THEN
+                        
+                        ROLLBACK;
+                    
+                        UPDATE ATET_SB_PAYROLL_RESULTS  ASPR
+                           SET ASPR.IMPORT_REQUEST_ID = NULL,
+                               ASPR.ATTRIBUTE6 = NULL,
+                               ASPR.LAST_UPDATE_DATE = SYSDATE,
+                               ASPR.LAST_UPDATED_BY = var_user_id
+                         WHERE ASPR.EXPORT_REQUEST_ID = P_EXPORT_REQUEST_ID
+                           AND ASPR.IMPORT_REQUEST_ID = var_import_request_id;
+                           
+                        COMMIT; 
+                        
+                        P_ERRBUF := 'EL PROCESO DE IMPORTACIÓN ENCONTRO UN INCONVENIENTE AL MOMENTO DE PROCESAR LOS MOVIMIENTOS DE PRESTAMO DE CAJA DE AHORRO.';
+                        P_RETCODE := 1;                      
+                        
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'EL PROCESO DE IMPORTACIÓN ENCONTRO UN INCONVENIENTE AL MOMENTO DE PROCESAR LOS MOVIMIENTOS DE PRESTAMO DE CAJA DE AHORRO.');
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'********************************************SE REVIRTIERON TODOS LOS PROCESOS********************************************');
+                           
+                    END IF;
+                    
                 
                 END IF;
             
