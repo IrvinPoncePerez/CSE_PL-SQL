@@ -134,7 +134,8 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_ENTRY_UNITS               VARCHAR2,
                     P_ENTRY_VALUE               NUMBER,
                     P_DEBIT_AMOUNT              NUMBER,
-                    P_CREDIT_AMOUNT             NUMBER
+                    P_CREDIT_AMOUNT             NUMBER,
+                    P_PAYMENT_SCHEDULE_ID       NUMBER
                 ) RETURN    VARCHAR2;
                 
     PROCEDURE   INSERT_LOAN_TRANSACTION(P_PAYMENT_NUMBER            NUMBER,
@@ -305,5 +306,8 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
 
     PROCEDURE   PRINT_VOLUNTARY_CONTRIBUTION(
                     P_SAVING_TRANSACTION_ID     NUMBER);
+                    
+    PROCEDURE   REFINANCE_PAYMENT_SCHEDULE(
+                    P_PAYMENT_SCHEDULE_ID       NUMBER);
 
 END ATET_SAVINGS_BANK_PKG;

@@ -764,7 +764,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                            -1                               AS  PAYROLL_RESULT_ID,
                            'D072_PRESTAMO CAJA DE AHORRO'   AS  ELEMENT_NAME,
                            'Pay Value'                      AS  ENTRY_NAME,
-                           'Dinero'                         AS  ENTRY_UNITS
+                           'Dinero'                         AS  ENTRY_UNITS,
+                           ASPS.PAYMENT_SCHEDULE_ID         AS  PAYMENT_SCHEDULE_ID
                       FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS,
                            ATET_SB_LOANS                ASL,
                            ATET_SB_MEMBERS              ASM 
@@ -927,7 +928,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                               P_ENTRY_UNITS => detail_loan.ENTRY_UNITS,
                                                               P_ENTRY_VALUE => detail_loan.ENTRY_VALUE,
                                                               P_DEBIT_AMOUNT => 0,
-                                                              P_CREDIT_AMOUNT => detail_loan.ENTRY_VALUE);
+                                                              P_CREDIT_AMOUNT => detail_loan.ENTRY_VALUE,
+                                                              P_PAYMENT_SCHEDULE_ID => 0);
                                                               
                                                               
                         UPDATE ATET_SB_PAYROLL_RESULTS ASPR
@@ -1055,7 +1057,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                               P_ENTRY_UNITS => detail_skip.ENTRY_UNITS,
                                                               P_ENTRY_VALUE => detail_skip.ENTRY_VALUE,
                                                               P_DEBIT_AMOUNT => 0,
-                                                              P_CREDIT_AMOUNT => detail_skip.ENTRY_VALUE);
+                                                              P_CREDIT_AMOUNT => detail_skip.ENTRY_VALUE,
+                                                              P_PAYMENT_SCHEDULE_ID => detail_skip.PAYMENT_SCHEDULE_ID);
                                                               
                         IF var_result = 'N' THEN
                             EXIT;
@@ -1912,12 +1915,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_ENTRY_UNITS         VARCHAR2,
                     P_ENTRY_VALUE         NUMBER,
                     P_DEBIT_AMOUNT        NUMBER,
-                    P_CREDIT_AMOUNT       NUMBER)
+                    P_CREDIT_AMOUNT       NUMBER,
+                    P_PAYMENT_SCHEDULE_ID NUMBER)
       RETURN    VARCHAR2
     IS
         var_import_request_id       NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
         var_user_id                 NUMBER := FND_GLOBAL.USER_ID;
         var_validate                NUMBER;
+        var_validate_partial        NUMBER;
 
         var_member_id               NUMBER;
         var_member_account_id       NUMBER;
@@ -1928,7 +1933,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_entry_value             NUMBER;
         var_payment_schedule_id     NUMBER;
         var_time_period_id          NUMBER;
-        var_period_name             NUMBER;
+        var_period_name             VARCHAR2(200);
         var_payment_number          NUMBER;
         var_payment_amount          NUMBER;
         var_payment_capital         NUMBER;
@@ -1986,6 +1991,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_member_id := GET_MEMBER_ID(P_PERSON_ID);
         var_loan_id := GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Futuro 4');
         var_loan_number := GET_RESULT_FROM_PAYROLL_RESULT(P_PERSON_ID, P_EXPORT_REQUEST_ID, P_RUN_RESULT_ID, 'Folio');
+        
+        IF P_PAYMENT_SCHEDULE_ID <> 0 THEN
+            SELECT ASPS.LOAN_ID
+              INTO var_loan_id
+              FROM ATET_SB_PAYMENTS_SCHEDULE ASPS
+             WHERE 1 = 1
+               AND ASPS.PAYMENT_SCHEDULE_ID = P_PAYMENT_SCHEDULE_ID;
+        END IF;
         
         IF var_loan_id = 0 AND var_loan_number <> 0 THEN
             var_loan_id := GET_LOAN_ID(
@@ -2133,6 +2146,17 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_ENTRY_VALUE               => var_entry_value,
                     P_EXPECTED_PAYMENT_AMOUNT   => var_expected_payment_amount,
                     P_PAYMENT_SCHEDULE_ID       => var_payment_schedule_id);
+                    
+                SELECT COUNT(ASPS.PAYMENT_SCHEDULE_ID)
+                  INTO var_validate_partial
+                  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+                 WHERE 1 = 1
+                   AND ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
+                   AND ASPS.STATUS_FLAG = 'PARTIAL';
+                   
+                IF var_validate_partial > 0 THEN
+                    REFINANCE_PAYMENT_SCHEDULE(var_payment_schedule_id);
+                END IF;
 
                 IF var_entry_value = 0 THEN
                     EXIT;
@@ -2295,6 +2319,30 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
     BEGIN
     
+        FND_FILE.PUT_LINE( FND_FILE.LOG, 'INSERT_LOAN_TRANSACTION(P_PAYMENT_NUMBER => '     || P_PAYMENT_NUMBER ||
+                                                                ',P_DEBIT_AMOUNT => '       || P_DEBIT_AMOUNT ||
+                                                                ',P_CREDIT_AMOUNT => '      || P_CREDIT_AMOUNT ||
+                                                                ',P_PAYMENT_AMOUNT => '     || P_PAYMENT_AMOUNT ||
+                                                                ',P_PAYMENT_CAPITAL => '    || P_PAYMENT_AMOUNT ||
+                                                                ',P_PAYMENT_INTEREST => '   || P_PAYMENT_AMOUNT ||
+                                                                ',P_PAYMENT_INTEREST_LATE => ' || P_PAYMENT_INTEREST_LATE ||
+                                                                ',P_ELEMENT_NAME => '       || P_ELEMENT_NAME ||
+                                                                ',P_ENTRY_NAME => '         || P_ENTRY_NAME ||
+                                                                ',P_ENTRY_UNITS => '        || P_ENTRY_UNITS ||
+                                                                ',P_MEMBER_ACCOUNT_ID => '  || P_MEMBER_ACCOUNT_ID ||
+                                                                ',P_MEMBER_ID => '          || P_MEMBER_ID ||
+                                                                ',P_PAYROLL_RESULT_ID => '  || P_PAYROLL_RESULT_ID ||
+                                                                ',P_LOAN_ID => '            || P_LOAN_ID || 
+                                                                ',P_PERSON_ID => '          || P_PERSON_ID ||
+                                                                ',P_RUN_RESULT_ID => '      || P_RUN_RESULT_ID ||
+                                                                ',P_EARNED_DATE => '        || P_EARNED_DATE ||
+                                                                ',P_TIME_PERIOD_ID => '     || P_TIME_PERIOD_ID ||
+                                                                ',P_PERIOD_NAME => '        || P_PERIOD_NAME ||
+                                                                ',P_ENTRY_VALUE => '        || P_ENTRY_VALUE ||
+                                                                ',P_EXPECTED_PAYMENT_AMOUNT => ' || P_EXPECTED_PAYMENT_AMOUNT ||
+                                                                ',P_PAYMENT_SCHEDULE_ID => ' || P_PAYMENT_SCHEDULE_ID || 
+                                                                ')');
+    
         INSERT INTO ATET_SB_LOANS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
                                                 MEMBER_ID,
                                                 PAYROLL_RESULT_ID,
@@ -2383,7 +2431,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
              WHERE ASPS.PAYMENT_SCHEDULE_ID = P_PAYMENT_SCHEDULE_ID
                AND ASPS.LOAN_ID = P_LOAN_ID;
                     
-        ELSIF TRUNC(P_ENTRY_VALUE, 0) < TRUNC(P_EXPECTED_PAYMENT_AMOUNT, 0) THEN
+        ELSIF P_ENTRY_VALUE > 0 AND TRUNC(P_ENTRY_VALUE, 0) < TRUNC(P_EXPECTED_PAYMENT_AMOUNT, 0) THEN
                     
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
                SET ASPS.STATUS_FLAG = 'PARTIAL',
@@ -2499,7 +2547,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
         
         
-    END;
+    END INSERT_LOAN_TRANSACTION;
     
 --    FUNCTION   INSERT_LOAN_TRANSACTION(
 --                    P_EXPORT_REQUEST_ID   NUMBER,
@@ -6420,6 +6468,70 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     EXCEPTION WHEN OTHERS THEN
         RAISE;  
     END PRINT_VOLUNTARY_CONTRIBUTION;
+    
+    
+    PROCEDURE   REFINANCE_PAYMENT_SCHEDULE(
+                    P_PAYMENT_SCHEDULE_ID       NUMBER)
+    IS
+        var_user_id     NUMBER := FND_GLOBAL.USER_ID;
+    BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'REFINANCE_PAYMENT_SCHEDULE(P_PAYMENT_SCHEDULE_ID => ' || P_PAYMENT_SCHEDULE_ID || ')');
+        
+        INSERT 
+          INTO ATET_SB_PAYMENTS_SCHEDULE(LOAN_ID,
+                                         PAYMENT_NUMBER,
+                                         PERIOD_NUMBER,
+                                         TIME_PERIOD_ID,
+                                         PERIOD_NAME,
+                                         PAYMENT_DATE,
+                                         PAYROLL_ID,
+                                         ASSIGNMENT_ID,
+                                         OPENING_BALANCE,
+                                         PAYMENT_AMOUNT,
+                                         PAYMENT_CAPITAL,
+                                         PAYMENT_INTEREST,
+                                         PAYMENT_INTEREST_LATE,
+                                         FINAL_BALANCE,
+                                         ACCRUAL_PAYMENT_AMOUNT,
+                                         STATUS_FLAG,
+                                         CREATION_DATE,
+                                         CREATED_BY,
+                                         LAST_UPDATE_DATE,
+                                         LAST_UPDATED_BY)
+                                  SELECT LOAN_ID,
+                                         PAYMENT_NUMBER,
+                                         PERIOD_NUMBER,
+                                         TIME_PERIOD_ID,
+                                         PERIOD_NAME,
+                                         PAYMENT_DATE,
+                                         PAYROLL_ID,
+                                         ASSIGNMENT_ID,
+                                         OPENING_BALANCE,
+                                         (ATTRIBUTE1 + ATTRIBUTE2 + ATTRIBUTE3),
+                                         ATTRIBUTE1,
+                                         ATTRIBUTE2,
+                                         ATTRIBUTE3,
+                                         OPENING_BALANCE - (ATTRIBUTE1 + ATTRIBUTE2 + ATTRIBUTE3),
+                                         ACCRUAL_PAYMENT_AMOUNT,
+                                         'PENDING',
+                                         SYSDATE,
+                                         var_user_id,
+                                         SYSDATE,
+                                         var_user_id
+                                    FROM ATET_SB_PAYMENTS_SCHEDULE ASPS
+                                   WHERE 1 = 1
+                                     AND ASPS.PAYMENT_SCHEDULE_ID = P_PAYMENT_SCHEDULE_ID;
+                                     
+        UPDATE ATET_SB_PAYMENTS_SCHEDULE    ASPS
+           SET ASPS.STATUS_FLAG = 'REFINANCED',
+               ASPS.LAST_UPDATE_DATE = SYSDATE,
+               ASPS.LAST_UPDATED_BY = var_user_id
+         WHERE 1 = 1 
+           AND ASPS.PAYMENT_SCHEDULE_ID = P_PAYMENT_SCHEDULE_ID;
+                                         
+        
+    END REFINANCE_PAYMENT_SCHEDULE;
                                  
 
 END ATET_SAVINGS_BANK_PKG;
