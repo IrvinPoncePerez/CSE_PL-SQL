@@ -38,7 +38,8 @@ SELECT DISTINCT
        D.PAYMENT_METHOD_GROCERIES,
        D.ORGANIZATION_ID,
        D.PAYROLL_ACTION_ID, 
-       D.ASSIGNMENT_ID
+       D.ASSIGNMENT_ID,
+       D.ASSIGNMENT_ACTION_ID
   FROM ( SELECT DISTINCT
                 UPPER(PAC_HR_PAY_PKG.GET_LOOKUP_MEANING('NOMINAS POR EMPLEADOR LEGAL', 
                                                         :P_COMPANY_ID))                                     AS  COMPANY_NAME,
@@ -73,7 +74,7 @@ SELECT DISTINCT
                 MAX(NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,
                                                                 'P001_SUELDO NORMAL',
                                                                 'Sueldo Diario'), '0'))                     AS  SALARY_JOURNAL, 
-                MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.PAYROLL_ACTION_ID, PAA.ASSIGNMENT_ID), '0'))  AS  PAYMENT_DAYS, 
+                MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  PAYMENT_DAYS, 
                 TO_CHAR(SYSDATE, 'DD/MON/YYYY')                                                             AS  PRINT_DATE,
                 MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
                                                             PPA.DATE_EARNED,
@@ -114,7 +115,8 @@ SELECT DISTINCT
                    HOUV.ORGANIZATION_ID,
                    ---------------------
                    PAA.PAYROLL_ACTION_ID                                                                    AS  PAYROLL_ACTION_ID, 
-                   PAA.ASSIGNMENT_ID                                                                        AS  ASSIGNMENT_ID
+                   PAA.ASSIGNMENT_ID                                                                        AS  ASSIGNMENT_ID,
+                   PAA.ASSIGNMENT_ACTION_ID
               FROM FND_LOOKUP_VALUES                FLV1,
                    HR_ALL_ORGANIZATION_UNITS        AOU,
                    HR_ORGANIZATION_INFORMATION      OI,
@@ -175,9 +177,9 @@ SELECT DISTINCT
                --AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
                AND PTP.END_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
                AND PTP.END_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE 
-               AND (   PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.PAYROLL_ACTION_ID, PAA.ASSIGNMENT_ID) <> 0
-                    OR PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.PAYROLL_ACTION_ID, PAA.ASSIGNMENT_ID) <> 0
-                    OR PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.PAYROLL_ACTION_ID, PAA.ASSIGNMENT_ID) <> 0)
+--               AND (   PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID) <> 0
+--                    OR PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID) <> 0
+--                    OR PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID) <> 0)
              GROUP BY OI.ORG_INFORMATION2,
                       PTP.PERIOD_TYPE,
                       PTP.PERIOD_NUM, 
@@ -209,4 +211,5 @@ SELECT DISTINCT
              ORDER BY HOUV.NAME,
                       TO_NUMBER(PAPF.EMPLOYEE_NUMBER)) D
  WHERE 1 = 1
+   AND D.EMPLOYEE_NAME LIKE '%ELIDIA%'
  ORDER BY ROWNUM

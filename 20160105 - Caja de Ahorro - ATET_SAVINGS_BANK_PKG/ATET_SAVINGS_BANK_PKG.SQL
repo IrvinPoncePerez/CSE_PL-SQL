@@ -308,6 +308,7 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_SAVING_TRANSACTION_ID     NUMBER);
                     
     PROCEDURE   REFINANCE_PAYMENT_SCHEDULE(
-                    P_PAYMENT_SCHEDULE_ID       NUMBER);
+                    P_PAYMENT_SCHEDULE_ID       NUMBER,
+                    P_PAYMENT_DATE              DATE);
 
 END ATET_SAVINGS_BANK_PKG;
