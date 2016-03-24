@@ -1981,11 +1981,13 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    ASPS.PAYMENT_AMOUNT,
                    ASPS.PAYMENT_CAPITAL,
                    ASPS.PAYMENT_INTEREST,
-                   ASPS.PAYMENT_INTEREST_LATE
+                   ASPS.PAYMENT_INTEREST_LATE,
+                   NVL(ASPS.OWED_AMOUNT, ASPS.PAYMENT_AMOUNT)               AS EXPECTED_PAYMENT_AMOUNT
               FROM ATET_SB_PAYMENTS_SCHEDULE ASPS
              WHERE 1 = 1
                AND ASPS.LOAN_ID = var_loan_id
                AND ASPS.TIME_PERIOD_ID = P_TIME_PERIOD_ID
+               AND ASPS.STATUS_FLAG NOT IN ('PAYED', 'REFINANCED')
              ORDER BY TO_NUMBER(ASPS.TIME_PERIOD_ID);
              
         CURSOR PAYMENT_PARTIAL_DETAILS IS
@@ -1996,7 +1998,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    ASPS.PAYMENT_AMOUNT,
                    NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL)             AS PAYMENT_CAPITAL,
                    NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST)           AS PAYMENT_INTEREST,
-                   NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE) AS PAYMENT_INTEREST_LATE
+                   NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE) AS PAYMENT_INTEREST_LATE,
+                   NVL(ASPS.OWED_AMOUNT, ASPS.PAYMENT_AMOUNT)               AS EXPECTED_PAYMENT_AMOUNT
               FROM ATET_SB_PAYMENTS_SCHEDULE ASPS
              WHERE 1 = 1
                AND ASPS.LOAN_ID = var_loan_id
@@ -2012,11 +2015,13 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    ASPS.PAYMENT_AMOUNT,
                    NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL)             AS PAYMENT_CAPITAL,
                    NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST)           AS PAYMENT_INTEREST,
-                   NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE) AS  PAYMENT_INTEREST_LATE
+                   NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE) AS  PAYMENT_INTEREST_LATE,
+                   NVL(ASPS.OWED_AMOUNT, ASPS.PAYMENT_AMOUNT)               AS EXPECTED_PAYMENT_AMOUNT
               FROM ATET_SB_PAYMENTS_SCHEDULE ASPS
              WHERE 1 = 1
                AND ASPS.LOAN_ID = var_loan_id
                AND ASPS.TIME_PERIOD_ID > P_TIME_PERIOD_ID
+               AND ASPS.STATUS_FLAG NOT IN ('PAYED', 'REFINANCED')
              ORDER BY TO_NUMBER(ASPS.TIME_PERIOD_ID) DESC;
         
     BEGIN
@@ -2054,7 +2059,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             var_time_period_id := payment.TIME_PERIOD_ID;
             var_period_name := payment.PERIOD_NAME;
             var_payment_amount := payment.PAYMENT_AMOUNT;
-            var_expected_payment_amount := payment.PAYMENT_AMOUNT;
+            var_expected_payment_amount := payment.EXPECTED_PAYMENT_AMOUNT;
             var_payment_capital := payment.PAYMENT_CAPITAL;
             var_payment_interest := payment.PAYMENT_INTEREST;
             var_payment_interest_late := payment.PAYMENT_INTEREST_LATE;
@@ -2124,7 +2129,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 var_time_period_id := partial.TIME_PERIOD_ID;
                 var_period_name := partial.PERIOD_NAME;
                 var_payment_amount := partial.PAYMENT_AMOUNT;
-                var_expected_payment_amount := partial.PAYMENT_AMOUNT;
+                var_expected_payment_amount := partial.EXPECTED_PAYMENT_AMOUNT;
                 var_payment_capital := partial.PAYMENT_CAPITAL;
                 var_payment_interest := partial.PAYMENT_INTEREST;
                 var_payment_interest_late := partial.PAYMENT_INTEREST_LATE;
@@ -2209,7 +2214,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 var_time_period_id := prepaid.TIME_PERIOD_ID;
                 var_period_name := prepaid.PERIOD_NAME;
                 var_payment_amount := prepaid.PAYMENT_AMOUNT;
-                var_expected_payment_amount := prepaid.PAYMENT_AMOUNT;
+                var_expected_payment_amount := prepaid.EXPECTED_PAYMENT_AMOUNT;
                 var_payment_capital := prepaid.PAYMENT_CAPITAL;
                 var_payment_interest := prepaid.PAYMENT_INTEREST;
                 var_payment_interest_late := prepaid.PAYMENT_INTEREST_LATE;
@@ -2331,7 +2336,78 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                            ASM.LAST_UPDATED_BY = var_user_id;
             END IF;
         
-        END IF;       
+        END IF;     
+        
+        
+        SELECT COUNT(ASPS.PAYMENT_SCHEDULE_ID)
+          INTO var_validate
+          FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+         WHERE 1 = 1
+           AND ASPS.LOAN_ID = var_loan_id
+           AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED');
+            
+                    
+        IF var_validate = 0 THEN
+                
+            SELECT COUNT(ASPS.PAYMENT_SCHEDULE_ID)
+              INTO var_validate
+              FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+             WHERE 1 = 1
+               AND ASPS.LOAN_ID = var_loan_id
+               AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL');
+                           
+            IF var_validate > 0 THEN
+                    
+                var_late_interest_rate := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LATE_INT');
+                            
+                SELECT NVL(SUM(ASPS.OWED_CAPITAL), 0)       AS  PAYMENT_CAPITAL,
+                       NVL(SUM(ASPS.OWED_INTEREST), 0)      AS  PAYMENT_INTEREST,
+                       NVL(SUM(ASPS.OWED_INTEREST_LATE), 0) AS  PAYMENT_INTEREST_LATE
+                  INTO var_nd_payment_capital,
+                       var_nd_payment_interest,
+                       var_nd_payment_interest_late
+                  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+                 WHERE 1 = 1
+                   AND ASPS.LOAN_ID = var_loan_id
+                   AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL')
+                   AND ASPS.ATTRIBUTE6 IS NULL;
+                               
+                SELECT NVL(SUM(ASPS.OWED_CAPITAL), 0)        AS  PAYMENT_CAPITAL,
+                       NVL(SUM(ASPS.OWED_INTEREST), 0)       AS  PAYMENT_INTEREST,
+                       NVL(SUM(ASPS.OWED_INTEREST_LATE), 0)  AS  PAYMENT_INTEREST_LATE
+                  INTO var_wd_payment_capital,
+                       var_wd_payment_interest,
+                       var_wd_payment_interest_late
+                  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+                 WHERE 1 = 1
+                   AND ASPS.LOAN_ID = var_loan_id
+                   AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL')
+                   AND ASPS.ATTRIBUTE6 = 'DISABILITIES';
+                               
+                var_wd_payment_capital := var_wd_payment_capital;
+                var_wd_payment_interest := var_wd_payment_interest;
+                var_wd_payment_interest_late := var_wd_payment_interest_late;
+                            
+                var_nd_payment_capital := var_nd_payment_capital;
+                var_nd_payment_interest := var_nd_payment_interest;
+                var_nd_payment_interest_late := TRUNC((var_nd_payment_interest_late + ((var_nd_payment_capital + var_nd_payment_interest) * (var_late_interest_rate / 100))), 2);
+                            
+                var_p_payment_capital := var_wd_payment_capital + var_nd_payment_capital;
+                var_p_payment_interest := var_wd_payment_interest + var_nd_payment_interest;
+                var_p_payment_interest_late := TRUNC((var_wd_payment_interest_late + var_nd_payment_interest_late), 2);
+                            
+                EXTEND_PAYMENTS_SCHEDULE(P_LOAN_ID                  => var_loan_id,
+                                         P_PERSON_ID                => P_PERSON_ID,
+                                         P_MEMBER_ID                => var_member_id,
+                                         P_TIME_PERIOD_ID           => P_TIME_PERIOD_ID,
+                                         P_ACTUAL_DATE_EARNED       => P_EARNED_DATE,
+                                         P_PAYMENT_CAPITAL          => var_p_payment_capital,
+                                         P_PAYMENT_INTEREST         => var_p_payment_interest,
+                                         P_PAYMENT_INTEREST_LATE    => var_p_payment_interest_late);
+                                                     
+            END IF;
+                    
+        END IF;  
     
     
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MOVIMIENTO PROCESADO: *PRESTAMO*' || P_PAYROLL_RESULT_ID  || ','
@@ -2544,130 +2620,59 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         IF P_PAYMENT_AMOUNT > 0 AND TRUNC(P_PAYMENT_AMOUNT, 0) >= TRUNC(P_EXPECTED_PAYMENT_AMOUNT, 0)  THEN
                     
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
-               SET ASPS.STATUS_FLAG = 'PAYED',
-                   ASPS.PAYED_AMOUNT = P_PAYMENT_AMOUNT,
-                   ASPS.PAYED_CAPITAL = P_PAYMENT_CAPITAL,
-                   ASPS.PAYED_INTEREST = P_PAYMENT_INTEREST,
-                   ASPS.PAYED_INTEREST_LATE = P_PAYMENT_INTEREST_LATE,
-                   ASPS.OWED_AMOUNT = (ASPS.PAYMENT_CAPITAL - P_PAYMENT_CAPITAL) +
-                                      (ASPS.PAYMENT_INTEREST - P_PAYMENT_INTEREST) +
-                                      (ASPS.PAYMENT_INTEREST_LATE - P_PAYMENT_INTEREST_LATE),
-                   ASPS.OWED_CAPITAL = ASPS.PAYMENT_CAPITAL - P_PAYMENT_CAPITAL,
-                   ASPS.OWED_INTEREST = ASPS.PAYMENT_INTEREST - P_PAYMENT_INTEREST,
-                   ASPS.OWED_INTEREST_LATE = ASPS.PAYMENT_INTEREST_LATE - P_PAYMENT_INTEREST_LATE,
-                   ASPS.LAST_UPDATE_DATE = SYSDATE,
-                   ASPS.LAST_UPDATED_BY = var_user_id
+               SET ASPS.STATUS_FLAG         = 'PAYED',
+                   ASPS.PAYED_AMOUNT        = NVL(ASPS.PAYED_AMOUNT, 0) + P_PAYMENT_AMOUNT,
+                   ASPS.PAYED_CAPITAL       = NVL(ASPS.PAYED_CAPITAL, 0) + P_PAYMENT_CAPITAL,
+                   ASPS.PAYED_INTEREST      = NVL(ASPS.PAYED_INTEREST, 0) + P_PAYMENT_INTEREST,
+                   ASPS.PAYED_INTEREST_LATE = NVL(ASPS.PAYED_INTEREST_LATE, 0) + P_PAYMENT_INTEREST_LATE,
+                   ASPS.OWED_AMOUNT         = (NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL) - P_PAYMENT_CAPITAL) +
+                                              (NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST) - P_PAYMENT_INTEREST) +
+                                              (NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE) - P_PAYMENT_INTEREST_LATE),
+                   ASPS.OWED_CAPITAL        = NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL) - P_PAYMENT_CAPITAL,
+                   ASPS.OWED_INTEREST       = NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST) - P_PAYMENT_INTEREST,
+                   ASPS.OWED_INTEREST_LATE  = NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE) - P_PAYMENT_INTEREST_LATE,
+                   ASPS.LAST_UPDATE_DATE    = SYSDATE,
+                   ASPS.LAST_UPDATED_BY     = var_user_id
              WHERE ASPS.PAYMENT_SCHEDULE_ID = P_PAYMENT_SCHEDULE_ID
                AND ASPS.LOAN_ID = P_LOAN_ID;
                     
         ELSIF P_PAYMENT_AMOUNT > 0 AND TRUNC(P_PAYMENT_AMOUNT, 0) < TRUNC(P_EXPECTED_PAYMENT_AMOUNT, 0) THEN
                     
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
-               SET ASPS.STATUS_FLAG = 'PARTIAL',
-                   ASPS.PAYED_AMOUNT = P_PAYMENT_AMOUNT,
-                   ASPS.PAYED_CAPITAL = P_PAYMENT_CAPITAL,
-                   ASPS.PAYED_INTEREST = P_PAYMENT_INTEREST,
-                   ASPS.PAYED_INTEREST_LATE = P_PAYMENT_INTEREST_LATE,
-                   ASPS.OWED_AMOUNT = (ASPS.PAYMENT_CAPITAL - P_PAYMENT_CAPITAL) +
-                                      (ASPS.PAYMENT_INTEREST - P_PAYMENT_INTEREST) +
-                                      (ASPS.PAYMENT_INTEREST_LATE - P_PAYMENT_INTEREST_LATE),
-                   ASPS.OWED_CAPITAL = ASPS.PAYMENT_CAPITAL - P_PAYMENT_CAPITAL,
-                   ASPS.OWED_INTEREST = ASPS.PAYMENT_INTEREST - P_PAYMENT_INTEREST,
-                   ASPS.OWED_INTEREST_LATE = ASPS.PAYMENT_INTEREST_LATE - P_PAYMENT_INTEREST_LATE,
-                   ASPS.ATTRIBUTE6 = HAS_DISABILITIES(P_PERSON_ID, ASPS.TIME_PERIOD_ID),
-                   ASPS.LAST_UPDATE_DATE = SYSDATE,
-                   ASPS.LAST_UPDATED_BY = var_user_id
+               SET ASPS.STATUS_FLAG         = 'PARTIAL',
+                   ASPS.PAYED_AMOUNT        = NVL(ASPS.PAYED_AMOUNT, 0) + P_PAYMENT_AMOUNT,
+                   ASPS.PAYED_CAPITAL       = NVL(ASPS.PAYED_CAPITAL, 0) + P_PAYMENT_CAPITAL,
+                   ASPS.PAYED_INTEREST      = NVL(ASPS.PAYED_INTEREST, 0) + P_PAYMENT_INTEREST,
+                   ASPS.PAYED_INTEREST_LATE = NVL(ASPS.PAYED_INTEREST_LATE, 0) + P_PAYMENT_INTEREST_LATE,
+                   ASPS.OWED_AMOUNT         = (NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL) - P_PAYMENT_CAPITAL) +
+                                              (NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST) - P_PAYMENT_INTEREST) +
+                                              (NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE) - P_PAYMENT_INTEREST_LATE),
+                   ASPS.OWED_CAPITAL        = NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL) - P_PAYMENT_CAPITAL,
+                   ASPS.OWED_INTEREST       = NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST) - P_PAYMENT_INTEREST,
+                   ASPS.OWED_INTEREST_LATE  = NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE) - P_PAYMENT_INTEREST_LATE,
+                   ASPS.ATTRIBUTE6          = HAS_DISABILITIES(P_PERSON_ID, ASPS.TIME_PERIOD_ID),
+                   ASPS.LAST_UPDATE_DATE    = SYSDATE,
+                   ASPS.LAST_UPDATED_BY     = var_user_id
              WHERE ASPS.PAYMENT_SCHEDULE_ID = P_PAYMENT_SCHEDULE_ID
                AND ASPS.LOAN_ID = P_LOAN_ID;
                     
         ELSIF P_PAYMENT_AMOUNT = 0 THEN
                     
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
-               SET ASPS.STATUS_FLAG = 'SKIP',
-                   ASPS.PAYED_AMOUNT = P_PAYMENT_AMOUNT,
-                   ASPS.PAYED_CAPITAL = P_PAYMENT_CAPITAL,
-                   ASPS.PAYED_INTEREST = P_PAYMENT_INTEREST,
-                   ASPS.PAYED_INTEREST_LATE = P_PAYMENT_INTEREST_LATE,
-                   ASPS.OWED_AMOUNT = (ASPS.PAYMENT_CAPITAL + ASPS.PAYMENT_INTEREST + ASPS.PAYMENT_INTEREST_LATE),  
-                   ASPS.OWED_CAPITAL = ASPS.PAYMENT_CAPITAL,
-                   ASPS.OWED_INTEREST = ASPS.PAYMENT_INTEREST,
-                   ASPS.OWED_INTEREST_LATE = ASPS.PAYMENT_INTEREST_LATE,
-                   ASPS.ATTRIBUTE6 = HAS_DISABILITIES(P_PERSON_ID, ASPS.TIME_PERIOD_ID),
-                   ASPS.LAST_UPDATE_DATE = SYSDATE,
-                   ASPS.LAST_UPDATED_BY = var_user_id
+               SET ASPS.STATUS_FLAG         = 'SKIP',
+                   ASPS.PAYED_AMOUNT        = NVL(ASPS.PAYED_AMOUNT, 0) + P_PAYMENT_AMOUNT,
+                   ASPS.PAYED_CAPITAL       = NVL(ASPS.PAYED_CAPITAL, 0) + P_PAYMENT_CAPITAL,
+                   ASPS.PAYED_INTEREST      = NVL(ASPS.PAYED_INTEREST, 0) + P_PAYMENT_INTEREST,
+                   ASPS.PAYED_INTEREST_LATE = NVL(ASPS.PAYED_INTEREST_LATE, 0) + P_PAYMENT_INTEREST_LATE,
+                   ASPS.OWED_AMOUNT         = (ASPS.PAYMENT_CAPITAL + ASPS.PAYMENT_INTEREST + ASPS.PAYMENT_INTEREST_LATE),  
+                   ASPS.OWED_CAPITAL        = ASPS.PAYMENT_CAPITAL,
+                   ASPS.OWED_INTEREST       = ASPS.PAYMENT_INTEREST,
+                   ASPS.OWED_INTEREST_LATE  = ASPS.PAYMENT_INTEREST_LATE,
+                   ASPS.ATTRIBUTE6          = HAS_DISABILITIES(P_PERSON_ID, ASPS.TIME_PERIOD_ID),
+                   ASPS.LAST_UPDATE_DATE    = SYSDATE,
+                   ASPS.LAST_UPDATED_BY     = var_user_id
              WHERE ASPS.PAYMENT_SCHEDULE_ID = P_PAYMENT_SCHEDULE_ID
                AND ASPS.LOAN_ID = P_LOAN_ID;                   
-                    
-        END IF;
-                    
-            
-        SELECT COUNT(ASPS.PAYMENT_SCHEDULE_ID)
-          INTO var_validate
-          FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
-         WHERE 1 = 1
-           AND ASPS.LOAN_ID = P_LOAN_ID
-           AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED');
-            
-                    
-        IF var_validate = 0 THEN
-                
-            SELECT COUNT(ASPS.PAYMENT_SCHEDULE_ID)
-              INTO var_validate
-              FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
-             WHERE 1 = 1
-               AND ASPS.LOAN_ID = P_LOAN_ID
-               AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL');
-                           
-            IF var_validate > 0 THEN
-                    
-                var_late_interest_rate := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LATE_INT');
-                            
-                SELECT NVL(SUM(ASPS.OWED_CAPITAL), 0)       AS  PAYMENT_CAPITAL,
-                       NVL(SUM(ASPS.OWED_INTEREST), 0)      AS  PAYMENT_INTEREST,
-                       NVL(SUM(ASPS.OWED_INTEREST_LATE), 0) AS  PAYMENT_INTEREST_LATE
-                  INTO var_nd_payment_capital,
-                       var_nd_payment_interest,
-                       var_nd_payment_interest_late
-                  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
-                 WHERE 1 = 1
-                   AND ASPS.LOAN_ID = P_LOAN_ID
-                   AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL')
-                   AND ASPS.ATTRIBUTE6 IS NULL;
-                               
-                SELECT NVL(SUM(ASPS.OWED_CAPITAL), 0)        AS  PAYMENT_CAPITAL,
-                       NVL(SUM(ASPS.OWED_INTEREST), 0)       AS  PAYMENT_INTEREST,
-                       NVL(SUM(ASPS.OWED_INTEREST_LATE), 0)  AS  PAYMENT_INTEREST_LATE
-                  INTO var_wd_payment_capital,
-                       var_wd_payment_interest,
-                       var_wd_payment_interest_late
-                  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
-                 WHERE 1 = 1
-                   AND ASPS.LOAN_ID = P_LOAN_ID
-                   AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL')
-                   AND ASPS.ATTRIBUTE6 = 'DISABILITIES';
-                               
-                var_wd_payment_capital := var_wd_payment_capital;
-                var_wd_payment_interest := var_wd_payment_interest;
-                var_wd_payment_interest_late := var_wd_payment_interest_late;
-                            
-                var_nd_payment_capital := var_nd_payment_capital;
-                var_nd_payment_interest := var_nd_payment_interest;
-                var_nd_payment_interest_late := TRUNC((var_nd_payment_interest_late + ((var_nd_payment_capital + var_nd_payment_interest) * (var_late_interest_rate / 100))), 2);
-                            
-                var_p_payment_capital := var_wd_payment_capital + var_nd_payment_capital;
-                var_p_payment_interest := var_wd_payment_interest + var_nd_payment_interest;
-                var_p_payment_interest_late := TRUNC((var_wd_payment_interest_late + var_nd_payment_interest_late), 2);
-                            
-                EXTEND_PAYMENTS_SCHEDULE(P_LOAN_ID                  => P_LOAN_ID,
-                                         P_PERSON_ID                => P_PERSON_ID,
-                                         P_MEMBER_ID                => P_MEMBER_ID,
-                                         P_TIME_PERIOD_ID           => P_TIME_PERIOD_ID,
-                                         P_ACTUAL_DATE_EARNED       => P_EARNED_DATE,
-                                         P_PAYMENT_CAPITAL          => var_p_payment_capital,
-                                         P_PAYMENT_INTEREST         => var_p_payment_interest,
-                                         P_PAYMENT_INTEREST_LATE    => var_p_payment_interest_late);
-                                                     
-            END IF;
                     
         END IF;
         
