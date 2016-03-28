@@ -65,6 +65,14 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_ERRBUF         OUT NOCOPY VARCHAR2,
                     P_RETCODE        OUT NOCOPY VARCHAR2,
                     P_EXPORT_REQUEST_ID         NUMBER);
+                    
+    PROCEDURE   IMPORT_PAYROLL_RESULTS(
+                    P_ERRBUF         OUT NOCOPY VARCHAR2,
+                    P_RETCODE        OUT NOCOPY VARCHAR2,
+                    P_PERIOD_TYPE               VARCHAR2,
+                    P_YEAR                      NUMBER,
+                    P_MONTH                     NUMBER,
+                    P_PERIOD_NAME               VARCHAR2);                    
                                        
     PROCEDURE   CREATE_ACCOUNT(
                     P_PERSON_ID                 NUMBER,
@@ -290,13 +298,21 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_ERRBUF         OUT NOCOPY VARCHAR2,
                     P_RETCODE        OUT NOCOPY VARCHAR2,
                     P_MEMBER_ID                 NUMBER,
-                    P_LOAN_ID                   NUMBER);
+                    P_LOAN_ID                   NUMBER,
+                    P_BONUS_PERCENTAGE          NUMBER);
+                    
+    PROCEDURE   PROCESS_PARCIAL_PREPAYMENT(
+                    P_ERRBUF         OUT NOCOPY VARCHAR2,
+                    P_RETCODE        OUT NOCOPY VARCHAR2,
+                    P_MEMBER_ID                 NUMBER,
+                    P_LOAN_ID                   NUMBER,
+                    P_PAYMENT_AMOUNT            NUMBER,
+                    P_BONUS_PERCENTAGE          NUMBER);
     
     PROCEDURE   PRINT_PREPAID(
                     P_LOAN_ID                   NUMBER,
                     P_FOLIO                     NUMBER);
                               
-
     PROCEDURE   VOLUNTARY_CONTRIBUTION(
                     P_ERRBUF        OUT NOCOPY VARCHAR2,
                     P_RETCODE       OUT NOCOPY VARCHAR2,
@@ -309,6 +325,11 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     
     PROCEDURE   REFINANCE_PAYMENT_SCHEDULE(
                     P_PAYMENT_SCHEDULE_ID       NUMBER,
-                    P_PAYMENT_DATE              DATE);
+                    P_PAYMENT_DATE              DATE);    
+                    
+--    FUNCTION    GET_BONUS_PERCENTAGE(
+--                    P_LOAN_ID                   NUMBER)
+--      RETURN    ATET_BONUS_PERCENTAGE;          
+    
 
 END ATET_SAVINGS_BANK_PKG;
