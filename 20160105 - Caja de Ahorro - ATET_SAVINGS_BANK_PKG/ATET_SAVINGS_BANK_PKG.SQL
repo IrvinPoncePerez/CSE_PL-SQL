@@ -64,15 +64,7 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     PROCEDURE   IMPORT_PAYROLL_RESULTS(
                     P_ERRBUF         OUT NOCOPY VARCHAR2,
                     P_RETCODE        OUT NOCOPY VARCHAR2,
-                    P_EXPORT_REQUEST_ID         NUMBER);
-                    
-    PROCEDURE   IMPORT_PAYROLL_RESULTS(
-                    P_ERRBUF         OUT NOCOPY VARCHAR2,
-                    P_RETCODE        OUT NOCOPY VARCHAR2,
-                    P_PERIOD_TYPE               VARCHAR2,
-                    P_YEAR                      NUMBER,
-                    P_MONTH                     NUMBER,
-                    P_PERIOD_NAME               VARCHAR2);                    
+                    P_EXPORT_REQUEST_ID         NUMBER);                
                                        
     PROCEDURE   CREATE_ACCOUNT(
                     P_PERSON_ID                 NUMBER,
@@ -306,8 +298,7 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_RETCODE        OUT NOCOPY VARCHAR2,
                     P_MEMBER_ID                 NUMBER,
                     P_LOAN_ID                   NUMBER,
-                    P_PAYMENT_AMOUNT            NUMBER,
-                    P_BONUS_PERCENTAGE          NUMBER);
+                    P_PAYMENT_AMOUNT            NUMBER);
     
     PROCEDURE   PRINT_PREPAID(
                     P_LOAN_ID                   NUMBER,

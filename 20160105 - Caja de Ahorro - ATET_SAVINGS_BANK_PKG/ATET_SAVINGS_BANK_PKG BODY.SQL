@@ -1141,18 +1141,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END IMPORT_PAYROLL_RESULTS;
     
     
-    PROCEDURE   IMPORT_PAYROLL_RESULTS(
-                    P_ERRBUF         OUT NOCOPY VARCHAR2,
-                    P_RETCODE        OUT NOCOPY VARCHAR2,
-                    P_PERIOD_TYPE               VARCHAR2,
-                    P_YEAR                      NUMBER,
-                    P_MONTH                     NUMBER,
-                    P_PERIOD_NAME               VARCHAR2)
-    IS
-    BEGIN
-        NULL;
-    END IMPORT_PAYROLL_RESULTS;
-    
     
     PROCEDURE   CREATE_ACCOUNT(
                     P_PERSON_ID              NUMBER,
@@ -5413,6 +5401,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         var_loan_transaction_id         NUMBER;
         
+        var_bonus_interest              NUMBER;
+        
     BEGIN
     
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'PROCESS_PREPAYMENT(P_MEMBER_ID => ' || P_MEMBER_ID || 
@@ -5610,18 +5600,53 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         P_DESCRIPTION => var_description,
                         P_SOURCE_ID => var_loan_transaction_id,
                         P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');
+                        
+                    /*********  ABONO : INTERESES COBRADOS      *********/    
+                    IF P_BONUS_PERCENTAGE = 0 THEN
                     
-                    /*********  ABONO : INTERESES COBRADOS      *********/
-                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
-                        P_HEADER_ID => var_header_id,
-                        P_ROW_NUMBER => 4,
-                        P_CODE_COMBINATION_ID => var_int_rec_account_id,
-                        P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
-                        P_ACCOUNTED_DR => 0,
-                        P_ACCOUNTED_CR => var_asps_payment_interest,
-                        P_DESCRIPTION => var_description,
-                        P_SOURCE_ID => var_loan_transaction_id,
-                        P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');  
+                    
+                        ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
+                            P_HEADER_ID => var_header_id,
+                            P_ROW_NUMBER => 4,
+                            P_CODE_COMBINATION_ID => var_int_rec_account_id,
+                            P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
+                            P_ACCOUNTED_DR => 0,
+                            P_ACCOUNTED_CR => var_asps_payment_interest,
+                            P_DESCRIPTION => var_description,
+                            P_SOURCE_ID => var_loan_transaction_id,
+                            P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');  
+                        
+                    ELSE
+                    
+                        var_bonus_interest := (var_asps_payment_interest * P_BONUS_PERCENTAGE) / 100; 
+                        
+                        ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
+                            P_HEADER_ID => var_header_id,
+                            P_ROW_NUMBER => 4,
+                            P_CODE_COMBINATION_ID => var_int_rec_account_id,
+                            P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
+                            P_ACCOUNTED_DR => 0,
+                            P_ACCOUNTED_CR => var_asps_payment_interest - var_bonus_interest,
+                            P_DESCRIPTION => var_description,
+                            P_SOURCE_ID => var_loan_transaction_id,
+                            P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');
+                            
+                        ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
+                            P_HEADER_ID => var_header_id,
+                            P_ROW_NUMBER => 4,
+                            P_CODE_COMBINATION_ID => var_int_rec_account_id,
+                            P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
+                            P_ACCOUNTED_DR => 0,
+                            P_ACCOUNTED_CR => var_bonus_interest,
+                            P_DESCRIPTION => 'BONIFICACIÓN DE INTERESES : ' || var_employee_number      || 
+                                                                        '|' || var_employee_full_name   ||
+                                                                        '|' || var_loan_number          ||
+                                                                        '|' || TRIM(TO_CHAR(var_loan_balance,'$999,999.99')),
+                            P_SOURCE_ID => var_loan_transaction_id,
+                            P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');                                                    
+                        
+                    END IF;       
+                                            
                 
                 EXCEPTION WHEN OTHERS THEN
                     RAISE CREATION_GL_EXCEPTION;
@@ -5681,8 +5706,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_RETCODE        OUT NOCOPY VARCHAR2,
                     P_MEMBER_ID                 NUMBER,
                     P_LOAN_ID                   NUMBER,
-                    P_PAYMENT_AMOUNT            NUMBER,
-                    P_BONUS_PERCENTAGE          NUMBER)
+                    P_PAYMENT_AMOUNT            NUMBER)
     IS
     BEGIN
         NULL;
