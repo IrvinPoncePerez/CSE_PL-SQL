@@ -298,7 +298,8 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_RETCODE        OUT NOCOPY VARCHAR2,
                     P_MEMBER_ID                 NUMBER,
                     P_LOAN_ID                   NUMBER,
-                    P_PAYMENT_AMOUNT            NUMBER);
+                    P_PAYMENT_AMOUNT            NUMBER,
+                    P_TIME_PERIOD_ID            NUMBER);
     
     PROCEDURE   PRINT_PREPAID(
                     P_LOAN_ID                   NUMBER,
