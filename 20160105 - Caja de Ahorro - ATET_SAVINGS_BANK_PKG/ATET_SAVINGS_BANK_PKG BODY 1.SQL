@@ -2110,11 +2110,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 P_PERSON_ID                 => P_PERSON_ID,
                 P_RUN_RESULT_ID             => P_RUN_RESULT_ID,
                 P_EARNED_DATE               => P_EARNED_DATE,
-                P_TIME_PERIOD_ID            => var_time_period_id,
-                P_PERIOD_NAME               => var_period_name,
+                P_TIME_PERIOD_ID            => P_TIME_PERIOD_ID,
+                P_PERIOD_NAME               => P_PERIOD_NAME,
                 P_ENTRY_VALUE               => var_entry_value,
                 P_EXPECTED_PAYMENT_AMOUNT   => var_expected_payment_amount,
-                P_PAYMENT_SCHEDULE_ID       => var_payment_schedule_id);
+                P_PAYMENT_SCHEDULE_ID       => var_payment_schedule_id,
+                P_DESCRIPTION               => '');
 
             
         END LOOP;
@@ -2169,7 +2170,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_PAYMENT_CAPITAL           => var_payment_capital,
                     P_PAYMENT_INTEREST          => var_payment_interest,
                     P_PAYMENT_INTEREST_LATE     => var_payment_interest_late,
-                    P_ELEMENT_NAME              => 'PAGO ANTICIPADO',
+                    P_ELEMENT_NAME              => P_ELEMENT_NAME,
                     P_ENTRY_NAME                => P_ENTRY_NAME,
                     P_ENTRY_UNITS               => P_ENTRY_UNITS,
                     P_MEMBER_ACCOUNT_ID         => var_member_account_id,
@@ -2179,11 +2180,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_PERSON_ID                 => P_PERSON_ID,
                     P_RUN_RESULT_ID             => P_RUN_RESULT_ID,
                     P_EARNED_DATE               => P_EARNED_DATE,
-                    P_TIME_PERIOD_ID            => var_time_period_id,
-                    P_PERIOD_NAME               => var_period_name,
+                    P_TIME_PERIOD_ID            => P_TIME_PERIOD_ID,
+                    P_PERIOD_NAME               => P_PERIOD_NAME,
                     P_ENTRY_VALUE               => var_entry_value,
                     P_EXPECTED_PAYMENT_AMOUNT   => var_expected_payment_amount,
-                    P_PAYMENT_SCHEDULE_ID       => var_payment_schedule_id);
+                    P_PAYMENT_SCHEDULE_ID       => var_payment_schedule_id,
+                    P_DESCRIPTION               => 'PAGO VENCIDO: TIME_PERIOD_ID=' || TO_CHAR(P_TIME_PERIOD_ID) || ',PERIOD_NAME=' || TO_CHAR(P_PERIOD_NAME));
                     
                 SELECT COUNT(ASPS.PAYMENT_SCHEDULE_ID)
                   INTO var_validate_partial
@@ -2191,6 +2193,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                  WHERE 1 = 1
                    AND ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
                    AND ASPS.STATUS_FLAG = 'PARTIAL';
+                   
+                UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
+                   SET ASPS.ATTRIBUTE6 = 'PAGO VENCIDO: TIME_PERIOD_ID=' || TO_CHAR(P_TIME_PERIOD_ID) || ',PERIOD_NAME=' || TO_CHAR(P_PERIOD_NAME) 
+                 WHERE 1 = 1
+                   AND ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id;
                    
                 IF var_validate_partial > 0 THEN
                     REFINANCE_PAYMENT_SCHEDULE(var_payment_schedule_id, P_EARNED_DATE);
@@ -2254,7 +2261,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_PAYMENT_CAPITAL           => var_payment_capital,
                     P_PAYMENT_INTEREST          => var_payment_interest,
                     P_PAYMENT_INTEREST_LATE     => var_payment_interest_late,
-                    P_ELEMENT_NAME              => 'PAGO ANTICIPADO',
+                    P_ELEMENT_NAME              => P_ELEMENT_NAME,
                     P_ENTRY_NAME                => P_ENTRY_NAME,
                     P_ENTRY_UNITS               => P_ENTRY_UNITS,
                     P_MEMBER_ACCOUNT_ID         => var_member_account_id,
@@ -2264,11 +2271,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_PERSON_ID                 => P_PERSON_ID,
                     P_RUN_RESULT_ID             => P_RUN_RESULT_ID,
                     P_EARNED_DATE               => P_EARNED_DATE,
-                    P_TIME_PERIOD_ID            => var_time_period_id,
-                    P_PERIOD_NAME               => var_period_name,
+                    P_TIME_PERIOD_ID            => P_TIME_PERIOD_ID,
+                    P_PERIOD_NAME               => P_PERIOD_NAME,
                     P_ENTRY_VALUE               => var_entry_value,
                     P_EXPECTED_PAYMENT_AMOUNT   => var_expected_payment_amount,
-                    P_PAYMENT_SCHEDULE_ID       => var_payment_schedule_id);
+                    P_PAYMENT_SCHEDULE_ID       => var_payment_schedule_id,
+                    P_DESCRIPTION               => 'PAGO ANTICIPADO: TIME_PERIOD_ID=' || TO_CHAR(P_TIME_PERIOD_ID) || ',PERIOD_NAME=' || TO_CHAR(P_PERIOD_NAME));
                     
                 SELECT COUNT(ASPS.PAYMENT_SCHEDULE_ID)
                   INTO var_validate_partial
@@ -2276,6 +2284,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                  WHERE 1 = 1
                    AND ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id
                    AND ASPS.STATUS_FLAG = 'PARTIAL';
+                   
+                UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
+                   SET ASPS.ATTRIBUTE6 = 'PAGO ANTICIPADO: TIME_PERIOD_ID=' || TO_CHAR(P_TIME_PERIOD_ID) || ',PERIOD_NAME=' || TO_CHAR(P_PERIOD_NAME)
+                 WHERE 1 = 1
+                   AND ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id;
                    
                 IF var_validate_partial > 0 THEN
                     REFINANCE_PAYMENT_SCHEDULE(var_payment_schedule_id, P_EARNED_DATE);
@@ -2491,7 +2504,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_PERIOD_NAME               VARCHAR2,
                     P_ENTRY_VALUE               NUMBER,
                     P_EXPECTED_PAYMENT_AMOUNT   NUMBER,
-                    P_PAYMENT_SCHEDULE_ID       NUMBER)
+                    P_PAYMENT_SCHEDULE_ID       NUMBER,
+                    P_DESCRIPTION               VARCHAR2)
     IS
     
         var_validate                    NUMBER;
@@ -2559,6 +2573,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                 PAYMENT_INTEREST_LATE,
                                                 REQUEST_ID,
                                                 ACCOUNTED_FLAG,
+                                                ATTRIBUTE6,
                                                 CREATION_DATE,
                                                 CREATED_BY,
                                                 LAST_UPDATE_DATE,
@@ -2585,6 +2600,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                  P_PAYMENT_INTEREST_LATE,
                                                  var_import_request_id,
                                                  'UNACCOUNTED',
+                                                 P_DESCRIPTION,
                                                  SYSDATE,
                                                  var_user_id,
                                                  SYSDATE,
@@ -2824,6 +2840,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                TRANSACTION_CODE,
                                                DEBIT_AMOUNT,
                                                CREDIT_AMOUNT,
+                                               ACCOUNTED_FlAG,
                                                CREATION_DATE,
                                                CREATED_BY,
                                                LAST_UPDATE_DATE,
@@ -2839,6 +2856,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                'OPENING',
                                                P_LOAN_AMOUNT,
                                                0,
+                                               'ACCOUNTED',
                                                SYSDATE,
                                                var_user_id,
                                                SYSDATE,
@@ -4207,6 +4225,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                 TRANSACTION_CODE,
                                                 DEBIT_AMOUNT,
                                                 CREDIT_AMOUNT,
+                                                ACCOUNTED_FLAG,
                                                 CREATION_DATE,
                                                 CREATED_BY,
                                                 LAST_UPDATE_DATE,
@@ -4222,6 +4241,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                  'SETTLEMENT_LOAN',
                                                  0,
                                                  var_loan_balance,
+                                                 'ACCOUNTED',
                                                  SYSDATE,
                                                  var_user_id,
                                                  SYSDATE,
@@ -4421,6 +4441,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                 DEBIT_AMOUNT,
                                                 CREDIT_AMOUNT,
                                                 ATTRIBUTE1,
+                                                ACCOUNTED_FLAG,
                                                 CREATION_DATE,
                                                 CREATED_BY,
                                                 LAST_UPDATE_DATE,
@@ -4437,6 +4458,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                  0,
                                                  var_loan_balance,
                                                  P_PREPAID_SEQ,
+                                                 'ACCOUNTED',
                                                  SYSDATE,
                                                  var_user_id,
                                                  SYSDATE,
@@ -4876,6 +4898,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                           CREDIT_AMOUNT,
                                                           ATTRIBUTE1,
                                                           ATTRIBUTE6,
+                                                          ACCOUNTED_FLAG,
                                                           CREATION_DATE,
                                                           CREATED_BY,
                                                           LAST_UPDATE_DATE,
@@ -4893,6 +4916,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                           var_credit_amount,
                                                           var_saving_retirement_seq,
                                                           P_DESCRIPTION,
+                                                          'ACCOUNTED',
                                                           SYSDATE,
                                                           var_user_id,
                                                           SYSDATE,
@@ -5802,6 +5826,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                               P_DEBIT_AMOUNT => 0,
                                               P_CREDIT_AMOUNT => P_PAYMENT_AMOUNT,
                                               P_PAYMENT_SCHEDULE_ID => var_payment_schedule_id);
+                                              
+        UPDATE ATET_SB_LOANS_TRANSACTIONS ASLT
+           SET ASLT.ACCOUNTED_FLAG = 'ACCOUNTED'
+         WHERE 1 = 1 
+           AND ASLT.MEMBER_ID = P_MEMBER_ID
+           AND ASLT.PERSON_ID = var_person_id
+           AND ASLT.TIME_PERIOD_ID = var_time_period_id
+           AND ASLT.PERIOD_NAME = var_period_name;
                                              
         IF var_result = 'Y' THEN
         
@@ -6159,6 +6191,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                       DEBIT_AMOUNT,
                                                       CREDIT_AMOUNT,
                                                       ATTRIBUTE1,
+                                                      ACCOUNTED_FLAG,
                                                       CREATION_DATE,
                                                       CREATED_BY,
                                                       LAST_UPDATE_DATE,
@@ -6175,6 +6208,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                       var_debit_amount,
                                                       var_credit_amount,
                                                       var_voluntary_contribution_seq,
+                                                      'ACCOUNTED',
                                                       SYSDATE,
                                                       var_user_id,
                                                       SYSDATE,
