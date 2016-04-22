@@ -539,10 +539,18 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
      
         detail DETAILS;
         
-        var_request_id      NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
-        var_log             VARCHAR2(1000);
-        var_user_id         NUMBER := FND_GLOBAL.USER_ID;
-        var_validate        NUMBER;
+        var_request_id              NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
+        var_log                     VARCHAR2(1000);
+        var_user_id                 NUMBER := FND_GLOBAL.USER_ID;
+        var_validate                NUMBER;
+        
+        var_import_request_id       NUMBER;
+        var_waiting                 BOOLEAN;
+        var_phase                   VARCHAR2 (80 BYTE);
+        var_status                  VARCHAR2 (80 BYTE);
+        var_dev_phase               VARCHAR2 (80 BYTE);
+        var_dev_status              VARCHAR2 (80 BYTE);
+        var_message                 VARCHAR2 (4000 BYTE);
     
     BEGIN
     
@@ -643,12 +651,38 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             END LOOP;
             
             CLOSE DETAIL_LIST;
+            
+--            var_import_request_id :=
+--            FND_REQUEST.SUBMIT_REQUEST (
+--               APPLICATION => 'PER',
+--               PROGRAM => 'ATET_IMPORT_PAYROLL_RESULTS',
+--               DESCRIPTION => '',
+--               START_TIME => '',
+--               SUB_REQUEST => FALSE,
+--               ARGUMENT1 => TO_CHAR(var_request_id)
+--                                       );
+--            
+--            STANDARD.COMMIT;
+--                     
+--            var_waiting :=
+--                FND_CONCURRENT.WAIT_FOR_REQUEST (
+--                    REQUEST_ID => var_import_request_id,
+--                    INTERVAL => 1,
+--                    MAX_WAIT => 0,
+--                    PHASE => var_phase,
+--                    STATUS => var_status,
+--                    DEV_PHASE => var_dev_phase,
+--                    DEV_STATUS => var_dev_status,
+--                    MESSAGE => var_message
+--                                            );
+            
         ELSE
         
             P_ERRBUF := 'EL PROCESO DE EXPORTACIÓN PARA EL PERIODO ' || P_PERIOD_NAME || ' YA FUE EJECUTADO ANTERIORMENTE.';
             P_RETCODE := 1;
         
         END IF;
+        
     
     EXCEPTION WHEN OTHERS THEN
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en EXPORT_PAYROLL_RESULTS ' || SQLCODE || ' -ERROR- ' || SQLERRM);
@@ -1756,6 +1790,24 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_CODE_COMBINATION_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_CODE_COMBINATION_ID;
+    
+    
+    FUNCTION    GET_CODE_COMBINATION(
+                    P_CODE_COMBINATION_ID       NUMBER
+                ) RETURN    VARCHAR2
+    IS
+        var_result  VARCHAR2(100);
+    BEGIN
+    
+        SELECT ASAM.CONCATENED_SEGMENT_1
+          INTO var_result
+          FROM ATET_SB_ACCOUNT_MAPPING  ASAM
+         WHERE 1 = 1
+           AND ASAM.ACCOUNT_MAPPING_ID = P_CODE_COMBINATION_ID;
+    
+        RETURN var_result;
+        
+    END GET_CODE_COMBINATION;
     
     
     FUNCTION    INSERT_SAVING_TRANSACTION(
@@ -3229,7 +3281,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         RETURN var_result;
         
     EXCEPTION WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_LOAN_ID(P_MEMBER_ID, P_LOAN_NUMBER) ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_LOAN_ID(P_MEMBER_ID => '||P_MEMBER_ID||' , P_LOAN_NUMBER => '||P_LOAN_NUMBER||') ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_LOAN_ID;
     
     
@@ -3241,18 +3293,36 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_result  NUMBER;
     BEGIN
     
-        SELECT ASL.LOAN_ID
-          INTO var_result
-          FROM ATET_SB_MEMBERS              ASM,
-               ATET_SB_LOANS                ASL,
-               ATET_SB_PAYMENTS_SCHEDULE    ASPS
-         WHERE ASM.PERSON_ID = P_PERSON_ID
-           AND ASM.SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
-           AND ASM.MEMBER_ID = ASL.MEMBER_ID
-           AND ASL.LOAN_STATUS_FLAG = 'ACTIVE'
-           AND ASL.LOAN_ID = ASPS.LOAN_ID
-           AND ASPS.PAYMENT_NUMBER = 1
-           AND TRUNC(ASPS.PAYMENT_AMOUNT, 0) = TRUNC(P_PAYMENT_AMOUNT,0);
+        BEGIN
+            
+            SELECT ASL.LOAN_ID
+              INTO var_result
+              FROM ATET_SB_MEMBERS              ASM,
+                   ATET_SB_LOANS                ASL,
+                   ATET_SB_PAYMENTS_SCHEDULE    ASPS
+             WHERE ASM.PERSON_ID = P_PERSON_ID
+               AND ASM.SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
+               AND ASM.MEMBER_ID = ASL.MEMBER_ID
+               AND ASL.LOAN_STATUS_FLAG = 'ACTIVE'
+               AND ASL.LOAN_ID = ASPS.LOAN_ID
+               AND ASPS.PAYMENT_NUMBER = 1;
+        
+        EXCEPTION WHEN TOO_MANY_ROWS THEN
+    
+            SELECT ASL.LOAN_ID
+              INTO var_result
+              FROM ATET_SB_MEMBERS              ASM,
+                   ATET_SB_LOANS                ASL,
+                   ATET_SB_PAYMENTS_SCHEDULE    ASPS
+             WHERE ASM.PERSON_ID = P_PERSON_ID
+               AND ASM.SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
+               AND ASM.MEMBER_ID = ASL.MEMBER_ID
+               AND ASL.LOAN_STATUS_FLAG = 'ACTIVE'
+               AND ASL.LOAN_ID = ASPS.LOAN_ID
+               AND ASPS.PAYMENT_NUMBER = 1
+               AND TRUNC(ASPS.PAYMENT_AMOUNT, 0) = TRUNC(P_PAYMENT_AMOUNT,0);
+           
+        END;
            
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_LOAN_ID(P_PERSON_ID => ' || P_PERSON_ID || 
                                                    ',P_PAYMENT_AMOUNT => ' || P_PAYMENT_AMOUNT || 
@@ -3260,7 +3330,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
         RETURN var_result;
     EXCEPTION WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_LOAN_ID(P_PERSON_ID, P_PAYMENT_AMOUNT) ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_LOAN_ID(P_PERSON_ID => '||P_PERSON_ID||', P_PAYMENT_AMOUNT => '||P_PAYMENT_AMOUNT||') ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_LOAN_ID;
       
     
@@ -5374,7 +5444,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_RETCODE          OUT NOCOPY   VARCHAR2,
                     P_MEMBER_ID                     NUMBER,
                     P_LOAN_ID                       NUMBER,
-                    P_BONUS_PERCENTAGE              NUMBER)
+                    P_BONUS_PERCENTAGE              NUMBER,
+                    P_BONUS_AMOUNT                  NUMBER)
     IS
         QRY_LOAN_BALANCE                EXCEPTION;
         QRY_ASPS_PAYMENT_BALANCE        EXCEPTION;
@@ -5626,7 +5697,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');
                         
                     /*********  ABONO : INTERESES COBRADOS      *********/    
-                    IF P_BONUS_PERCENTAGE = 0 THEN
+                    IF P_BONUS_PERCENTAGE = 0 AND P_BONUS_AMOUNT = 0 THEN
                     
                     
                         ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
@@ -5642,7 +5713,13 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         
                     ELSE
                     
-                        var_bonus_interest := (var_asps_payment_interest * P_BONUS_PERCENTAGE) / 100; 
+                        IF  P_BONUS_PERCENTAGE <> 0 AND P_BONUS_AMOUNT = 0 THEN
+                            var_bonus_interest := (var_asps_payment_interest * P_BONUS_PERCENTAGE) / 100;
+                        ELSIF P_BONUS_PERCENTAGE = 0 AND P_BONUS_AMOUNT <> 0 THEN
+                            var_bonus_interest := P_BONUS_AMOUNT;
+                        ELSE
+                            RAISE CREATION_GL_EXCEPTION;
+                        END IF; 
                         
                         ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
                             P_HEADER_ID => var_header_id,
@@ -5859,14 +5936,102 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                               P_CREDIT_AMOUNT => P_PAYMENT_AMOUNT,
                                               P_PAYMENT_SCHEDULE_ID => var_payment_schedule_id);
                                               
-        UPDATE ATET_SB_LOANS_TRANSACTIONS ASLT
-           SET ASLT.ACCOUNTED_FLAG = 'ACCOUNTED'
+        
+           
+        INSERT INTO
+            ATET_SB_LOANS_TRANSACTIONS(
+                MEMBER_ACCOUNT_ID,
+                MEMBER_ID,
+                PAYROLL_RESULT_ID,
+                LOAN_ID,
+                PERSON_ID,
+                RUN_RESULT_ID,
+                EARNED_DATE,
+                TIME_PERIOD_ID,
+                PERIOD_NAME,
+                ELEMENT_NAME,
+                ENTRY_NAME,
+                ENTRY_UNITS,
+                ENTRY_VALUE,
+                TRANSACTION_CODE,
+                DEBIT_AMOUNT,
+                CREDIT_AMOUNT,
+                PAYMENT_AMOUNT,
+                PAYMENT_CAPITAL,
+                PAYMENT_INTEREST,
+                PAYMENT_INTEREST_LATE,
+                REQUEST_ID,
+                ACCOUNTED_FLAG,
+                ATTRIBUTE6,
+                CREATION_DATE,
+                CREATED_BY,
+                LAST_UPDATE_DATE,
+                LAST_UPDATED_BY)
+        SELECT  MEMBER_ACCOUNT_ID,
+                MEMBER_ID,
+                PAYROLL_RESULT_ID,
+                LOAN_ID,
+                PERSON_ID,
+                RUN_RESULT_ID,
+                EARNED_DATE,
+                TIME_PERIOD_ID,
+                ELEMENT_NAME,
+                ELEMENT_NAME,
+                ENTRY_NAME,
+                ENTRY_UNITS,
+                P_PAYMENT_AMOUNT,
+                TRANSACTION_CODE,
+                DEBIT_AMOUNT,
+                P_PAYMENT_AMOUNT,
+                P_PAYMENT_AMOUNT,
+                SUM(PAYMENT_CAPITAL),
+                SUM(PAYMENT_INTEREST),
+                SUM(PAYMENT_INTEREST_LATE),
+                REQUEST_ID,
+                'ACCOUNTED',
+                'PAGO ANTICIPADO: TIME_PERIOD_ID='||TIME_PERIOD_ID||',PERIOD_NAME='|| PERIOD_NAME,
+                CREATION_DATE,
+                CREATED_BY,
+                LAST_UPDATE_DATE,
+                LAST_UPDATED_BY
+          FROM ATET_SB_LOANS_TRANSACTIONS   ASLT 
          WHERE 1 = 1 
            AND ASLT.MEMBER_ID = P_MEMBER_ID
            AND ASLT.PERSON_ID = var_person_id
            AND ASLT.TIME_PERIOD_ID = var_time_period_id
            AND ASLT.PERIOD_NAME = var_period_name
+           AND ASLT.ELEMENT_NAME = 'PAGO ANTICIPADO'
+           AND ASLT.LOAN_ID = P_LOAN_ID
+         GROUP BY MEMBER_ACCOUNT_ID,
+                  MEMBER_ID,
+                  PAYROLL_RESULT_ID,
+                  LOAN_ID,
+                  PERSON_ID,
+                  RUN_RESULT_ID,
+                  EARNED_DATE,
+                  TIME_PERIOD_ID,
+                  PERIOD_NAME,
+                  ELEMENT_NAME,
+                  ENTRY_NAME,
+                  ENTRY_UNITS,
+                  TRANSACTION_CODE,
+                  DEBIT_AMOUNT,
+                  REQUEST_ID,
+                  CREATION_DATE,
+                  CREATED_BY,
+                  LAST_UPDATE_DATE,
+                  LAST_UPDATED_BY;
+           
+        
+        DELETE FROM ATET_SB_LOANS_TRANSACTIONS ASLT
+         WHERE 1 = 1 
+           AND ASLT.MEMBER_ID = P_MEMBER_ID
+           AND ASLT.PERSON_ID = var_person_id
+           AND ASLT.TIME_PERIOD_ID = var_time_period_id
+           AND ASLT.PERIOD_NAME = var_period_name
+           AND ASLT.LOAN_ID = P_LOAN_ID
            AND ASLT.ELEMENT_NAME = 'PAGO ANTICIPADO';
+           
                                              
         IF var_result = 'Y' THEN
         
@@ -5941,7 +6106,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    AND ASLT.MEMBER_ID = P_MEMBER_ID
                    AND ASLT.PERSON_ID = var_person_id
                    AND ASLT.TIME_PERIOD_ID = var_time_period_id
-                   AND ASLT.PERIOD_NAME = var_period_name
+                   AND ASLT.PERIOD_NAME = 'PAGO ANTICIPADO'
                    AND ASLT.ELEMENT_NAME = 'PAGO ANTICIPADO';
                     
                     
@@ -6655,6 +6820,249 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                          
         
     END REFINANCE_PAYMENT_SCHEDULE;
+    
+    
+    PROCEDURE   MANUAL_REFINANCING(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_PREVIOUS_LOAN_ID         NUMBER,
+                    P_ACTUAL_LOAN_ID           NUMBER,
+                    P_CONDONATE_INTEREST       NUMBER,
+                    P_PREPAYMENT_AMOUNT        NUMBER)
+    IS
+        var_previous_loan_id            NUMBER := P_PREVIOUS_LOAN_ID;
+        var_actual_loan_id              NUMBER := P_ACTUAL_LOAN_ID;
+        
+        var_condonate_interest          NUMBER := P_CONDONATE_INTEREST;
+        var_prepayment_amount           NUMBER := P_PREPAYMENT_AMOUNT;
+
+        var_check_id                    NUMBER;
+        var_check_number                NUMBER;
+        var_loan_total_amount           NUMBER;
+        var_actual_loan_check           NUMBER;
+        var_loan_interest               NUMBER;
+        var_previous_loan_balance       NUMBER;
+        var_transfer_interest_amount    NUMBER;
+        var_condonate_interest_amount   NUMBER;
+        
+        var_debit_amount                NUMBER;
+        var_credit_amount               NUMBER;
+        
+        CURSOR LOAN_TRANSACTION_DETAILS IS
+            SELECT ASLT.EARNED_DATE,
+                   ASLT.PERIOD_NAME,
+                   ASLT.DEBIT_AMOUNT,
+                   ASLT.CREDIT_AMOUNT
+              FROM ATET_SB_LOANS_TRANSACTIONS   ASLT
+             WHERE LOAN_ID = P_PREVIOUS_LOAN_ID
+             ORDER BY LOAN_TRANSACTION_ID;
+        
+        CURSOR ACCOUNTED_DETAILS IS
+            SELECT AXL2.LINE_NUMBER,
+                   AXL2.CODE_COMBINATION_ID,
+                   AXL2.DESCRIPTION,
+                   AXL2.ACCOUNTED_DR,
+                   AXL2.ACCOUNTED_CR
+              FROM ATET_LOAN_PAYMENTS_ALL   ALPA,
+                   ATET_XLA_LINES           AXL1,
+                   ATET_XLA_LINES           AXL2
+             WHERE 1 = 1
+               AND ALPA.CHECK_ID = AXL1.SOURCE_ID
+               AND AXL1.SOURCE_LINK_TABLE = 'ATET_SB_CHECKS_ALL'
+               AND AXL1.HEADER_ID = AXL2.HEADER_ID
+               AND ALPA.LOAN_ID = P_ACTUAL_LOAN_ID
+             ORDER BY AXL2.LINE_NUMBER;     
+        
+    BEGIN
+        
+    
+            SELECT ASL.LOAN_TOTAL_AMOUNT,
+                   ASL.ATTRIBUTE5,
+                   ASL.LOAN_INTEREST_AMOUNT,
+                   ASL.ATTRIBUTE3
+              INTO var_loan_total_amount,
+                   var_actual_loan_check,
+                   var_loan_interest,
+                   var_check_number
+              FROM ATET_SB_LOANS    ASL
+             WHERE 1 = 1
+               AND ASL.LOAN_ID = var_actual_loan_id;
+               
+                   
+            SELECT ASL.LOAN_BALANCE,
+                   var_condonate_interest
+              INTO var_previous_loan_balance,
+                   var_condonate_interest_amount
+              FROM ATET_SB_LOANS    ASL
+             WHERE 1 = 1 
+               AND ASL.LOAN_ID = var_previous_loan_id;  
+               
+               
+            SELECT SUM(NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST)) - var_condonate_interest_amount 
+              INTO var_transfer_interest_amount
+              FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+             WHERE 1 = 1
+               AND ASPS.LOAN_ID = var_previous_loan_id
+               AND ASPS.STATUS_FLAG IN ('PENDING', 'SKIP', 'EXPORTED', 'PARTIAL');
+
+            
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('MONTO NUEVO PRESTAMO',45, ' ')
+                                  ||LPAD(var_loan_total_amount,20, ' ')
+                                  ||LPAD(0,20, ' '));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('MONTO DEL CHEQUE',45, ' ')
+                                  ||LPAD(0,20, ' ')
+                                  ||LPAD(var_actual_loan_check,20, ' '));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('INTERESES NUEVO PRESTAMO',45, ' ')
+                                  ||LPAD(0,20, ' ')
+                                  ||LPAD(var_loan_interest,20, ' '));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('SALDO PRESTAMO ANTERIOR',45, ' ')
+                                  ||LPAD(0,20, ' ')
+                                  ||LPAD(var_previous_loan_balance,20, ' '));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('INTERESES POR DEVENGAR',45, ' ')
+                                  ||LPAD(var_transfer_interest_amount + var_condonate_interest_amount,20, ' ')
+                                  ||LPAD(0,20, ' '));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('INTERESES COBRADOS',45, ' ')
+                                  ||LPAD(0,20, ' ')
+                                  ||LPAD(var_transfer_interest_amount,20, ' '));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('TOTAL',45, ' ')
+                                  ||LPAD(var_loan_total_amount +
+                                         var_transfer_interest_amount + 
+                                         var_condonate_interest_amount,20, ' ')
+                                  ||LPAD(var_actual_loan_check +
+                                         var_loan_interest +
+                                         var_previous_loan_balance +
+                                         var_transfer_interest_amount ,20, ' '));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('PAGO ANTICIPADO', 45, ' ')
+                                  ||LPAD(var_prepayment_amount + var_condonate_interest, 20, ' ')); 
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('CHEQUE NO:', 45, ' ')
+                                  ||LPAD(var_check_number, 20, ' '));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            
+            IF (var_loan_total_amount +
+                var_transfer_interest_amount + 
+                var_condonate_interest_amount ) = (var_actual_loan_check +
+                                                   var_loan_interest +
+                                                   var_previous_loan_balance +
+                                                   var_transfer_interest_amount) AND var_previous_loan_balance = (var_prepayment_amount + 
+                                                                                                                  var_condonate_interest) THEN
+                
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    REFINANCIAMIENTO    PROCESADO.  ');
+                                
+                /************************************************************/
+                /*       CREACION CHEQUE DE REFINANCIAMIENTO                */
+                /************************************************************/
+                
+                ATET_SB_BACK_OFFICE_PKG.CREATE_REFINANCE_LOAN_CHECK(
+                        P_ACTUAL_LOAN_ID            => var_actual_loan_id,
+                        P_PREVIOUS_LOAN_ID          => var_previous_loan_id,
+                        P_PREVIOUS_LOAN_BALANCE_DUE => var_previous_loan_balance,
+                        P_TRANSFER_INTEREST_AMOUNT  => var_transfer_interest_amount,
+                        P_CONDONATE_INTEREST_AMOUNT => var_condonate_interest_amount,
+                        P_ACTUAL_LOAN_CHECK_AMOUNT  => var_actual_loan_check,
+                        P_HAS_PREVIOUS_REFINANCED   => 0,
+                        P_CHECK_NUMBER              => var_check_number,
+                        P_CHECK_ID                  => var_check_id
+                        );
+                
+                /************************************************************/
+                /*                 ACTUALIZACION DEL PRESTAMO               */
+                /************************************************************/           
+                        
+                                        
+                UPDATE ATET_SB_LOANS
+                   SET ATTRIBUTE2 = var_actual_loan_id
+                 WHERE LOAN_ID = var_previous_loan_id;
+                 
+                 
+                /************************************************************/
+                /*                 LIQUIDACION DEL PRESTAMO                 */
+                /************************************************************/
+                                 
+                ATET_SAVINGS_BANK_PKG.SETTLEMENT_LOAN(var_previous_loan_id);
+                
+                
+                /************************************************************/
+                /*          OUTPUT MOVIMIENTOS DE PRESTAMO                  */
+                /************************************************************/
+                
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DEL PRESTAMO');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                
+                var_debit_amount := 0;
+                var_credit_amount := 0;
+                
+                FOR DETAIL IN LOAN_TRANSACTION_DETAILS LOOP
+                
+                    var_debit_amount := var_debit_amount + DETAIL.DEBIT_AMOUNT;
+                    var_credit_amount := var_credit_amount + DETAIL.CREDIT_AMOUNT;
+                    
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(DETAIL.EARNED_DATE, 40, ' ')
+                                                     ||RPAD(DETAIL.PERIOD_NAME, 40, ' ')
+                                                     ||LPAD(DETAIL.DEBIT_AMOUNT,40, ' ')
+                                                     ||LPAD(DETAIL.CREDIT_AMOUNT,40, ' '));
+                
+                END LOOP;
+                
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('TOTAL:', 80, ' ')
+                                ||LPAD(var_debit_amount, 40, ' ')
+                                ||LPAD(var_credit_amount, 40, ' '));
+                                
+                /************************************************************/
+                /*          OUTPUT MOVIMIENTOS CONTABLES                    */
+                /************************************************************/
+                
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS CONTABLES');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                
+                var_debit_amount := 0;
+                var_credit_amount := 0;
+                
+                FOR DETAIL IN ACCOUNTED_DETAILS LOOP
+                
+                    var_debit_amount := var_debit_amount + DETAIL.ACCOUNTED_DR;
+                    var_credit_amount := var_credit_amount + DETAIL.ACCOUNTED_CR;
+                    
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(GET_CODE_COMBINATION(DETAIL.CODE_COMBINATION_ID) , 40, ' ')
+                                                     ||RPAD(DETAIL.DESCRIPTION, 40, ' ')
+                                                     ||LPAD(DETAIL.ACCOUNTED_DR,40, ' ')
+                                                     ||LPAD(DETAIL.ACCOUNTED_CR,40, ' '));
+                
+                END LOOP;
+                
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('TOTAL:', 80, ' ')
+                                ||LPAD(var_debit_amount, 40, ' ')
+                                ||LPAD(var_credit_amount, 40, ' '));
+                
+            ELSE
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '      ERROR  :  ERROR AL INTENTAR PROCESAR EL REFINANCIAMIENTO, NO SE REALIZO NINGUN PROCESO.');
+                P_ERRBUF := '      ERROR  :  ERROR AL INTENTAR PROCESAR EL REFINANCIAMIENTO, NO SE REALIZO NINGUN PROCESO.';
+                P_RETCODE := 1;
+            END IF;               
+
+        COMMIT;
+    
+    EXCEPTION 
+        WHEN OTHERS THEN
+            P_RETCODE := 2;
+            ROLLBACK;    
+    END MANUAL_REFINANCING;
     
     
 --    FUNCTION    GET_BONUS_PERCENTAGE(

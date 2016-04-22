@@ -106,6 +106,10 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     FUNCTION    GET_CODE_COMBINATION_ID(
                     P_CODE_COMBINATION          VARCHAR2
                 ) RETURN    NUMBER;
+                
+    FUNCTION    GET_CODE_COMBINATION(
+                    P_CODE_COMBINATION_ID       NUMBER
+                ) RETURN    VARCHAR2;
       
     FUNCTION   INSERT_SAVING_TRANSACTION(
                     P_PAYROLL_RESULT_ID         NUMBER,
@@ -293,7 +297,8 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_RETCODE        OUT NOCOPY VARCHAR2,
                     P_MEMBER_ID                 NUMBER,
                     P_LOAN_ID                   NUMBER,
-                    P_BONUS_PERCENTAGE          NUMBER);
+                    P_BONUS_PERCENTAGE          NUMBER,
+                    P_BONUS_AMOUNT              NUMBER);
                     
     PROCEDURE   PROCESS_PARCIAL_PREPAYMENT(
                     P_ERRBUF         OUT NOCOPY VARCHAR2,
@@ -320,6 +325,14 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     PROCEDURE   REFINANCE_PAYMENT_SCHEDULE(
                     P_PAYMENT_SCHEDULE_ID       NUMBER,
                     P_PAYMENT_DATE              DATE);    
+                    
+    PROCEDURE   MANUAL_REFINANCING(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_PREVIOUS_LOAN_ID         NUMBER,
+                    P_ACTUAL_LOAN_ID           NUMBER,
+                    P_CONDONATE_INTEREST       NUMBER,
+                    P_PREPAYMENT_AMOUNT        NUMBER);
                     
 --    FUNCTION    GET_BONUS_PERCENTAGE(
 --                    P_LOAN_ID                   NUMBER)

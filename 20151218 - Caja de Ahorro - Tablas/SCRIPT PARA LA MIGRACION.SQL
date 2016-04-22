@@ -32,6 +32,9 @@ UPDATE ATET_SB_ENDORSEMENTS ASE
        ASE.LAST_UPDATED_BY = -1,
        ASE.ENDORSEMENT_FLAG = 'ACTIVE';
        
+SELECT *
+  FROM ATET_SB_ENDORSEMENTS;        
+       
 --COMMIT;
 
 /**********************************************************/
@@ -73,7 +76,7 @@ UPDATE SET ASM.IS_BORROWER = 'Y',
            ASM.LAST_UPDATE_DATE = SYSDATE,
            ASM.LAST_UPDATED_BY = -1;
 
-COMMIT;
+--COMMIT;
 
 SELECT *
 FROM ATET_SB_MEMBERS;
@@ -181,11 +184,19 @@ FROM ATET_SB_LOANS
 WHERE 1 = 1
 AND LOAN_STATUS_FLAG = 'APPROVED';
 
-COMMIT;
+--COMMIT;
 
 /**********************************************************/
 /*            CREACIÓN DE CUENTAS DE AHORRO               */
 /**********************************************************/
+
+SELECT ASM.EMPLOYEE_NUMBER,
+                  ASM.EMPLOYEE_FULL_NAME,
+                  ASM.MEMBER_ID,
+                  ASM.PERSON_ID
+             FROM ATET_SB_MEMBERS ASM
+            WHERE 1 = 1
+              AND ASM.IS_SAVER = 'Y';
 
 DECLARE
     CURSOR SAVINGS_DETAILS IS
@@ -207,7 +218,8 @@ BEGIN
 END;
 
 SELECT *
-FROM ATET_SB_MEMBERS_ACCOUNTS; 
+FROM ATET_SB_MEMBERS_ACCOUNTS
+WHERE ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO'; 
 
 --COMMIT;
 
@@ -296,8 +308,7 @@ SELECT *
   FROM ATET_SB_LOANS; 
   
 SELECT *
-  FROM ATET_SB_PAYMENTS_SCHEDULE
- where loan_id = 735; 
+  FROM ATET_SB_PAYMENTS_SCHEDULE; 
   
   
 --COMMIT;
@@ -323,18 +334,31 @@ UPDATE ATET_SB_LOANS    ASL
 /**********************************************************/
 /*                  CREACIÓN DE CHEQUES                   */
 /**********************************************************/
+SELECT ASL.LOAN_ID,
+       ASL.LOAN_TOTAL_AMOUNT,
+       ASM.PERSON_ID,
+       ASM.MEMBER_ID,
+       ASL.ATTRIBUTE5
+  FROM ATET_SB_LOANS    ASL,
+       ATET_SB_MEMBERS  ASM
+ WHERE 1 = 1
+   AND ASL.MEMBER_ID = ASM.MEMBER_ID
+   AND ASL.LOAN_STATUS_FLAG NOT IN ('CANCELLED')
+   AND ASL.ATTRIBUTE5 IS NULL; 
 
 DECLARE
     CURSOR  LOANS_DETAILS   IS
             SELECT ASL.LOAN_ID,
                    ASL.LOAN_TOTAL_AMOUNT,
                    ASM.PERSON_ID,
-                   ASM.MEMBER_ID
+                   ASM.MEMBER_ID,
+                   ASL.ATTRIBUTE5
               FROM ATET_SB_LOANS    ASL,
                    ATET_SB_MEMBERS  ASM
              WHERE 1 = 1
                AND ASL.MEMBER_ID = ASM.MEMBER_ID
-               AND ASL.LOAN_STATUS_FLAG = 'ACTIVE'; 
+               AND ASL.LOAN_STATUS_FLAG NOT IN ('CANCELLED')
+               AND ASL.ATTRIBUTE5 IS NULL;
                
     VAR_CHECK_ID    NUMBER;
 
@@ -356,16 +380,16 @@ SELECT *
 /*                      TRANSFER TO GL                    */
 /**********************************************************/
 
-BEGIN
+--BEGIN
 
- fnd_global.apps_initialize (user_id        => 3397,
-                           resp_id        => 53698,
-                           resp_appl_id   => 101);
-mo_global.set_policy_context ('S', 1329);
+-- fnd_global.apps_initialize (user_id        => 3397,
+--                           resp_id        => 53698,
+--                           resp_appl_id   => 101);
+--mo_global.set_policy_context ('S', 1329);
 
-ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
-    
-END;
+--ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+--    
+--END;
 
 
 
