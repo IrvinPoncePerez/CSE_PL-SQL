@@ -10,8 +10,6 @@ CREATE OR REPLACE PROCEDURE PAC_SOLICITUD_RFC_SAT_PRC(
 IS
     var_start_date  DATE := TRUNC(TO_DATE(P_START_DATE,'RRRR/MM/DD HH24:MI:SS'));
     var_end_date    DATE := TRUNC(TO_DATE(P_END_DATE,'RRRR/MM/DD HH24:MI:SS'));
-    var_path        VARCHAR2(250) := 'SOLICITUD_RFC_SAT';
-    var_file_name   VARCHAR2(250);
             
     TYPE CURSOR_DETAIL IS REF CURSOR;
     DETAIL_LIST     CURSOR_DETAIL;
@@ -31,69 +29,72 @@ BEGIN
     FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_TYPE_MOVEMENT : '    || P_TYPE_MOVEMENT);
     
     IF TO_NUMBER(P_TYPE_MOVEMENT) = 1 THEN      --Alta/Reingreso
-       var_file_name := 'SOLICITUD_RFC_SAT_A.txt';
        var_query    :=  'SELECT DISTINCT
-                            PEOPLE.PERSON_ID                                            AS  PERSON_ID,                           
-                            ALL_PEOPLE.PER_INFORMATION2                                 AS  RFC,
-                            ALL_PEOPLE.NATIONAL_IDENTIFIER                              AS  CURP,
-                            ALL_PEOPLE.LAST_NAME                                        AS  AP_PATERNO,
-                            ALL_PEOPLE.PER_INFORMATION1                                 AS  AP_MATERNO,
-                            ALL_PEOPLE.FIRST_NAME || '' '' || ALL_PEOPLE.MIDDLE_NAMES     AS  NOMBRES,
-                            RVALUES.RESULT_VALUE                                        AS  SALARIO_DIARIO,
-                            TO_CHAR(USAGES.EFFECTIVE_START_DATE, ''DD/MM/RRRR'')        AS  FECHA,
-                               (SELECT DISTINCT
-                                    INFORMATION.ORG_INFORMATION2
-                                FROM FND_LOOKUP_VALUES                     COMPANY     
-                                INNER JOIN HR_ORGANIZATION_UNITS_V         ORGANIZATIONS    ON COMPANY.MEANING = ORGANIZATIONS.NAME
-                                INNER JOIN HR_ORGANIZATION_INFORMATION     INFORMATION      ON INFORMATION.ORGANIZATION_ID = ORGANIZATIONS.ORGANIZATION_ID
-                                WHERE COMPANY.lookup_type= ''NOMINAS POR EMPLEADOR LEGAL''
-                                  AND COMPANY.lookup_code = :P_COMPANY_ID
-                                  AND INFORMATION.ORG_INFORMATION_CONTEXT = ''MX_TAX_REGISTRATION'')  AS RFC_COMPANIA                               
-                          FROM PER_PEOPLE_F             PEOPLE,
-                               PER_ALL_PEOPLE_F         ALL_PEOPLE,
-                               PER_ALL_ASSIGNMENTS_F    ASSIGNMENTS, 
-                               PAY_PAYROLLS_F           PAYROLL,     
-                               PAY_PAYROLL_ACTIONS      PACTIONS,    
-                               PAY_ASSIGNMENT_ACTIONS   ACTIONS,     
-                               PAY_RUN_RESULTS          RESULTS,     
-                               PAY_RUN_RESULT_VALUES    RVALUES,     
-                               PAY_ELEMENT_TYPES_F      ELEMENTT,    
-                               PER_PERSON_TYPE_USAGES_F USAGES,
-                               PER_PERIODS_OF_SERVICE   SERVICE     
+                            PAPF.PERSON_ID                                              AS  PERSON_ID,                           
+                            PAPF.PER_INFORMATION2                                       AS  RFC,
+                            PAPF.NATIONAL_IDENTIFIER                                    AS  CURP,
+                            PAPF.LAST_NAME                                              AS  AP_PATERNO,
+                            PAPF.PER_INFORMATION1                                       AS  AP_MATERNO,
+                            PAPF.FIRST_NAME || '' '' || PAPF.MIDDLE_NAMES                 AS  NOMBRES,
+                            PRRV.RESULT_VALUE                                           AS  SALARIO_DIARIO,
+                            TO_CHAR(NVL(PPOS.ADJUSTED_SVC_DATE, 
+                                        PAPF.ORIGINAL_DATE_OF_HIRE) , ''DD/MM/RRRR'')     AS  FECHA,
+                           (SELECT DISTINCT
+                                INFORMATION.ORG_INFORMATION2
+                            FROM FND_LOOKUP_VALUES                     COMPANY     
+                            INNER JOIN HR_ORGANIZATION_UNITS_V         ORGANIZATIONS    ON COMPANY.MEANING = ORGANIZATIONS.NAME
+                            INNER JOIN HR_ORGANIZATION_INFORMATION     INFORMATION      ON INFORMATION.ORGANIZATION_ID = ORGANIZATIONS.ORGANIZATION_ID
+                            WHERE COMPANY.lookup_type= ''NOMINAS POR EMPLEADOR LEGAL''
+                              AND COMPANY.lookup_code = :P_COMPANY_ID
+                              AND INFORMATION.ORG_INFORMATION_CONTEXT = ''MX_TAX_REGISTRATION'')  AS RFC_COMPANIA          
+                          FROM PER_ALL_PEOPLE_F         PAPF,
+                               PER_ALL_ASSIGNMENTS_F    PAAF, 
+                               PAY_PAYROLLS_F           PPF,     
+                               PAY_PAYROLL_ACTIONS      PPA,    
+                               PAY_ASSIGNMENT_ACTIONS   PAA,     
+                               PAY_RUN_RESULTS          PRR,     
+                               PAY_RUN_RESULT_VALUES    PRRV,     
+                               PAY_ELEMENT_TYPES_F      PETF,    
+                               PER_PERSON_TYPE_USAGES_F PPTUF,
+                               PER_PERIODS_OF_SERVICE   PPOS,   
+                               PER_TIME_PERIODS         PTP  
                          WHERE 1 = 1
-                           AND PEOPLE.PERSON_ID = ALL_PEOPLE.PERSON_ID
-                           AND PEOPLE.PERSON_ID = ASSIGNMENTS.PERSON_ID
-                           AND PAYROLL.PAYROLL_ID = ASSIGNMENTS.PAYROLL_ID
-                           AND PACTIONS.PAYROLL_ID = PAYROLL.PAYROLL_ID
-                           AND ACTIONS.ASSIGNMENT_ID = ASSIGNMENTS.ASSIGNMENT_ID
-                           AND ACTIONS.ASSIGNMENT_ACTION_ID = RESULTS.ASSIGNMENT_ACTION_ID
-                           AND RESULTS.RUN_RESULT_ID = RVALUES.RUN_RESULT_ID
-                           AND RESULTS.ELEMENT_TYPE_ID = ELEMENTT.ELEMENT_TYPE_ID
-                           AND USAGES.PERSON_ID = PEOPLE.PERSON_ID
-                           AND SERVICE.PERSON_ID= PEOPLE.PERSON_ID 
-                           AND ELEMENTT.ELEMENT_NAME = ''I001_SALARIO_DIARIO''
-                           AND SUBSTR(PAYROLL.PAYROLL_NAME, 1, 2) = :P_COMPANY_ID
-                           AND PAYROLL.PAYROLL_ID = NVL(:P_PAYROLL_ID, PAYROLL.PAYROLL_ID)
-                           AND PACTIONS.CONSOLIDATION_SET_ID = NVL(:P_CONSOLIDATION_ID, PACTIONS.CONSOLIDATION_SET_ID)  
-                           AND (USAGES.EFFECTIVE_START_DATE BETWEEN :P_START_DATE AND :P_END_DATE) 
-                           AND (PEOPLE.EFFECTIVE_START_DATE = ALL_PEOPLE.EFFECTIVE_START_DATE
-                            AND PEOPLE.EFFECTIVE_START_DATE = USAGES.EFFECTIVE_START_DATE
-                            AND PEOPLE.EFFECTIVE_START_DATE = SERVICE.DATE_START)
-                           AND ASSIGNMENTS.PERIOD_OF_SERVICE_ID = SERVICE.PERIOD_OF_SERVICE_ID
-                           AND SERVICE.ACTUAL_TERMINATION_DATE IS NULL
-                         ORDER BY ALL_PEOPLE.NATIONAL_IDENTIFIER';
+                           AND PAPF.PERSON_ID = PAAF.PERSON_ID
+                           AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
+                           AND PPF.PAYROLL_ID = PPA.PAYROLL_ID
+                           AND PAAF.ASSIGNMENT_ID = PAA.ASSIGNMENT_ID
+                           AND PPA.PAYROLL_ACTION_ID = PAA.PAYROLL_ACTION_ID
+                           AND PAA.ASSIGNMENT_ACTION_ID = PRR.ASSIGNMENT_ACTION_ID
+                           AND PRR.RUN_RESULT_ID = PRRV.RUN_RESULT_ID
+                           AND PRR.ELEMENT_TYPE_ID = PETF.ELEMENT_TYPE_ID
+                           AND PPTUF.PERSON_ID = PAPF.PERSON_ID
+                           AND PPOS.PERSON_ID= PAPF.PERSON_ID 
+                           AND PPA.TIME_PERIOD_ID = PTP.TIME_PERIOD_ID
+                           AND PPA.PAYROLL_ID = PTP.PAYROLL_ID
+                           AND PETF.ELEMENT_NAME = ''I001_SALARIO_DIARIO''
+                           AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = :P_COMPANY_ID
+                           AND PPF.PAYROLL_ID = NVL(:P_PAYROLL_ID, PPF.PAYROLL_ID)
+                           AND PPA.CONSOLIDATION_SET_ID = NVL(:P_CONSOLIDATION_ID, PPA.CONSOLIDATION_SET_ID)   
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN :P_START_DATE AND :P_END_DATE
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PTP.START_DATE AND PTP.END_DATE   
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                           AND PAAF.PERIOD_OF_SERVICE_ID = PPOS.PERIOD_OF_SERVICE_ID
+                           AND PPOS.ACTUAL_TERMINATION_DATE IS NULL
+                         ORDER BY PAPF.NATIONAL_IDENTIFIER';
     
     ELSIF TO_NUMBER(P_TYPE_MOVEMENT) = 2 THEN   --Baja
-        var_file_name := 'SOLICITUD_RFC_SAT_B.txt';
         var_query    :=  'SELECT DISTINCT
-                            PEOPLE.PERSON_ID                                            AS  PERSON_ID,                           
-                            ALL_PEOPLE.PER_INFORMATION2                                 AS  RFC,
-                            ALL_PEOPLE.NATIONAL_IDENTIFIER                              AS  CURP,
-                            ALL_PEOPLE.LAST_NAME                                        AS  AP_PATERNO,
-                            ALL_PEOPLE.PER_INFORMATION1                                 AS  AP_MATERNO,
-                            ALL_PEOPLE.FIRST_NAME || '' '' || ALL_PEOPLE.MIDDLE_NAMES   AS  NOMBRES,
-                            RVALUES.RESULT_VALUE                                        AS  SALARIO_DIARIO,
-                            TO_CHAR(PERIODS.ACTUAL_TERMINATION_DATE, ''DD/MM/RRRR'')    AS  FECHA,
+                            PAPF.PERSON_ID                                              AS  PERSON_ID,                           
+                            PAPF.PER_INFORMATION2                                       AS  RFC,
+                            PAPF.NATIONAL_IDENTIFIER                                    AS  CURP,
+                            PAPF.LAST_NAME                                              AS  AP_PATERNO,
+                            PAPF.PER_INFORMATION1                                       AS  AP_MATERNO,
+                            PAPF.FIRST_NAME || '' '' || PAPF.MIDDLE_NAMES                 AS  NOMBRES,
+                            PRRV.RESULT_VALUE                                           AS  SALARIO_DIARIO,
+                            TO_CHAR(PPOS.ACTUAL_TERMINATION_DATE, ''DD/MM/RRRR'')      AS  FECHA,
                               (SELECT DISTINCT
                                     INFORMATION.ORG_INFORMATION2
                                 FROM FND_LOOKUP_VALUES                     COMPANY     
@@ -102,47 +103,43 @@ BEGIN
                                 WHERE COMPANY.lookup_type= ''NOMINAS POR EMPLEADOR LEGAL''
                                   AND COMPANY.lookup_code = :P_COMPANY_ID
                                   AND INFORMATION.ORG_INFORMATION_CONTEXT = ''MX_TAX_REGISTRATION'')  AS RFC_COMPANIA
-                          FROM PER_PEOPLE_F                 PEOPLE,
-                               PER_ALL_PEOPLE_F             ALL_PEOPLE,  
-                               PER_ALL_ASSIGNMENTS_F        ASSIGNMENTS, 
-                               PAY_PAYROLLS_F               PAYROLL,     
-                               PAY_PAYROLL_ACTIONS          PACTIONS,    
-                               PAY_ASSIGNMENT_ACTIONS       ACTIONS,     
-                               PAY_RUN_RESULTS              RESULTS,     
-                               PAY_RUN_RESULT_VALUES        RVALUES,     
-                               PAY_ELEMENT_TYPES_F          ELEMENTT,    
-                               PER_PERIODS_OF_SERVICE_V     PERIODS      
+                          FROM PER_ALL_PEOPLE_F             PAPF,  
+                               PER_ALL_ASSIGNMENTS_F        PAAF, 
+                               PAY_PAYROLLS_F               PPF,     
+                               PAY_PAYROLL_ACTIONS          PPA,    
+                               PAY_ASSIGNMENT_ACTIONS       PAA,     
+                               PAY_RUN_RESULTS              PRR,     
+                               PAY_RUN_RESULT_VALUES        PRRV,     
+                               PAY_ELEMENT_TYPES_F          PETF,    
+                               PER_PERIODS_OF_SERVICE_V     PPOS,
+                               PER_TIME_PERIODS             PTP      
                          WHERE 1 = 1
-                           AND PEOPLE.PERSON_ID = ALL_PEOPLE.PERSON_ID
-                           AND PEOPLE.PERSON_ID = ASSIGNMENTS.PERSON_ID
-                           AND PAYROLL.PAYROLL_ID = ASSIGNMENTS.PAYROLL_ID
-                           AND PACTIONS.PAYROLL_ID = PAYROLL.PAYROLL_ID
-                           AND ACTIONS.ASSIGNMENT_ID = ASSIGNMENTS.ASSIGNMENT_ID
-                           AND ACTIONS.ASSIGNMENT_ACTION_ID = RESULTS.ASSIGNMENT_ACTION_ID
-                           AND RESULTS.RUN_RESULT_ID = RVALUES.RUN_RESULT_ID
-                           AND RESULTS.ELEMENT_TYPE_ID = ELEMENTT.ELEMENT_TYPE_ID
-                           AND PERIODS.PERSON_ID = PEOPLE.PERSON_ID   
-                           AND ELEMENTT.ELEMENT_NAME = ''I001_SALARIO_DIARIO''
-                           AND SUBSTR(PAYROLL.PAYROLL_NAME, 1, 2) = :P_COMPANY_ID
-                           AND PAYROLL.PAYROLL_ID = NVL(:P_PAYROLL_ID, PAYROLL.PAYROLL_ID)
-                           AND PACTIONS.CONSOLIDATION_SET_ID = NVL(:P_CONSOLIDATION_ID, PACTIONS.CONSOLIDATION_SET_ID) 
-                           AND PERIODS.ACTUAL_TERMINATION_DATE BETWEEN :P_START_DATE AND :P_END_DATE
-                           AND (PEOPLE.EFFECTIVE_START_DATE = ALL_PEOPLE.EFFECTIVE_START_DATE
-                            AND PEOPLE.EFFECTIVE_START_DATE = PERIODS.DATE_START)
-                           AND ASSIGNMENTS.PERIOD_OF_SERVICE_ID = PERIODS.PERIOD_OF_SERVICE_ID
-                           AND PERIODS.ACTUAL_TERMINATION_DATE IS NOT NULL
-                         ORDER BY ALL_PEOPLE.PER_INFORMATION2';
+                           AND PAPF.PERSON_ID = PAAF.PERSON_ID
+                           AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
+                           AND PPF.PAYROLL_ID = PPA.PAYROLL_ID
+                           AND PAAF.ASSIGNMENT_ID = PAA.ASSIGNMENT_ID
+                           AND PPA.PAYROLL_ACTION_ID = PAA.PAYROLL_ACTION_ID
+                           AND PAA.ASSIGNMENT_ACTION_ID = PRR.ASSIGNMENT_ACTION_ID
+                           AND PRR.RUN_RESULT_ID = PRRV.RUN_RESULT_ID
+                           AND PRR.ELEMENT_TYPE_ID = PETF.ELEMENT_TYPE_ID
+                           AND PPOS.PERSON_ID= PAPF.PERSON_ID 
+                           AND PPA.TIME_PERIOD_ID = PTP.TIME_PERIOD_ID
+                           AND PPA.PAYROLL_ID = PTP.PAYROLL_ID
+                           AND PETF.ELEMENT_NAME = ''I001_SALARIO_DIARIO''
+                           AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = :P_COMPANY_ID
+                           AND PPF.PAYROLL_ID = NVL(:P_PAYROLL_ID, PPF.PAYROLL_ID)
+                           AND PPA.CONSOLIDATION_SET_ID = NVL(:P_CONSOLIDATION_ID, PPA.CONSOLIDATION_SET_ID)  
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN :P_START_DATE AND :P_END_DATE
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PTP.START_DATE AND PTP.END_DATE   
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                           AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                           AND PAAF.PERIOD_OF_SERVICE_ID = PPOS.PERIOD_OF_SERVICE_ID
+                           AND PPOS.ACTUAL_TERMINATION_DATE IS NOT NULL
+                         ORDER BY PAPF.PER_INFORMATION2';
     
     END IF;
-    
-    BEGIN
-        pac_append_to_file(var_path, var_file_name, '');
-        UTL_FILE.FREMOVE(var_path, var_file_name);
-    EXCEPTION WHEN OTHERS THEN
-        pac_append_to_file(var_path, var_file_name, '');
-        dbms_output.put_line('Error al Limpiar el Archivo.. ' || SQLERRM);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'Error al Limpiar el Archivo.. ' || SQLERRM);
-    END;
     
     FND_FILE.PUT_LINE(FND_FILE.LOG, 'Creando el Body del Documento. . .');
     
@@ -176,7 +173,7 @@ BEGIN
             
             dbms_output.put_line(var_detail);
             FND_FILE.PUT_LINE(FND_FILE.LOG, var_detail);
-            pac_append_to_file(var_path, var_file_name, var_detail);
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_detail);
             
         END LOOP;
         CLOSE DETAIL_LIST;
