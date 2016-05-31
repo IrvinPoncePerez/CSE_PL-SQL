@@ -298,7 +298,8 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_MEMBER_ID                 NUMBER,
                     P_LOAN_ID                   NUMBER,
                     P_BONUS_PERCENTAGE          NUMBER,
-                    P_BONUS_AMOUNT              NUMBER);
+                    P_BONUS_AMOUNT              NUMBER,
+                    P_IS_SAVING_RETIREMENT      VARCHAR2);
                     
     PROCEDURE   PROCESS_PARCIAL_PREPAYMENT(
                     P_ERRBUF         OUT NOCOPY VARCHAR2,
@@ -306,11 +307,19 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_MEMBER_ID                 NUMBER,
                     P_LOAN_ID                   NUMBER,
                     P_PAYMENT_AMOUNT            NUMBER,
-                    P_TIME_PERIOD_ID            NUMBER);
+                    P_TIME_PERIOD_ID            NUMBER,
+                    P_IS_SAVING_RETIREMENT      VARCHAR2);
     
     PROCEDURE   PRINT_PREPAID(
                     P_LOAN_ID                   NUMBER,
-                    P_FOLIO                     NUMBER);
+                    P_FOLIO                     NUMBER,
+                    P_BONUS                     NUMBER);
+                    
+    PROCEDURE   PRINT_PREPAID(
+                    P_LOAN_ID                   NUMBER,
+                    P_FOLIO                     NUMBER,
+                    P_BONUS                     NUMBER,
+                    P_LOAN_TRANSACTION_ID       NUMBER);
                               
     PROCEDURE   VOLUNTARY_CONTRIBUTION(
                     P_ERRBUF        OUT NOCOPY VARCHAR2,
