@@ -7953,32 +7953,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END MANUAL_REFINANCING;
     
     
---    FUNCTION    GET_BONUS_PERCENTAGE(
---                    P_LOAN_ID                   NUMBER)
---      RETURN    ATET_BONUS_PERCENTAGE
---    IS
---        bonus   ATET_BONUS_PERCENTAGE;
---    BEGIN
---    
---         SELECT ATET_BONUS_PERCENTAGE_RECORD(
---                (LEVEL - 1) * 10,
---                (SELECT SUM(NVL(ASPS.OWED_INTEREST, 
---                                ASPS.PAYMENT_INTEREST))  
---                   FROM ATET_SB_PAYMENTS_SCHEDULE ASPS
---                  WHERE 1 = 1
---                    AND ASPS.LOAN_ID = P_LOAN_ID),
---                (SELECT SUM(NVL(ASPS.OWED_INTEREST, 
---                                ASPS.PAYMENT_INTEREST))  
---                   FROM ATET_SB_PAYMENTS_SCHEDULE ASPS
---                  WHERE 1 = 1
---                    AND ASPS.LOAN_ID = P_LOAN_ID) * (((LEVEL - 1) * 10) / 100)
---                )
---           BULK COLLECT INTO bonus   
---           FROM DUAL
---        CONNECT BY LEVEL <= 11;
---    
---        RETURN bonus;
---    END GET_BONUS_PERCENTAGE;
+    PROCEDURE   CALCULATING_INTEREST_EARNED(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_INTEREST_PERCENTAGE      NUMBER)
+    IS
+    BEGIN
+        NULL;
+    END CALCULATING_INTEREST_EARNED;
                 
                     
 

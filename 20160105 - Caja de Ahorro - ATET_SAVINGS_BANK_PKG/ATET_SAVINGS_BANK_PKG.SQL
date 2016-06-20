@@ -343,9 +343,15 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_CONDONATE_INTEREST       NUMBER,
                     P_PREPAYMENT_AMOUNT        NUMBER);
                     
---    FUNCTION    GET_BONUS_PERCENTAGE(
---                    P_LOAN_ID                   NUMBER)
---      RETURN    ATET_BONUS_PERCENTAGE;          
+
+    PROCEDURE   CALCULATING_INTEREST_EARNED(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_INTEREST_PERCENTAGE      NUMBER);       
+    
+    FUNCTION    GET_INTEREST_MEMBER_ACCOUNT_ID(
+                    P_MEMBER_ID                 NUMBER
+                ) RETURN    NUMBER;
     
 
 END ATET_SAVINGS_BANK_PKG;
