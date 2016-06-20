@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE APPS.PAC_CFDI_NOMINA_PRC(
+CREATE OR REPLACE PROCEDURE PAC_CFDI_NOMINA_PRC(
             P_ERRBUF    OUT NOCOPY  VARCHAR2,
             P_RETCODE   OUT NOCOPY  VARCHAR2,
             P_COMPANY_ID            VARCHAR2,
@@ -16,11 +16,22 @@ IS
     var_file            UTL_FILE.FILE_TYPE;
     var_consolidation_name  VARCHAR2(250);
     var_run_type_name       VARCHAR2(250);
+    var_sequence_name   VARCHAR2(250);
     
     var_date_exp        VARCHAR2(50);
     var_reg_seq         NUMBER(10);
+    var_user_id         NUMBER := FND_GLOBAL.USER_ID;
+    var_validate        NUMBER;
     
     MIN_WAGE            NUMBER;
+    
+    V_REQUEST_ID         NUMBER;
+    WAITING              BOOLEAN;
+    PHASE                VARCHAR2 (80 BYTE);
+    STATUS               VARCHAR2 (80 BYTE);
+    DEV_PHASE            VARCHAR2 (80 BYTE);
+    DEV_STATUS           VARCHAR2 (80 BYTE);
+    V_MESSAGE            VARCHAR2 (4000 BYTE);
             
     CURSOR  DETAIL_LIST IS
          SELECT DISTINCT 
@@ -237,6 +248,8 @@ IS
      DETAIL DETAILS;
      
 BEGIN
+    
+    SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
     BEGIN
     
@@ -262,6 +275,7 @@ BEGIN
         
         var_file_name := var_file_name || REPLACE(NVL(P_PERIOD_NAME,P_MONTH || '_' || P_YEAR), ' ', '_') || '_';
         var_file_name := var_file_name || REPLACE(var_consolidation_name, 'Ó', 'O');
+        var_sequence_name := SUBSTR(REPLACE(REPLACE(var_file_name, 'NOMINA', ''), '_', ''), 0, 30);
         
 --        IF var_run_type_name LIKE 'Standard' THEN
 --            var_file_name := var_file_name || '_Standard';
@@ -273,432 +287,507 @@ BEGIN
         
         var_file_name := var_file_name || '.txt';
         
+    EXCEPTION WHEN OTHERS THEN        
+        dbms_output.put_line('**Error al preparar el archivo CFDI de Nómina. ' || SQLERRM);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al preparar el archivo CFDI de Nómina. ' || SQLERRM); 
     END;
     
-    --Eliminación y creación del Archivo.
-    BEGIN
+    SELECT COUNT(CFDI.FILE_NAME)
+      INTO var_validate
+      FROM PAC_CFDI_NOMINA_TB  CFDI
+     WHERE 1 = 1
+       AND CFDI.FILE_NAME = var_file_name;
     
+    IF var_validate = 0 THEN
+    
+        INSERT
+          INTO PAC_CFDI_NOMINA_TB (USER_ID,
+                                   FILE_NAME,
+                                   SEQUENCE_NAME,
+                                   CREATION_DATE)
+                           VALUES (var_user_id,
+                                   var_file_name,
+                                   var_sequence_name,
+                                   SYSDATE);
+    
+        --Eliminación y creación del Archivo.
+        BEGIN
+        
+            var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
+            UTL_FILE.FREMOVE(var_path, var_file_name);
+        
+        EXCEPTION
+            WHEN UTL_FILE.INVALID_OPERATION THEN
+                var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
+            WHEN OTHERS THEN
+                dbms_output.put_line('**Error al Limpiar el Archivo.. ' || SQLERRM);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo.. ' || SQLERRM);
+        END;
+        
         var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
-        UTL_FILE.FREMOVE(var_path, var_file_name);
-    
-    EXCEPTION
-        WHEN UTL_FILE.INVALID_OPERATION THEN
-            var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
-        WHEN OTHERS THEN
-            dbms_output.put_line('**Error al Limpiar el Archivo.. ' || SQLERRM);
-            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo.. ' || SQLERRM);
-    END;
-    
-    var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
-    
-    --Eliminación de la secuencia
-    BEGIN
-    
-        EXECUTE IMMEDIATE 'DROP SEQUENCE CFDI_NOMINA_SEQ';
+        
+        --Creación de la secuencia
+        BEGIN
 
-        EXECUTE IMMEDIATE 'CREATE SEQUENCE CFDI_NOMINA_SEQ ' ||
-                      'START WITH 1 ' ||
-                      'INCREMENT BY 1 ' ||
-                      'NOCACHE ' ||
-                      'NOCYCLE';
-                      
-    EXCEPTION WHEN OTHERS THEN
-        dbms_output.put_line('**Error al Reiniciar la Secuencia CFDI_NOMINA_SEQ. ' || SQLERRM);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Reiniciar la Secuencia CFDI_NOMINA_SEQ. ' || SQLERRM);
-    END;
-    
-    
-    --Impresión de Parametros.
-    BEGIN
-    
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'Parametros de Ejecucion. ');
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_COMPANY_ID : '       || P_COMPANY_ID);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_PERIOD_TYPE : '      || P_PERIOD_TYPE);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_PAYROLL_ID : '       || P_PAYROLL_ID);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_CONSOLIDATION_ID : ' || P_CONSOLIDATION_ID);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_YEAR : '             || P_YEAR);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_MONTH : '            || P_MONTH);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_PERIOD_NAME : '      || P_PERIOD_NAME);
+            EXECUTE IMMEDIATE 'CREATE SEQUENCE ' || var_sequence_name || ' ' ||
+                          'START WITH 1 ' ||
+                          'INCREMENT BY 1 ' ||
+                          'NOCACHE ' ||
+                          'NOCYCLE';
+                          
+        EXCEPTION WHEN OTHERS THEN
+            dbms_output.put_line('**Error al Crear la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Crear la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
+        END;
         
-        dbms_output.put_line('Parametros de Ejecucion. ');
-        dbms_output.put_line('P_COMPANY_ID : '       || P_COMPANY_ID);
-        dbms_output.put_line('P_PERIOD_TYPE : '      || P_PERIOD_TYPE);
-        dbms_output.put_line('P_PAYROLL_ID : '       || P_PAYROLL_ID);
-        dbms_output.put_line('P_CONSOLIDATION_ID : ' || P_CONSOLIDATION_ID);
-        dbms_output.put_line('P_YEAR : '             || P_YEAR);
-        dbms_output.put_line('P_MONTH : '            || P_MONTH);
-        dbms_output.put_line('P_PERIOD_NAME : '      || P_PERIOD_NAME);
-    
-    END;
-    
-    --Inicio del Procesamiento del Cursor
-    dbms_output.put_line('Creando el Archivo. . .');
-    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Creando el Archivo. . .');
-    
-    --Recorrido del Cursor de Empleados.
-    BEGIN
-    
-        var_date_exp := TO_CHAR(SYSDATE, 'RRRR-MM-DD') || 'T' || TO_CHAR(SYSDATE, 'HH24:MI:SS');
         
-        OPEN DETAIL_LIST;
+        --Impresión de Parametros.
+        BEGIN
         
-        LOOP
-        
-            FETCH DETAIL_LIST BULK COLLECT INTO DETAIL LIMIT 500;
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Parametros de Ejecucion. ');
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_COMPANY_ID : '       || P_COMPANY_ID);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_PERIOD_TYPE : '      || P_PERIOD_TYPE);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_PAYROLL_ID : '       || P_PAYROLL_ID);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_CONSOLIDATION_ID : ' || P_CONSOLIDATION_ID);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_YEAR : '             || P_YEAR);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_MONTH : '            || P_MONTH);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_PERIOD_NAME : '      || P_PERIOD_NAME);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'P_SEQUENCE_NAME : '    || var_sequence_name);
             
-            EXIT WHEN DETAIL.COUNT = 0;
+            dbms_output.put_line('Parametros de Ejecucion. ');
+            dbms_output.put_line('P_COMPANY_ID : '       || P_COMPANY_ID);
+            dbms_output.put_line('P_PERIOD_TYPE : '      || P_PERIOD_TYPE);
+            dbms_output.put_line('P_PAYROLL_ID : '       || P_PAYROLL_ID);
+            dbms_output.put_line('P_CONSOLIDATION_ID : ' || P_CONSOLIDATION_ID);
+            dbms_output.put_line('P_YEAR : '             || P_YEAR);
+            dbms_output.put_line('P_MONTH : '            || P_MONTH);
+            dbms_output.put_line('P_PERIOD_NAME : '      || P_PERIOD_NAME);
+        
+        END;
+        
+        --Inicio del Procesamiento del Cursor
+        dbms_output.put_line('Creando el Archivo. . .');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'Creando el Archivo. . .');
+        
+        --Recorrido del Cursor de Empleados.
+        BEGIN
+        
+            var_date_exp := TO_CHAR(SYSDATE, 'RRRR-MM-DD') || 'T' || TO_CHAR(SYSDATE, 'HH24:MI:SS');
             
-            FOR rowIndex IN 1 .. DETAIL.COUNT
+            OPEN DETAIL_LIST;
+            
             LOOP
             
-                MIN_WAGE := 0;
-                MIN_WAGE := PAY_MX_UTILITY.GET_MIN_WAGE(P_CTX_DATE_EARNED => DETAIL(rowIndex).DATE_EARNED,
-                                                        P_TAX_BASIS => 'NONE',
-                                                        P_ECON_ZONE => 'A');
-        
-        
-                var_reg_seq := CFDI_NOMINA_SEQ.NEXTVAL();        
+                FETCH DETAIL_LIST BULK COLLECT INTO DETAIL LIMIT 500;
                 
+                EXIT WHEN DETAIL.COUNT = 0;
+                
+                FOR rowIndex IN 1 .. DETAIL.COUNT
+                LOOP
+                
+                    MIN_WAGE := 0;
+                    MIN_WAGE := PAY_MX_UTILITY.GET_MIN_WAGE(P_CTX_DATE_EARNED => DETAIL(rowIndex).DATE_EARNED,
+                                                            P_TAX_BASIS => 'NONE',
+                                                            P_ECON_ZONE => 'A');
             
-                UTL_FILE.PUT_LINE(var_file, 'NOMINA');
-                UTL_FILE.PUT_LINE(var_file, 'NOMDOC  RECIBO NOMINA');
-                UTL_FILE.PUT_LINE(var_file, 'TIPDOC  2');    
-                UTL_FILE.PUT_LINE(var_file, 'SERFOL  ' || DETAIL(rowIndex).SERFOL);
-                UTL_FILE.PUT_LINE(var_file, 'NUMFOL ' || TO_CHAR(var_reg_seq,'0000'));
-                UTL_FILE.PUT_LINE(var_file, 'FECEXP  ' || var_date_exp);
-                UTL_FILE.PUT_LINE(var_file, 'RFCEMI  ' || DETAIL(rowIndex).RFCEMI);
-                UTL_FILE.PUT_LINE(var_file, 'NOMEMI  ' || DETAIL(rowIndex).NOMEMI);
-                UTL_FILE.PUT_LINE(var_file, 'CALEMI  ' || DETAIL(rowIndex).CALEMI);
-                UTL_FILE.PUT_LINE(var_file, 'COLEMI  ' || DETAIL(rowIndex).COLEMI);
-                UTL_FILE.PUT_LINE(var_file, 'MUNEMI  ' || DETAIL(rowIndex).MUNEMI);
-                UTL_FILE.PUT_LINE(var_file, 'ESTEMI  ' || DETAIL(rowIndex).ESTEMI);
-                UTL_FILE.PUT_LINE(var_file, 'CODEMI  ' || DETAIL(rowIndex).CODEMI);
-                UTL_FILE.PUT_LINE(var_file, 'PAIEMI  ' || DETAIL(rowIndex).PAIEMI);
-                UTL_FILE.PUT_LINE(var_file, 'RFCREC  ' || DETAIL(rowIndex).RFCREC);
-                UTL_FILE.PUT_LINE(var_file, 'NOMREC  ' || DETAIL(rowIndex).NOMREC);
-                UTL_FILE.PUT_LINE(var_file, 'PAIREC  ' || NVL(DETAIL(rowIndex).PAIREC, 'MEXICO'));
-                IF DETAIL(rowIndex).MAIL <> 'NULL'  AND DETAIL(rowIndex).MAIL <> 'trabajadores@elcalvario.com.mx'THEN
-                    UTL_FILE.PUT_LINE(var_file, 'MAIL    ' || DETAIL(rowIndex).MAIL);
-                END IF;
-                UTL_FILE.PUT_LINE(var_file, 'FORPAG  PAGO EN UNA SOLA EXCIBICION');
-                UTL_FILE.PUT_LINE(var_file, 'METPAG  ' || DETAIL(rowIndex).METPAG);
-                UTL_FILE.PUT_LINE(var_file, 'LUGEXP  TEHUACAN'); 
-                UTL_FILE.PUT_LINE(var_file, 'SUBTBR  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'ISRRET  ' || TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'MONDET  ' || TO_CHAR(DETAIL(rowIndex).MONDET, '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'TOTPAG  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR - (DETAIL(rowIndex).ISRRET + DETAIL(rowIndex).MONDET)), '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'NOM_NUMEMP  ' || DETAIL(rowIndex).NOM_NUMEMP);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_CURP    ' || DETAIL(rowIndex).NOM_CURP);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_TIPREG  2');
-                UTL_FILE.PUT_LINE(var_file, 'NOM_FECPAG  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECPAG, 'YYYY-MM-DD'));
-                UTL_FILE.PUT_LINE(var_file, 'NOM_FECINI  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECINI, 'YYYY-MM-DD'));
-                UTL_FILE.PUT_LINE(var_file, 'NOM_FECFIN  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECFIN, 'YYYY-MM-DD'));
-                UTL_FILE.PUT_LINE(var_file, 'NOM_NUMSEG ' || DETAIL(rowIndex).NOM_NUMSEG);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_DIAPAG  ' || DETAIL(rowIndex).NOM_DIAPAG);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_DEPTO   ' || DETAIL(rowIndex).NOM_DEPTO);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_PUESTO  ' || DETAIL(rowIndex).NOM_PUESTO);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_FORPAG  ' || DETAIL(rowIndex).NOM_FORPAG);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_NUMERONOM  ' || DETAIL(rowIndex).NOM_NUMERONOM);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_REGPAT  ' || DETAIL(rowIndex).NOM_REGPAT);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_SALBASE ' || TO_CHAR(DETAIL(rowIndex).NOM_SALBASE, '9999990D99'));
+                    --Consulta de la Secuencia
+                    BEGIN
+                        EXECUTE 
+                        IMMEDIATE   'SELECT ' || var_sequence_name || '.NEXTVAL FROM DUAL' INTO var_reg_seq;
+                    EXCEPTION WHEN OTHERS THEN
+                        dbms_output.put_line('**Error al Consultar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Consultar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
+                    END;       
+                    
                 
-                IF DETAIL(rowIndex).NOM_SDI >= (MIN_WAGE * 25) THEN
-                    UTL_FILE.PUT_LINE(var_file, 'NOM_SDI     ' || TO_CHAR((MIN_WAGE * 25), '9999990D99'));
-                ELSE
-                    UTL_FILE.PUT_LINE(var_file, 'NOM_SDI     ' || TO_CHAR(DETAIL(rowIndex).NOM_SDI, '9999990D99'));
-                END IF;
+                    UTL_FILE.PUT_LINE(var_file, 'NOMINA');
+                    UTL_FILE.PUT_LINE(var_file, 'NOMDOC  RECIBO NOMINA');
+                    UTL_FILE.PUT_LINE(var_file, 'TIPDOC  2');    
+                    UTL_FILE.PUT_LINE(var_file, 'SERFOL  ' || DETAIL(rowIndex).SERFOL);
+                    UTL_FILE.PUT_LINE(var_file, 'NUMFOL ' || TO_CHAR(var_reg_seq,'0000'));
+                    UTL_FILE.PUT_LINE(var_file, 'FECEXP  ' || var_date_exp);
+                    UTL_FILE.PUT_LINE(var_file, 'RFCEMI  ' || DETAIL(rowIndex).RFCEMI);
+                    UTL_FILE.PUT_LINE(var_file, 'NOMEMI  ' || DETAIL(rowIndex).NOMEMI);
+                    UTL_FILE.PUT_LINE(var_file, 'CALEMI  ' || DETAIL(rowIndex).CALEMI);
+                    UTL_FILE.PUT_LINE(var_file, 'COLEMI  ' || DETAIL(rowIndex).COLEMI);
+                    UTL_FILE.PUT_LINE(var_file, 'MUNEMI  ' || DETAIL(rowIndex).MUNEMI);
+                    UTL_FILE.PUT_LINE(var_file, 'ESTEMI  ' || DETAIL(rowIndex).ESTEMI);
+                    UTL_FILE.PUT_LINE(var_file, 'CODEMI  ' || DETAIL(rowIndex).CODEMI);
+                    UTL_FILE.PUT_LINE(var_file, 'PAIEMI  ' || DETAIL(rowIndex).PAIEMI);
+                    UTL_FILE.PUT_LINE(var_file, 'RFCREC  ' || DETAIL(rowIndex).RFCREC);
+                    UTL_FILE.PUT_LINE(var_file, 'NOMREC  ' || DETAIL(rowIndex).NOMREC);
+                    UTL_FILE.PUT_LINE(var_file, 'PAIREC  ' || NVL(DETAIL(rowIndex).PAIREC, 'MEXICO'));
+                    IF DETAIL(rowIndex).MAIL <> 'NULL'  AND DETAIL(rowIndex).MAIL <> 'trabajadores@elcalvario.com.mx'THEN
+                        UTL_FILE.PUT_LINE(var_file, 'MAIL    ' || DETAIL(rowIndex).MAIL);
+                    END IF;
+                    UTL_FILE.PUT_LINE(var_file, 'FORPAG  PAGO EN UNA SOLA EXCIBICION');
+                    UTL_FILE.PUT_LINE(var_file, 'METPAG  ' || DETAIL(rowIndex).METPAG);
+                    UTL_FILE.PUT_LINE(var_file, 'LUGEXP  TEHUACAN'); 
+                    UTL_FILE.PUT_LINE(var_file, 'SUBTBR  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'ISRRET  ' || TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'MONDET  ' || TO_CHAR(DETAIL(rowIndex).MONDET, '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'TOTPAG  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR - (DETAIL(rowIndex).ISRRET + DETAIL(rowIndex).MONDET)), '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_NUMEMP  ' || DETAIL(rowIndex).NOM_NUMEMP);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_CURP    ' || DETAIL(rowIndex).NOM_CURP);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_TIPREG  2');
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_FECPAG  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECPAG, 'YYYY-MM-DD'));
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_FECINI  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECINI, 'YYYY-MM-DD'));
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_FECFIN  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECFIN, 'YYYY-MM-DD'));
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_NUMSEG ' || DETAIL(rowIndex).NOM_NUMSEG);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_DIAPAG  ' || DETAIL(rowIndex).NOM_DIAPAG);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_DEPTO   ' || DETAIL(rowIndex).NOM_DEPTO);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_PUESTO  ' || DETAIL(rowIndex).NOM_PUESTO);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_FORPAG  ' || DETAIL(rowIndex).NOM_FORPAG);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_NUMERONOM  ' || DETAIL(rowIndex).NOM_NUMERONOM);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_REGPAT  ' || DETAIL(rowIndex).NOM_REGPAT);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_SALBASE ' || TO_CHAR(DETAIL(rowIndex).NOM_SALBASE, '9999990D99'));
+                    
+                    IF DETAIL(rowIndex).NOM_SDI >= (MIN_WAGE * 25) THEN
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_SDI     ' || TO_CHAR((MIN_WAGE * 25), '9999990D99'));
+                    ELSE
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_SDI     ' || TO_CHAR(DETAIL(rowIndex).NOM_SDI, '9999990D99'));
+                    END IF;
+                    
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_TIPSAL  MIXTO');
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_CVENOM  ' || DETAIL(rowIndex).NOM_CVENOM);
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_FAHOACUM    ' || TO_CHAR(DETAIL(rowIndex).NOM_FAHOACUM, '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTGRA  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTGRA, '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTEXE  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTEXE, '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTGRA  ' || TO_CHAR(0, '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTEXE  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'CANTID  1');
+                    UTL_FILE.PUT_LINE(var_file, 'DESCRI  PAGO DE NOMINA');
+                    UTL_FILE.PUT_LINE(var_file, 'NOM_DESCRI  ' || DETAIL(rowIndex).NOM_DESCRI);
+                    UTL_FILE.PUT_LINE(var_file, 'UNIDAD  SERVICIO');
+                    UTL_FILE.PUT_LINE(var_file, 'PBRUDE  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'IMPBRU  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
+                    UTL_FILE.PUT_LINE(var_file, 'R');
                 
-                UTL_FILE.PUT_LINE(var_file, 'NOM_TIPSAL  MIXTO');
-                UTL_FILE.PUT_LINE(var_file, 'NOM_CVENOM  ' || DETAIL(rowIndex).NOM_CVENOM);
-                UTL_FILE.PUT_LINE(var_file, 'NOM_FAHOACUM    ' || TO_CHAR(DETAIL(rowIndex).NOM_FAHOACUM, '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTGRA  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTGRA, '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTEXE  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTEXE, '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTGRA  ' || TO_CHAR(0, '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTEXE  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'CANTID  1');
-                UTL_FILE.PUT_LINE(var_file, 'DESCRI  PAGO DE NOMINA');
-                UTL_FILE.PUT_LINE(var_file, 'NOM_DESCRI  ' || DETAIL(rowIndex).NOM_DESCRI);
-                UTL_FILE.PUT_LINE(var_file, 'UNIDAD  SERVICIO');
-                UTL_FILE.PUT_LINE(var_file, 'PBRUDE  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'IMPBRU  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
-                UTL_FILE.PUT_LINE(var_file, 'R');
-            
-                DECLARE 
-                
-                    CURSOR  DETAIL_ASSIGNMENT_ACTION (P_ASSIGNMENT_ID       NUMBER,
-                                                      P_PAYROLL_ACTION_ID   NUMBER) IS
-                             SELECT DISTINCT PAA.ASSIGNMENT_ACTION_ID
-                               FROM PAY_ASSIGNMENT_ACTIONS PAA
-                              WHERE 1 = 1
-                                AND PAA.ASSIGNMENT_ID = P_ASSIGNMENT_ID
-                                AND PAA.PAYROLL_ACTION_ID = P_PAYROLL_ACTION_ID; 
-                
-                    CURSOR  DETAIL_PERCEPCION (P_ASSIGNMENT_ACTION_ID   NUMBER) IS
-                                                          SELECT NOM_PER_TIP,
-                                    NOM_PER_CVE,
-                                    NOM_PER_DESCRI,
-                                    NOM_PER_IMPGRA,
-                                    NOM_PER_IMPEXE    
-                               FROM(SELECT 
-                                        NOM_PER_TIP,
+                    DECLARE 
+                    
+                        CURSOR  DETAIL_ASSIGNMENT_ACTION (P_ASSIGNMENT_ID       NUMBER,
+                                                          P_PAYROLL_ACTION_ID   NUMBER) IS
+                                 SELECT DISTINCT PAA.ASSIGNMENT_ACTION_ID
+                                   FROM PAY_ASSIGNMENT_ACTIONS PAA
+                                  WHERE 1 = 1
+                                    AND PAA.ASSIGNMENT_ID = P_ASSIGNMENT_ID
+                                    AND PAA.PAYROLL_ACTION_ID = P_PAYROLL_ACTION_ID; 
+                    
+                        CURSOR  DETAIL_PERCEPCION (P_ASSIGNMENT_ACTION_ID   NUMBER) IS
+                                                              SELECT NOM_PER_TIP,
                                         NOM_PER_CVE,
                                         NOM_PER_DESCRI,
-                                        SUM(NOM_PER_IMPGRA) AS  NOM_PER_IMPGRA,
-                                        SUM(NOM_PER_IMPEXE) AS  NOM_PER_IMPEXE 
-                                      FROM (SELECT 
+                                        NOM_PER_IMPGRA,
+                                        NOM_PER_IMPEXE    
+                                   FROM(SELECT 
+                                            NOM_PER_TIP,
+                                            NOM_PER_CVE,
+                                            NOM_PER_DESCRI,
+                                            SUM(NOM_PER_IMPGRA) AS  NOM_PER_IMPGRA,
+                                            SUM(NOM_PER_IMPEXE) AS  NOM_PER_IMPEXE 
+                                          FROM (SELECT 
+                                                    NVL((SELECT DISTINCT
+                                                                DESCRIPTION
+                                                           FROM FND_LOOKUP_VALUES
+                                                          WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                             OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                            AND MEANING LIKE PETF.ELEMENT_NAME
+                                                            AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
+                                                    NVL((SELECT DISTINCT
+                                                                TAG
+                                                           FROM FND_LOOKUP_VALUES
+                                                          WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                             OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                            AND MEANING LIKE PETF.ELEMENT_NAME
+                                                            AND LANGUAGE = 'ESA'), '000')      AS  NOM_PER_CVE,
+                                                    (CASE 
+                                                        WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
+                                                            'REPARTO DE UTILIDADES'
+                                                        WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
+                                                            REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                        WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
+                                                            REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                        ELSE
+                                                            REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
+                                                     END)                                       AS  NOM_PER_DESCRI,
+                                                    (CASE
+                                                        WHEN PIVF.NAME = 'ISR Subject' THEN
+                                                            SUM(PRRV.RESULT_VALUE)
+                                                        ELSE 0
+                                                     END)                                       AS  NOM_PER_IMPGRA,
+                                                     (CASE
+                                                        WHEN PIVF.NAME = 'ISR Exempt' THEN
+                                                            SUM(PRRV.RESULT_VALUE)
+                                                        ELSE 0
+                                                     END)                                       AS  NOM_PER_IMPEXE
+                                                  FROM PAY_RUN_RESULTS              PRR,
+                                                       PAY_ELEMENT_TYPES_F          PETF,
+                                                       PAY_RUN_RESULT_VALUES        PRRV,
+                                                       PAY_INPUT_VALUES_F           PIVF,
+                                                       PAY_ELEMENT_CLASSIFICATIONS  PEC
+                                                 WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+                                                   AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                                                   AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                                                   AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                                                   AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+                                                   AND (PEC.CLASSIFICATION_NAME IN ('Earnings', 
+                                                                                    'Supplemental Earnings', 
+                                                                                    'Amends', 
+                                                                                    'Imputed Earnings') 
+                                                          OR PETF.ELEMENT_NAME  IN (SELECT MEANING
+                                                                                      FROM FND_LOOKUP_VALUES 
+                                                                                     WHERE LOOKUP_TYPE = 'XX_PERCEPCIONES_INFORMATIVAS'
+                                                                                       AND LANGUAGE = USERENV('LANG')))
+                                                   AND PIVF.UOM = 'M'
+                                                   AND (PIVF.NAME = 'ISR Subject' OR PIVF.NAME = 'ISR Exempt')
+                                                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE 
+                                                 GROUP BY PETF.ELEMENT_NAME,
+                                                          PETF.REPORTING_NAME,
+                                                          PETF.ELEMENT_INFORMATION11,
+                                                          PIVF.NAME
+                                                UNION
+                                                SELECT 
+                                                    NVL((SELECT DISTINCT
+                                                                DESCRIPTION
+                                                           FROM FND_LOOKUP_VALUES
+                                                          WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                             OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                            AND MEANING LIKE PETF.ELEMENT_NAME
+                                                            AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
+                                                    NVL((SELECT DISTINCT
+                                                                TAG
+                                                           FROM FND_LOOKUP_VALUES
+                                                          WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                             OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                            AND MEANING LIKE PETF.ELEMENT_NAME
+                                                            AND LANGUAGE = 'ESA'), '000')      AS  NOM_PER_CVE,
+                                                    (CASE
+                                                        WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
+                                                            'REPARTO DE UTILIDADES' 
+                                                        WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
+                                                            REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                        WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
+                                                            REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                        ELSE
+                                                            REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
+                                                     END)                                       AS  NOM_PER_DESCRI,
+                                                     0                                          AS  NOM_PER_IMPGRA,
+                                                     SUM(PRRV.RESULT_VALUE)                     AS  NOM_PER_IMPEXE
+                                                  FROM PAY_RUN_RESULTS              PRR,
+                                                       PAY_ELEMENT_TYPES_F          PETF,
+                                                       PAY_RUN_RESULT_VALUES        PRRV,
+                                                       PAY_INPUT_VALUES_F           PIVF,
+                                                       PAY_ELEMENT_CLASSIFICATIONS  PEC
+                                                 WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+                                                   AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                                                   AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                                                   AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                                                   AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+                                                   AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
+                                                                              'P080_FONDO AHORRO TR ACUM',
+                                                                              'P017_PRIMA DE ANTIGUEDAD',
+                                                                              'P032_SUBSIDIO_PARA_EMPLEO',
+                                                                              'P047_ISPT ANUAL A FAVOR')
+                                                   AND PIVF.UOM = 'M'
+                                                   AND PIVF.NAME = 'Pay Value'
+                                                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
+                                                 GROUP BY PETF.ELEMENT_NAME,
+                                                          PETF.REPORTING_NAME,
+                                                          PETF.ELEMENT_INFORMATION11,
+                                                          PIVF.NAME
+                                               ) GROUP BY NOM_PER_TIP,
+                                                          NOM_PER_CVE,
+                                                          NOM_PER_DESCRI)
+                                  WHERE 1 = 1
+                                    AND (   NOM_PER_IMPGRA <> 0
+                                         OR NOM_PER_IMPEXE <> 0)
+                                  ORDER BY NOM_PER_CVE;
+                                                              
+                        CURSOR  DETAIL_DEDUCCION (P_ASSIGNMENT_ACTION_ID NUMBER) IS
+                                 SELECT NOM_DED_TIP,
+                                        NOM_DED_CVE,
+                                        NOM_DED_DESCRI,
+                                        NOM_DED_IMPGRA,
+                                        NOM_DED_IMPEXE
+                                   FROM(SELECT 
                                                 NVL((SELECT DISTINCT
                                                             DESCRIPTION
                                                        FROM FND_LOOKUP_VALUES
                                                       WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
                                                          OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
                                                         AND MEANING LIKE PETF.ELEMENT_NAME
-                                                        AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
+                                                        AND LANGUAGE = 'ESA'), '004')       AS  NOM_DED_TIP,
                                                 NVL((SELECT DISTINCT
                                                             TAG
                                                        FROM FND_LOOKUP_VALUES
                                                       WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
                                                          OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
                                                         AND MEANING LIKE PETF.ELEMENT_NAME
-                                                        AND LANGUAGE = 'ESA'), '000')      AS  NOM_PER_CVE,
-                                                (CASE 
-                                                    WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
-                                                        'REPARTO DE UTILIDADES'
-                                                    WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
-                                                        REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                    WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
-                                                        REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                    ELSE
-                                                        REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
-                                                 END)                                       AS  NOM_PER_DESCRI,
-                                                (CASE
-                                                    WHEN PIVF.NAME = 'ISR Subject' THEN
-                                                        SUM(PRRV.RESULT_VALUE)
-                                                    ELSE 0
-                                                 END)                                       AS  NOM_PER_IMPGRA,
-                                                 (CASE
-                                                    WHEN PIVF.NAME = 'ISR Exempt' THEN
-                                                        SUM(PRRV.RESULT_VALUE)
-                                                    ELSE 0
-                                                 END)                                       AS  NOM_PER_IMPEXE
-                                              FROM PAY_RUN_RESULTS              PRR,
-                                                   PAY_ELEMENT_TYPES_F          PETF,
-                                                   PAY_RUN_RESULT_VALUES        PRRV,
-                                                   PAY_INPUT_VALUES_F           PIVF,
-                                                   PAY_ELEMENT_CLASSIFICATIONS  PEC
-                                             WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-                                               AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
-                                               AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
-                                               AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
-                                               AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
-                                               AND (PEC.CLASSIFICATION_NAME IN ('Earnings', 
-                                                                                'Supplemental Earnings', 
-                                                                                'Amends', 
-                                                                                'Imputed Earnings') 
-                                                      OR PETF.ELEMENT_NAME  IN (SELECT MEANING
-                                                                                  FROM FND_LOOKUP_VALUES 
-                                                                                 WHERE LOOKUP_TYPE = 'XX_PERCEPCIONES_INFORMATIVAS'
-                                                                                   AND LANGUAGE = USERENV('LANG')))
-                                               AND PIVF.UOM = 'M'
-                                               AND (PIVF.NAME = 'ISR Subject' OR PIVF.NAME = 'ISR Exempt')
-                                               AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
-                                               AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE 
-                                             GROUP BY PETF.ELEMENT_NAME,
-                                                      PETF.REPORTING_NAME,
-                                                      PETF.ELEMENT_INFORMATION11,
-                                                      PIVF.NAME
-                                            UNION
-                                            SELECT 
-                                                NVL((SELECT DISTINCT
-                                                            DESCRIPTION
-                                                       FROM FND_LOOKUP_VALUES
-                                                      WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                         OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                        AND MEANING LIKE PETF.ELEMENT_NAME
-                                                        AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
-                                                NVL((SELECT DISTINCT
-                                                            TAG
-                                                       FROM FND_LOOKUP_VALUES
-                                                      WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                         OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                        AND MEANING LIKE PETF.ELEMENT_NAME
-                                                        AND LANGUAGE = 'ESA'), '000')      AS  NOM_PER_CVE,
-                                                (CASE
-                                                    WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
-                                                        'REPARTO DE UTILIDADES' 
-                                                    WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
-                                                        REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                    WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
-                                                        REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                    ELSE
-                                                        REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
-                                                 END)                                       AS  NOM_PER_DESCRI,
-                                                 0                                          AS  NOM_PER_IMPGRA,
-                                                 SUM(PRRV.RESULT_VALUE)                     AS  NOM_PER_IMPEXE
-                                              FROM PAY_RUN_RESULTS              PRR,
-                                                   PAY_ELEMENT_TYPES_F          PETF,
-                                                   PAY_RUN_RESULT_VALUES        PRRV,
-                                                   PAY_INPUT_VALUES_F           PIVF,
-                                                   PAY_ELEMENT_CLASSIFICATIONS  PEC
-                                             WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-                                               AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
-                                               AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
-                                               AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
-                                               AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
-                                               AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
-                                                                          'P080_FONDO AHORRO TR ACUM',
-                                                                          'P017_PRIMA DE ANTIGUEDAD',
-                                                                          'P032_SUBSIDIO_PARA_EMPLEO',
-                                                                          'P047_ISPT ANUAL A FAVOR')
-                                               AND PIVF.UOM = 'M'
-                                               AND PIVF.NAME = 'Pay Value'
-                                               AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
-                                               AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
-                                             GROUP BY PETF.ELEMENT_NAME,
-                                                      PETF.REPORTING_NAME,
-                                                      PETF.ELEMENT_INFORMATION11,
-                                                      PIVF.NAME
-                                           ) GROUP BY NOM_PER_TIP,
-                                                      NOM_PER_CVE,
-                                                      NOM_PER_DESCRI)
-                              WHERE 1 = 1
-                                AND (   NOM_PER_IMPGRA <> 0
-                                     OR NOM_PER_IMPEXE <> 0)
-                              ORDER BY NOM_PER_CVE;
-                                                          
-                    CURSOR  DETAIL_DEDUCCION (P_ASSIGNMENT_ACTION_ID NUMBER) IS
-                             SELECT NOM_DED_TIP,
-                                    NOM_DED_CVE,
-                                    NOM_DED_DESCRI,
-                                    NOM_DED_IMPGRA,
-                                    NOM_DED_IMPEXE
-                               FROM(SELECT 
-                                            NVL((SELECT DISTINCT
-                                                        DESCRIPTION
-                                                   FROM FND_LOOKUP_VALUES
-                                                  WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                     OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                    AND MEANING LIKE PETF.ELEMENT_NAME
-                                                    AND LANGUAGE = 'ESA'), '004')       AS  NOM_DED_TIP,
-                                            NVL((SELECT DISTINCT
-                                                        TAG
-                                                   FROM FND_LOOKUP_VALUES
-                                                  WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                     OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                    AND MEANING LIKE PETF.ELEMENT_NAME
-                                                    AND LANGUAGE = 'ESA'), '000')      AS  NOM_DED_CVE,
-                                           SUBSTR(PETF.ELEMENT_NAME,
-                                                  6,
-                                                  LENGTH(PETF.ELEMENT_NAME))AS  NOM_DED_DESCRI,
-                                           0                                AS  NOM_DED_IMPGRA,
-                                           PRRV.RESULT_VALUE                AS  NOM_DED_IMPEXE  
-                                      FROM PAY_RUN_RESULTS              PRR,
-                                           PAY_ELEMENT_TYPES_F          PETF,
-                                           PAY_RUN_RESULT_VALUES        PRRV,
-                                           PAY_INPUT_VALUES_F           PIVF,
-                                           PAY_ELEMENT_CLASSIFICATIONS  PEC
-                                     WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-                                       AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
-                                       AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
-                                       AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
-                                       AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
-                                       AND (PEC.CLASSIFICATION_NAME IN ('Voluntary Deductions', 
-                                                                        'Involuntary Deductions') 
-                                               OR PETF.ELEMENT_NAME IN (SELECT MEANING
-                                                                          FROM FND_LOOKUP_VALUES 
-                                                                         WHERE LOOKUP_TYPE = 'XX_DEDUCCIONES_INFORMATIVAS'
-                                                                           AND LANGUAGE = USERENV('LANG')))
-                                       AND PIVF.UOM = 'M'
-                                       AND PIVF.NAME = 'Pay Value'
-                                       AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
-                                       AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE)
-                               WHERE 1 = 1
-                                 AND (   NOM_DED_IMPGRA <> 0
-                                      OR NOM_DED_IMPEXE <> 0)
-                               ORDER BY NOM_DED_DESCRI;
-                
-                    isPERCEP    BOOLEAN;
-                    isDEDUC     BOOLEAN;
+                                                        AND LANGUAGE = 'ESA'), '000')      AS  NOM_DED_CVE,
+                                               SUBSTR(PETF.ELEMENT_NAME,
+                                                      6,
+                                                      LENGTH(PETF.ELEMENT_NAME))AS  NOM_DED_DESCRI,
+                                               0                                AS  NOM_DED_IMPGRA,
+                                               PRRV.RESULT_VALUE                AS  NOM_DED_IMPEXE  
+                                          FROM PAY_RUN_RESULTS              PRR,
+                                               PAY_ELEMENT_TYPES_F          PETF,
+                                               PAY_RUN_RESULT_VALUES        PRRV,
+                                               PAY_INPUT_VALUES_F           PIVF,
+                                               PAY_ELEMENT_CLASSIFICATIONS  PEC
+                                         WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+                                           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                                           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                                           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                                           AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+                                           AND (PEC.CLASSIFICATION_NAME IN ('Voluntary Deductions', 
+                                                                            'Involuntary Deductions') 
+                                                   OR PETF.ELEMENT_NAME IN (SELECT MEANING
+                                                                              FROM FND_LOOKUP_VALUES 
+                                                                             WHERE LOOKUP_TYPE = 'XX_DEDUCCIONES_INFORMATIVAS'
+                                                                               AND LANGUAGE = USERENV('LANG')))
+                                           AND PIVF.UOM = 'M'
+                                           AND PIVF.NAME = 'Pay Value'
+                                           AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE)
+                                   WHERE 1 = 1
+                                     AND (   NOM_DED_IMPGRA <> 0
+                                          OR NOM_DED_IMPEXE <> 0)
+                                   ORDER BY NOM_DED_DESCRI;
                     
+                        isPERCEP    BOOLEAN;
+                        isDEDUC     BOOLEAN;
+                        
+                        
+                    BEGIN
                     
-                BEGIN
-                
-                    isPERCEP := FALSE;
-                    isDEDUC  := FALSE;
-                
-                    FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP       
-                        FOR PERCEP IN DETAIL_PERCEPCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
-                            IF isPERCEP = FALSE THEN
-                                UTL_FILE.PUT_LINE(var_file, 'INIPER');
-                                isPERCEP := TRUE;
-                            END IF;
-                        
-                            UTL_FILE.PUT_LINE(var_file, '');
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TIP     ' || PERCEP.NOM_PER_TIP);
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_PER_CVE     ' || PERCEP.NOM_PER_CVE);
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_PER_DESCRI  ' || REPLACE(PERCEP.NOM_PER_DESCRI, '_', ' '));
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPGRA  ' || TO_CHAR(PERCEP.NOM_PER_IMPGRA, '9999990D99'));
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPEXE  ' || TO_CHAR(PERCEP.NOM_PER_IMPEXE, '9999990D99'));
-                        
+                        isPERCEP := FALSE;
+                        isDEDUC  := FALSE;
+                    
+                        FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP       
+                            FOR PERCEP IN DETAIL_PERCEPCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
+                                IF isPERCEP = FALSE THEN
+                                    UTL_FILE.PUT_LINE(var_file, 'INIPER');
+                                    isPERCEP := TRUE;
+                                END IF;
+                            
+                                UTL_FILE.PUT_LINE(var_file, '');
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TIP     ' || PERCEP.NOM_PER_TIP);
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_PER_CVE     ' || PERCEP.NOM_PER_CVE);
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_PER_DESCRI  ' || REPLACE(PERCEP.NOM_PER_DESCRI, '_', ' '));
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPGRA  ' || TO_CHAR(PERCEP.NOM_PER_IMPGRA, '9999990D99'));
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPEXE  ' || TO_CHAR(PERCEP.NOM_PER_IMPEXE, '9999990D99'));
+                            
+                            END LOOP;
                         END LOOP;
-                    END LOOP;
-                            
-                    IF isPERCEP = TRUE THEN
-                        UTL_FILE.PUT_LINE(var_file, '');
-                        UTL_FILE.PUT_LINE(var_file, 'FINPER');
-                    END IF;                        
-                       
-                    
-                    
-                    FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP                            
-                        FOR DEDUC IN DETAIL_DEDUCCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
-                        
-                            IF isDEDUC = FALSE THEN
-                                UTL_FILE.PUT_LINE(var_file, 'INIDED');
-                                isDEDUC := TRUE;   
-                            END IF;
-                        
+                                
+                        IF isPERCEP = TRUE THEN
                             UTL_FILE.PUT_LINE(var_file, '');
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TIP     ' || DEDUC.NOM_DED_TIP);
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_DED_CVE     ' || DEDUC.NOM_DED_CVE);
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_DED_DESCRI  ' || REPLACE(DEDUC.NOM_DED_DESCRI, '_', ' '));
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPGRA  ' || TO_CHAR(DEDUC.NOM_DED_IMPGRA, '9999990D99'));
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPEXE  ' || TO_CHAR(DEDUC.NOM_DED_IMPEXE, '9999990D99'));
-                            
-                        END LOOP;
-                    END LOOP;                       
-                            
-                    IF isDEDUC = TRUE THEN
-                        UTL_FILE.PUT_LINE(var_file, '');
-                        UTL_FILE.PUT_LINE(var_file, 'FINDED');
-                    END IF;
+                            UTL_FILE.PUT_LINE(var_file, 'FINPER');
+                        END IF;                        
+                           
                         
-                    
-                    
-                    UTL_FILE.PUT_LINE(var_file, '');
-                    
-                    dbms_output.put_line(TO_CHAR(var_reg_seq,'00000') || ' - ' || DETAIL(rowIndex).NOMREC);
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, TO_CHAR(var_reg_seq,'00000') || ' - ' || DETAIL(rowIndex).NOMREC);
-                    
-                EXCEPTION WHEN OTHERS THEN
-                    dbms_output.put_line('**Error al Crear los Registros de Percepciones y Deducciones. ' || SQLERRM);
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Crear los Registros de Percepciones y Deducciones. ' || SQLERRM);
-                END;
-        
+                        
+                        FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP                            
+                            FOR DEDUC IN DETAIL_DEDUCCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
+                            
+                                IF isDEDUC = FALSE THEN
+                                    UTL_FILE.PUT_LINE(var_file, 'INIDED');
+                                    isDEDUC := TRUE;   
+                                END IF;
+                            
+                                UTL_FILE.PUT_LINE(var_file, '');
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TIP     ' || DEDUC.NOM_DED_TIP);
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_DED_CVE     ' || DEDUC.NOM_DED_CVE);
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_DED_DESCRI  ' || REPLACE(DEDUC.NOM_DED_DESCRI, '_', ' '));
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPGRA  ' || TO_CHAR(DEDUC.NOM_DED_IMPGRA, '9999990D99'));
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPEXE  ' || TO_CHAR(DEDUC.NOM_DED_IMPEXE, '9999990D99'));
+                                
+                            END LOOP;
+                        END LOOP;                       
+                                
+                        IF isDEDUC = TRUE THEN
+                            UTL_FILE.PUT_LINE(var_file, '');
+                            UTL_FILE.PUT_LINE(var_file, 'FINDED');
+                        END IF;
+                            
+                        
+                        
+                        UTL_FILE.PUT_LINE(var_file, '');
+                        
+                        dbms_output.put_line(TO_CHAR(var_reg_seq,'00000') || ' - ' || DETAIL(rowIndex).NOMREC);
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, TO_CHAR(var_reg_seq,'00000') || ' - ' || DETAIL(rowIndex).NOMREC);
+                        
+                    EXCEPTION WHEN OTHERS THEN
+                        dbms_output.put_line('**Error al Crear los Registros de Percepciones y Deducciones. ' || SQLERRM);
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Crear los Registros de Percepciones y Deducciones. ' || SQLERRM);
+                    END;
+            
+                END LOOP;
+                
             END LOOP;
             
-        END LOOP;
+            CLOSE DETAIL_LIST;
+                    
         
-        CLOSE DETAIL_LIST;
-                
+        EXCEPTION WHEN OTHERS THEN
+            dbms_output.put_line('**Error al Recorrer el Cursor DETAIL_LIST. ' || SQLERRM);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Recorrer el Cursor DETAIL_LIST. ' || SQLERRM);
+        END;
+        
+        --Finalizacion del Procedimiento.
+        dbms_output.put_line('Archivo creado!');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo creado!');
+        
+        --Eliminación de la secuencia
+        BEGIN
+        
+            EXECUTE IMMEDIATE 'DROP SEQUENCE ' || var_sequence_name;
+                          
+        EXCEPTION WHEN OTHERS THEN
+            dbms_output.put_line('**Error al Borrar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Borrar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
+        END;
+        
+        
+--        BEGIN
+--        
+--            STANDARD.COMMIT;
+--            
+--            V_REQUEST_ID :=
+--                FND_REQUEST.SUBMIT_REQUEST (
+--                   APPLICATION => 'PER',
+--                   PROGRAM => 'MUEVE_CFDI_NOMINA',
+--                   DESCRIPTION => '',
+--                   START_TIME => '',
+--                   SUB_REQUEST => FALSE,
+--                   ARGUMENT1 => TO_CHAR(var_file_name)
+--                                           );
+--                                      
+--                     
+--            WAITING :=
+--                FND_CONCURRENT.WAIT_FOR_REQUEST (
+--                    REQUEST_ID => V_REQUEST_ID,
+--                    INTERVAL => 1,
+--                    MAX_WAIT => 0,
+--                    PHASE => PHASE,
+--                    STATUS => STATUS,
+--                    DEV_PHASE => DEV_PHASE,
+--                    DEV_STATUS => DEV_STATUS,
+--                    MESSAGE => V_MESSAGE
+--                                            );
+--        
+--        
+--        EXCEPTION WHEN OTHERS THEN
+--            dbms_output.put_line('**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
+--            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
+--        END;
     
-    EXCEPTION WHEN OTHERS THEN
-        dbms_output.put_line('**Error al Recorrer el Cursor DETAIL_LIST. ' || SQLERRM);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Recorrer el Cursor DETAIL_LIST. ' || SQLERRM);
-    END;
-    
-    --Finalizacion del Procedimiento.
-    dbms_output.put_line('Archivo creado!');
-    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo creado!');
+    ELSE
+        P_RETCODE := 1;
+        P_ERRBUF := 'EL ARCHIVO ' || var_file_name || ' YA HA SIDO GENERADO ANTERIORMENTE.';
+    END IF;
     
 EXCEPTION WHEN OTHERS THEN
     dbms_output.put_line('**Error al Ejecutar el Procedure PAC_CFDI_NOMINA_PRC. ' || SQLERRM);
