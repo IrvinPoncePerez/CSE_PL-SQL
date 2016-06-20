@@ -1,0 +1,34 @@
+#!/bin/bash
+param1="$5"
+ftp -n 192.1.1.193 << EOF
+verbose off
+prompt off
+passive off
+user oracle oracle
+cd /var/tmp/CARGAS/NOMINA/CFDI_NOMINA
+bin
+get $param1
+bye
+EOF
+ftp -n 192.1.1.193 << EOF
+verbose off
+prompt off
+passive off
+user oracle oracle
+cd /var/tmp/CARGAS/NOMINA/CFDI_NOMINA
+ascii
+cp $param1 /var/tmp/CARGAS/NOMINA/CFDI_NOMINA/RESPALDO_CFDI_NOMINA
+delete $param1
+bye
+EOF
+ftp -n 192.1.1.193 << EOF
+verbose off
+prompt off
+passive off
+user oracle oracle
+cd /var/tmp/CARGAS/NOMINA/CFDI_NOMINA/RESPALDO_CFDI_NOMINA
+bin
+put $param1
+bye
+EOF
+rm $param1
