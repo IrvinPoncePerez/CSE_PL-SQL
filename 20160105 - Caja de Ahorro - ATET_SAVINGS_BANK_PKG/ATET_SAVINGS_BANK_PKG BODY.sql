@@ -1311,7 +1311,49 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'CREATE ACCOUNT ' || GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME) || '.');
                 END IF;
-            END IF;                          
+            END IF;   
+        
+        ELSIF P_PARAM_ELEMENT_NAME = 'INTEREST_ELEMENT_NAME' THEN    
+                     
+            SELECT COUNT(ASMA.MEMBER_ACCOUNT_ID)
+              INTO var_have_account
+              FROM ATET_SB_MEMBERS          ASM,
+                   ATET_SB_MEMBERS_ACCOUNTS ASMA                               
+             WHERE 1 = 1
+               AND ASM.PERSON_ID = P_PERSON_ID
+               AND ASM.MEMBER_ID = ASMA.MEMBER_ID   
+               AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME)
+               AND ASMA.ACCOUNT_NUMBER = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_CODE_COMBINATION)
+               AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID;
+               
+            IF var_have_account = 0 THEN                                
+                INSERT INTO ATET_SB_MEMBERS_ACCOUNTS(MEMBER_ID,
+                                                     CODE_COMBINATION_ID,
+                                                     ACCOUNT_NUMBER,
+                                                     ACCOUNT_DESCRIPTION,
+                                                     DEBIT_BALANCE,
+                                                     CREDIT_BALANCE,
+                                                     FINAL_BALANCE,
+                                                     CREATION_DATE,
+                                                     CREATED_BY,
+                                                     LAST_UPDATE_DATE,
+                                                     LAST_UPDATED_BY)
+                                             VALUES (GET_MEMBER_ID(P_PERSON_ID),
+                                                     -1,
+                                                     GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_CODE_COMB'),
+                                                     GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     SYSDATE,
+                                                     var_user_id,
+                                                     SYSDATE,
+                                                     var_user_id);
+                
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'CREATE ACCOUNT ' || GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME) || '.');
+                
+            END IF; 
+                      
         END IF;
  
     EXCEPTION WHEN OTHERS THEN
@@ -2810,7 +2852,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                
                DBMS_OUTPUT.PUT_LINE( 'UPDATE ACCOUNT');
                
-            COMMIT;
+--            COMMIT;
             
             SELECT ASMA.MEMBER_ACCOUNT_ID
               INTO var_member_account_id
@@ -7958,9 +8000,240 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_RETCODE       OUT NOCOPY VARCHAR2,
                     P_INTEREST_PERCENTAGE      NUMBER)
     IS
+    
+        CURSOR  SAVERS_WITH_SAVINGS_DETAILS IS
+                SELECT ASM.MEMBER_ID,
+                       ASM.PERSON_ID,
+                       ASM.EMPLOYEE_NUMBER,
+                       ASM.EMPLOYEE_FULL_NAME,
+                       ASMA.MEMBER_ACCOUNT_ID,
+                       ASMA.FINAL_BALANCE
+                  FROM ATET_SB_MEMBERS              ASM,
+                       ATET_SB_MEMBERS_ACCOUNTS     ASMA
+                 WHERE 1 = 1
+                   AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID
+                   AND ASM.MEMBER_ID = ASMA.MEMBER_ID
+                   AND ASMA.ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO'
+                   AND ASMA.FINAL_BALANCE > 0;
+        
+        var_sum_saving_balance      NUMBER := 0;
+        var_sum_interest_earned     NUMBER := 0;
+        var_interest_earned         NUMBER := 0;
+        var_interest_percentage     NUMBER := (P_INTEREST_PERCENTAGE / 100);
+        
+        var_user_id                 NUMBER := FND_GLOBAL.USER_ID;
+        var_saving_bank_id          NUMBER := GET_SAVING_BANK_ID;
+        var_int_final_balance       NUMBER;
+        var_int_member_account_id   NUMBER;
+        var_request_id              NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
+        var_debit_amount            NUMBER;
+        var_credit_amount           NUMBER;
+        var_validate                NUMBER;
+        
     BEGIN
-        NULL;
+    
+        SELECT COUNT(ASMA.ATTRIBUTE6)
+          INTO var_validate
+          FROM ATET_SB_MEMBERS_ACCOUNTS ASMA,
+               ATET_SB_MEMBERS          ASM
+         WHERE 1 = 1
+           AND ASMA.MEMBER_ID = ASM.MEMBER_ID
+           AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID
+           AND ASMA.LOAN_ID IS NULL
+           AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_ELEMENT_NAME')
+           AND ASMA.ATTRIBUTE6 = 'PAYED';
+           
+           
+        IF var_validate = 0  THEN 
+    
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('NUMERO DE EMPLEADO', 20, ' ') ||
+                                               RPAD('NOMBRE DE EMPLEADO', 50, ' ') ||
+                                               RPAD('AHORRO ACUMULADO', 30, ' ') ||
+                                               RPAD('INTERES GANADO', 30, ' ')); 
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 130, '*'));
+            
+            
+            UPDATE ATET_SAVINGS_BANK    ASB
+               SET ASB.INTEREST_RATE_SHARING = P_INTEREST_PERCENTAGE,
+                   ASB.LAST_UPDATE_DATE = SYSDATE,
+                   ASB.LAST_UPDATED_BY = var_user_id
+             WHERE 1 = 1
+               AND ASB.SAVING_BANK_ID = var_saving_bank_id;
+               
+            
+            FOR DETAIL IN SAVERS_WITH_SAVINGS_DETAILS LOOP
+            
+                var_interest_earned := ROUND(DETAIL.FINAL_BALANCE * var_interest_percentage, 0);
+                var_sum_saving_balance := var_sum_saving_balance + DETAIL.FINAL_BALANCE;
+                var_sum_interest_earned := var_sum_interest_earned + var_interest_earned; 
+                var_int_member_account_id := NULL;
+                var_int_final_balance := NULL;
+                var_debit_amount := 0;
+                var_credit_amount := 0;
+                
+                CREATE_ACCOUNT(DETAIL.PERSON_ID,
+                               'INTEREST_ELEMENT_NAME',
+                               'INTEREST_CODE_COMB');
+                               
+                var_int_member_account_id := GET_INTEREST_MEMBER_ACCOUNT_ID(DETAIL.MEMBER_ID);
+                
+                SELECT ASMA.FINAL_BALANCE
+                  INTO var_int_final_balance
+                  FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+                 WHERE 1 = 1
+                   AND ASMA.MEMBER_ACCOUNT_ID = var_int_member_account_id; 
+                   
+                
+                IF var_int_final_balance > 0 THEN
+                
+                    var_debit_amount := var_int_final_balance;
+                    var_credit_amount := 0;
+                
+                    INSERT INTO ATET_SB_SAVINGS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
+                                                              MEMBER_ID,
+                                                              PERSON_ID,
+                                                              PAYROLL_RESULT_ID,
+                                                              EARNED_DATE,
+                                                              PERIOD_NAME,
+                                                              ELEMENT_NAME,
+                                                              TRANSACTION_CODE,
+                                                              DEBIT_AMOUNT,
+                                                              CREDIT_AMOUNT,
+                                                              REQUEST_ID,
+                                                              CREATION_DATE,
+                                                              CREATED_BY,
+                                                              LAST_UPDATE_DATE,
+                                                              LAST_UPDATED_BY)
+                                                      VALUES (var_int_member_account_id,
+                                                              DETAIL.MEMBER_ID,
+                                                              DETAIL.PERSON_ID,
+                                                              -1,
+                                                              TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                                                              'CANCELACION INTERES GANADO',
+                                                              GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_ELEMENT_NAME'),
+                                                              'PROCESSED',
+                                                              var_debit_amount,
+                                                              var_credit_amount,
+                                                              var_request_id,
+                                                              SYSDATE,
+                                                              var_user_id,
+                                                              SYSDATE,
+                                                              var_user_id);
+                                                      
+                    UPDATE ATET_SB_MEMBERS_ACCOUNTS
+                       SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
+                           CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                           LAST_TRANSACTION_DATE = SYSDATE               
+                     WHERE MEMBER_ID = DETAIL.MEMBER_ID
+                       AND MEMBER_ACCOUNT_ID = var_int_member_account_id;
+                       
+                    UPDATE ATET_SB_MEMBERS_ACCOUNTS
+                       SET FINAL_BALANCE = CREDIT_BALANCE - DEBIT_BALANCE,
+                           LAST_UPDATE_DATE = SYSDATE,
+                           LAST_UPDATED_BY = var_user_id             
+                     WHERE MEMBER_ID = DETAIL.MEMBER_ID
+                       AND MEMBER_ACCOUNT_ID = var_int_member_account_id;
+                    
+                END IF;
+                
+                
+                
+                var_debit_amount := 0;
+                var_credit_amount := var_interest_earned;
+                
+                INSERT INTO ATET_SB_SAVINGS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
+                                                          MEMBER_ID,
+                                                          PERSON_ID,
+                                                          PAYROLL_RESULT_ID,
+                                                          EARNED_DATE,
+                                                          PERIOD_NAME,
+                                                          ELEMENT_NAME,
+                                                          TRANSACTION_CODE,
+                                                          DEBIT_AMOUNT,
+                                                          CREDIT_AMOUNT,
+                                                          REQUEST_ID,
+                                                          CREATION_DATE,
+                                                          CREATED_BY,
+                                                          LAST_UPDATE_DATE,
+                                                          LAST_UPDATED_BY)
+                                                  VALUES (var_int_member_account_id,
+                                                          DETAIL.MEMBER_ID,
+                                                          DETAIL.PERSON_ID,
+                                                          -1,
+                                                          TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                                                          'INTERES GANADO',
+                                                          GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_ELEMENT_NAME'),
+                                                          'PROCESSED',
+                                                          var_debit_amount,
+                                                          var_credit_amount,
+                                                          var_request_id,
+                                                          SYSDATE,
+                                                          var_user_id,
+                                                          SYSDATE,
+                                                          var_user_id);
+                                                      
+                UPDATE ATET_SB_MEMBERS_ACCOUNTS
+                   SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
+                       CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                       LAST_TRANSACTION_DATE = SYSDATE               
+                 WHERE MEMBER_ID = DETAIL.MEMBER_ID
+                   AND MEMBER_ACCOUNT_ID = var_int_member_account_id;
+                       
+                UPDATE ATET_SB_MEMBERS_ACCOUNTS
+                   SET FINAL_BALANCE = CREDIT_BALANCE - DEBIT_BALANCE,
+                       LAST_UPDATE_DATE = SYSDATE,
+                       LAST_UPDATED_BY = var_user_id             
+                 WHERE MEMBER_ID = DETAIL.MEMBER_ID
+                   AND MEMBER_ACCOUNT_ID = var_int_member_account_id;
+               
+                               
+            
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(DETAIL.EMPLOYEE_NUMBER, 20, ' ') ||
+                                                   RPAD(REPLACE(REPLACE(DETAIL.EMPLOYEE_FULL_NAME, CHR(10), ''), CHR(13), ''), 50, ' ') ||
+                                                   LPAD(TRIM(TO_CHAR(DETAIL.FINAL_BALANCE, '999G999G999D99')), 30, ' ') ||
+                                                   LPAD(TRIM(TO_CHAR(var_interest_earned, '999G999G999D99')), 30, ' '));
+                                                   
+            END LOOP;
+            
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*', 130, '*'));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('TOTAL:', 70, ' ') ||
+                                               LPAD(TRIM(TO_CHAR(var_sum_saving_balance, '999G999G999D99')), 30, ' ') ||
+                                               LPAD(TRIM(TO_CHAR(var_sum_interest_earned, '999G999G999D99')), 30, ' ')); 
+                                               
+            COMMIT;
+        ELSE
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'YA SE PROCESO EL PAGO DE DEVOLUCIÓN DE AHORRO.');
+            P_RETCODE := 1;
+            ROLLBACK;
+        END IF;
+    
+    EXCEPTION 
+        WHEN OTHERS THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+            P_RETCODE := 2;
+            ROLLBACK;
     END CALCULATING_INTEREST_EARNED;
+    
+    
+    FUNCTION    GET_INTEREST_MEMBER_ACCOUNT_ID(
+                    P_MEMBER_ID                 NUMBER
+                ) RETURN    NUMBER
+    IS
+        var_member_account_id  NUMBER;
+    BEGIN
+    
+        SELECT ASMA.MEMBER_ACCOUNT_ID
+          INTO var_member_account_id
+          FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+         WHERE 1 = 1
+           AND ASMA.MEMBER_ID = P_MEMBER_ID
+           AND ASMA.LOAN_ID IS NULL
+           AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_ELEMENT_NAME');
+           
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_INTEREST_MEMBER_ACCOUNT_ID(P_MEMBER_ID => ' || P_MEMBER_ID || ') RETURN ' || var_member_account_id);
+    
+        RETURN var_member_account_id;
+    END GET_INTEREST_MEMBER_ACCOUNT_ID;
                 
                     
 
