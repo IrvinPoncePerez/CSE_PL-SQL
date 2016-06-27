@@ -1108,15 +1108,18 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         P_PERIOD_NAME           VARCHAR2)
     IS
         
-        V_REQUEST_ID         NUMBER;
-        WAITING              BOOLEAN;
-        PHASE                VARCHAR2 (80 BYTE);
-        STATUS               VARCHAR2 (80 BYTE);
-        DEV_PHASE            VARCHAR2 (80 BYTE);
-        DEV_STATUS           VARCHAR2 (80 BYTE);
-        V_MESSAGE            VARCHAR2 (4000 BYTE);
+        V_REQUEST_ID            NUMBER;
+        WAITING                 BOOLEAN;
+        PHASE                   VARCHAR2 (80 BYTE);
+        STATUS                  VARCHAR2 (80 BYTE);
+        DEV_PHASE               VARCHAR2 (80 BYTE);
+        DEV_STATUS              VARCHAR2 (80 BYTE);
+        V_MESSAGE               VARCHAR2 (4000 BYTE);
         
-        var_file_name        VARCHAR2 (1000);
+        var_file_name           VARCHAR2 (1000);
+        var_directory_name      VARCHAR2 (1000);
+        
+        NO_DIRECTORY            EXCEPTION;
     
     BEGIN
         
@@ -1166,6 +1169,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
            AND CFDI.REQUEST_ID = V_REQUEST_ID; 
            
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'REQUEST_ID : ' || V_REQUEST_ID);
+        
+        IF P_COMPANY_ID = '02' THEN 
+            var_directory_name := 'Calvario_Servicios';
+        ELSIF P_COMPANY_ID = '08' THEN 
+            RAISE NO_DIRECTORY;
+        ELSIF P_COMPANY_ID = '11' THEN 
+            var_directory_name := 'Productos_Avicolas';
+        END IF;
     
     
         BEGIN
@@ -1178,7 +1189,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    DESCRIPTION => '',
                    START_TIME => '',
                    SUB_REQUEST => FALSE,
-                   ARGUMENT1 => TO_CHAR(var_file_name)
+                   ARGUMENT1 => TO_CHAR(var_file_name),
+                   ARGUMENT2 => TO_CHAR(var_directory_name)
                                            );
             STANDARD.COMMIT;                  
                          
@@ -1200,6 +1212,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
         END;
     
+    EXCEPTION WHEN NO_DIRECTORY THEN
+        P_ERRBUF := 'DIRECTORIO NO DEFINIDO';
+        P_RETCODE := 1;
     END FILE_CFDI_NOMINA;
 
 END PAC_CFDI_FUNCTIONS_PKG;
