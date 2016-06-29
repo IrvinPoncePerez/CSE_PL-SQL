@@ -6,30 +6,22 @@ SELECT
        NVL(GJL.ENTERED_DR, 
            GJL.ENTERED_CR)      AS  MONTO,
        NULL                     AS  NOMBRE_PROVEEDOR,
-       WE.DESCRIPTION           AS  CONCEPTO,
+       WE.WIP_ENTITY_NAME       AS  DESCRIPCION,
        XAL.ACCOUNTED_DR         AS  CARGO,
-       XAL.ACCOUNTED_CR         AS  ABONO,
-       XAH.ENTITY_ID,
-       XAH.APPLICATION_ID,
-       XTE.TRANSACTION_NUMBER,
-       XTE.ENTITY_CODE,
-       XDL.SOURCE_DISTRIBUTION_TYPE,
-       XDL.SOURCE_DISTRIBUTION_ID_NUM_1,
-       WTA.WIP_ENTITY_ID,
-       we.*
-  FROM GL_LEDGERS                   GL,
-       GL_BALANCES                  GB,
-       GL_CODE_COMBINATIONS         GCC,
-       GL_JE_BATCHES                GJB,
-       GL_JE_HEADERS                GJH,
-       GL_JE_LINES                  GJL,
-       GL_IMPORT_REFERENCES         GIR,
-       XLA_AE_LINES                 XAL,
-       XLA_AE_HEADERS               XAH,
-       XLA.XLA_TRANSACTION_ENTITIES XTE,
-       XLA_DISTRIBUTION_LINKS       XDL,
-       WIP_TRANSACTION_ACCOUNTS     WTA,
-       WIP_ENTITIES                 WE
+       XAL.ACCOUNTED_CR         AS  ABONO
+  FROM GL_LEDGERS                       GL,
+       GL_BALANCES                      GB,
+       GL_CODE_COMBINATIONS             GCC,
+       GL_JE_BATCHES                    GJB,
+       GL_JE_HEADERS                    GJH,
+       GL_JE_LINES                      GJL,
+       GL_IMPORT_REFERENCES             GIR,
+       XLA_AE_LINES                     XAL,
+       XLA_AE_HEADERS                   XAH,
+       XLA.XLA_TRANSACTION_ENTITIES     XTE,
+       XLA_DISTRIBUTION_LINKS           XDL,
+       WIP_TRANSACTION_ACCOUNTS         WTA,
+       WIP_ENTITIES                     WE
  WHERE 1 = 1
    AND GL.NAME = 'CALVARIO_LIBRO_CONTABLE'
    AND GL.LEDGER_ID = GB.LEDGER_ID
@@ -66,4 +58,6 @@ SELECT
    AND XTE.APPLICATION_ID = XDL.APPLICATION_ID
    AND XAL.AE_LINE_NUM = XDL.AE_LINE_NUM
    AND XDL.SOURCE_DISTRIBUTION_ID_NUM_1 = WTA.WIP_SUB_LEDGER_ID
-   AND WTA.WIP_ENTITY_ID = WE.WIP_ENTITY_ID
+   AND WE.WIP_ENTITY_ID = WTA.WIP_ENTITY_ID
+   
+   
