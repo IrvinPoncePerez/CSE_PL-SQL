@@ -1,9 +1,9 @@
-    SELECT (GCC.SEGMENT1 || '-' ||
-            GCC.SEGMENT2 || '-' ||
-            GCC.SEGMENT3 || '-' ||
-            GCC.SEGMENT4 || '-' ||
-            GCC.SEGMENT5 || '-' ||
-            GCC.SEGMENT6)               AS  CODE_COMBINATION,
+    SELECT GCC.SEGMENT1,
+            GCC.SEGMENT2,
+            GCC.SEGMENT3,
+            GCC.SEGMENT4,
+            GCC.SEGMENT5,
+            GCC.SEGMENT6,
             GB.PERIOD_NAME              AS  PERIOD_NAME,
             GJB.NAME                    AS  BATCH_NAME,
             GJL.JE_LINE_NUM             AS  LINE_NUMBER,
@@ -13,7 +13,10 @@
             XAL.ACCOUNTED_DR            AS  ACCOUNTED_DR,
             XAL.ACCOUNTED_CR            AS  ACCOUNTED_CR,
             TE.ENTITY_CODE              AS  ENTITY_CODE,
-            TE.TRANSACTION_NUMBER       AS  TRANSACTION_NUMBER
+            TE.TRANSACTION_NUMBER       AS  TRANSACTION_NUMBER,
+            NULL                        AS  DOCUMENT_NUMBER,
+            NULL                        AS  VENDOR_NAME,
+            MSI.DESCRIPTION             AS  DESCRIPTION
       FROM GL_LEDGERS                   GL,
            GL_BALANCES                  GB,
            GL_CODE_COMBINATIONS         GCC,
@@ -23,7 +26,9 @@
            GL_IMPORT_REFERENCES         GIR,
            XLA_AE_LINES                 XAL,
            XLA_AE_HEADERS               XAH,
-           XLA.XLA_TRANSACTION_ENTITIES TE
+           XLA.XLA_TRANSACTION_ENTITIES TE,
+           MTL_MATERIAL_TRANSACTIONS    MMT,
+           MTL_SYSTEM_ITEMS_TL          MSI
      WHERE 1 = 1
        AND GL.NAME = 'CALVARIO_LIBRO_CONTABLE'
        AND GL.LEDGER_ID = GB.LEDGER_ID
@@ -50,7 +55,11 @@
        AND XAL.AE_HEADER_ID = XAH.AE_HEADER_ID
        AND XAL.CODE_COMBINATION_ID = GCC.CODE_COMBINATION_ID
        AND TE.ENTITY_ID = XAH.ENTITY_ID
-     ORDER BY GJH.JE_HEADER_ID,
-              GJL.JE_LINE_NUM
+       AND TE.ENTITY_CODE IN ('MTL_ACCOUNTING_EVENTS')
+       AND TE.TRANSACTION_NUMBER = MMT.TRANSACTION_ID
+       AND MSI.INVENTORY_ITEM_ID = MMT.INVENTORY_ITEM_ID
+       AND MSI.ORGANIZATION_ID = MMT.ORGANIZATION_ID
+       AND MSI.LANGUAGE = USERENV('LANG');
+           
            
            
