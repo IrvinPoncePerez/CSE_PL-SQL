@@ -524,12 +524,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
                AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
                AND PETF.ELEMENT_NAME IN (ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID, 'SAVINGS_ELEMENT_NAME'),
-                                         ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME'))
-               /************************************************/
-               /************************************************/
---               AND PAF.PERSON_ID IN (SELECT ASM.PERSON_ID FROM ATET_SB_MEMBERS ASM)
-               /************************************************/
-               /************************************************/ 
+                                         ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID, 'LOAN_ELEMENT_NAME')) 
              ORDER BY PAF.PERSON_ID,
                       PETF.ELEMENT_NAME,
                       PIVF.NAME,
@@ -651,30 +646,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             END LOOP;
             
             CLOSE DETAIL_LIST;
-            
---            var_import_request_id :=
---            FND_REQUEST.SUBMIT_REQUEST (
---               APPLICATION => 'PER',
---               PROGRAM => 'ATET_IMPORT_PAYROLL_RESULTS',
---               DESCRIPTION => '',
---               START_TIME => '',
---               SUB_REQUEST => FALSE,
---               ARGUMENT1 => TO_CHAR(var_request_id)
---                                       );
---            
---            STANDARD.COMMIT;
---                     
---            var_waiting :=
---                FND_CONCURRENT.WAIT_FOR_REQUEST (
---                    REQUEST_ID => var_import_request_id,
---                    INTERVAL => 1,
---                    MAX_WAIT => 0,
---                    PHASE => var_phase,
---                    STATUS => var_status,
---                    DEV_PHASE => var_dev_phase,
---                    DEV_STATUS => var_dev_status,
---                    MESSAGE => var_message
---                                            );
+
             
         ELSE
         
@@ -1339,7 +1311,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                      LAST_UPDATE_DATE,
                                                      LAST_UPDATED_BY)
                                              VALUES (GET_MEMBER_ID(P_PERSON_ID),
-                                                     -1,
+                                                     GET_CODE_COMBINATION_ID(GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_CODE_COMB')),
                                                      GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_CODE_COMB'),
                                                      GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, P_PARAM_ELEMENT_NAME),
                                                      0,
@@ -1365,15 +1337,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_LOOKUP_TYPE    VARCHAR2,
                     P_LOOKUP_CODE    VARCHAR2)
       RETURN    VARCHAR2
-   --
+   
    AS
       V_MEANING   HR_LOOKUPS.MEANING%TYPE;
-   --
+   
    BEGIN
-      --
-
-
-      --
+   
       BEGIN
          SELECT HRL.MEANING
            INTO V_MEANING
@@ -1391,14 +1360,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                || SQLERRM);
       END;
 
-      --
+      
 
       FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_LOOKUP_MEANING(P_LOOKUP_TYPE => ' || P_LOOKUP_TYPE ||
                                                         ',P_LOOKUP_CODE => ' || P_LOOKUP_CODE || ') RETURN ' || V_MEANING);
 
-      --
+      
       RETURN V_MEANING;
-   --
+   
    END GET_LOOKUP_MEANING;
    
    
@@ -1525,8 +1494,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             P_RETCODE := 1;
         ELSE
         
-            -- ATTRIBUTE2       Periodos pendientes
-            -- ATTRIBUTE3       Monto real de ahorro.
+            
             
             SELECT NVL(TO_CHAR(ASM.ATTRIBUTE2), 'NOTHING'),
                    NVL(TO_CHAR(ASM.ATTRIBUTE3), 'NOTHING'),
@@ -1807,25 +1775,13 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 ASAM.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
         
     
---        SELECT GL.CODE_COMBINATION_ID
---          INTO var_result
---          FROM GL_CODE_COMBINATIONS_V  GL
---         WHERE 1 = 1
---           AND GL.TEMPLATE_ID IS NULL
---           AND GL.SEGMENT1 = '07'
---           AND (GL.SEGMENT1 ||
---                GL.SEGMENT2 ||
---                GL.SEGMENT3 ||
---                GL.SEGMENT4 ||
---                GL.SEGMENT5 ||
---                GL.SEGMENT6) = REPLACE(P_CODE_COMBINATION, '-', '');
+
                 
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_CODE_COMBINATION_ID(P_CODE_COMBINATION => ' || P_CODE_COMBINATION || 
                                                                ') RETURN ' || var_result); 
                 
         RETURN var_result;
 
---        RETURN 0;
         
         
     EXCEPTION WHEN OTHERS THEN
@@ -2852,7 +2808,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                
                DBMS_OUTPUT.PUT_LINE( 'UPDATE ACCOUNT');
                
---            COMMIT;
+
             
             SELECT ASMA.MEMBER_ACCOUNT_ID
               INTO var_member_account_id
@@ -3237,7 +3193,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_isrret := ATET_SAVINGS_BANK_PKG.GET_ISRRET(var_max_assignment_action_id);
         var_mondet := ATET_SAVINGS_BANK_PKG.GET_MONDET(var_max_assignment_action_id);
         var_max_per_sav := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_PER_SAV');
---        var_posibility_saving := (var_subtbr - (var_isrret + var_mondet)) * (var_max_per_sav / 100);
         var_posibility_saving := (var_subtbr) * (var_max_per_sav / 100);
         var_max_sav_amt_sm := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_SM');
         var_max_sav_amt_wk := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_WK');
@@ -4018,7 +3973,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         
         COMMIT;
---        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
     EXCEPTION WHEN OTHERS THEN
         ROLLBACK;
@@ -5189,7 +5144,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
         
         COMMIT;
---        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
     EXCEPTION WHEN SAVING_RETIREMENT_EXCEPTION THEN
                 FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : SAVING_RETIREMENT_EXCEPTION');
@@ -5219,21 +5174,21 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             fnd_request.add_layout (
                template_appl_name   => 'PER',
                template_code        => 'ATET_SB_PRINT_WITHDRAW',
-               template_language    => 'Spanish', --Use language from template definition
-               template_territory   => 'Mexico', --Use territory from template definition
-               output_format        => 'PDF' --Use output format from template definition
+               template_language    => 'Spanish', 
+               template_territory   => 'Mexico', 
+               output_format        => 'PDF' 
                                             );
 
 
 
          v_request_id :=
-            fnd_request.submit_request ('PER',                  -- application
-                                        'ATET_SB_PRINT_WITHDRAW', -- program short name
-                                        '',                     -- description
-                                        '',                      -- start time
-                                        FALSE,                  -- sub request
-                                        TO_CHAR (P_SAVING_TRANSACTION_ID),     -- argument1
-                                        CHR (0) -- represents end of arguments
+            fnd_request.submit_request ('PER', 
+                                        'ATET_SB_PRINT_WITHDRAW', 
+                                        '',
+                                        '',
+                                        FALSE,
+                                        TO_CHAR (P_SAVING_TRANSACTION_ID),  
+                                        CHR (0) 
                                                );
          
          STANDARD.COMMIT;
@@ -5272,12 +5227,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
 
         INPUT_STRING                 VARCHAR2 (200);
         OUTPUT_STRING                VARCHAR2 (200);
-        ENCRYPTED_RAW                RAW (2000); -- stores encrypted binary text
-        DECRYPTED_RAW                RAW (2000); -- stores decrypted binary text
-        NUM_KEY_BYTES                NUMBER := 256 / 8; -- key length 256 bits (32 bytes)
-        KEY_BYTES_RAW                RAW (32);  -- stores 256-bit encryption key
+        ENCRYPTED_RAW                RAW (2000); 
+        DECRYPTED_RAW                RAW (2000); 
+        NUM_KEY_BYTES                NUMBER := 256 / 8; 
+        KEY_BYTES_RAW                RAW (32);  
         ENCRYPTION_TYPE              PLS_INTEGER 
-         :=                                           -- total encryption type
+         :=                                     
            DBMS_CRYPTO.ENCRYPT_AES256
             + DBMS_CRYPTO.CHAIN_CBC
             + DBMS_CRYPTO.PAD_PKCS5;
@@ -5355,7 +5310,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                   src   => UTL_I18N.STRING_TO_RAW (input_string, 'AL32UTF8'),
                   typ   => encryption_type,
                   key   => key_bytes_raw);
-            -- The encrypted value "encrypted_raw" can be used here
+            
 
             decrypted_raw :=
                DBMS_CRYPTO.DECRYPT (src   => encrypted_raw,
@@ -5443,25 +5398,16 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID => ' || P_CHECK_ID || ')'); 
    
       BEGIN
---         add_layout_boolean :=
---            fnd_request.add_layout (
---               template_appl_name   => 'PER',
---               template_code        => 'ATET_SB_PRINT_CHECK',
---               template_language    => 'Spanish', --Use language from template definition
---               template_territory   => 'Mexico', --Use territory from template definition
---               output_format        => 'PDF' --Use output format from template definition
---                                            );
-
 
 
          v_request_id :=
-            fnd_request.submit_request ('PER',                  -- application
-                                        'ATET_SB_PRINT_CHECK', -- program short name
-                                        '',                     -- description
-                                        '',                      -- start time
-                                        FALSE,                  -- sub request
-                                        TO_CHAR (P_CHECK_ID),     -- argument1
-                                        CHR (0) -- represents end of arguments
+            fnd_request.submit_request ('PER',                 
+                                        'ATET_SB_PRINT_CHECK', 
+                                        '',                    
+                                        '',                    
+                                        FALSE,                 
+                                        TO_CHAR (P_CHECK_ID),  
+                                        CHR (0) 
                                                );
          STANDARD.COMMIT;
          waiting :=
@@ -6052,14 +5998,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                         FND_FILE.PUT_LINE(FND_FILE.LOG, 'CREATE : XLA_LINES 3');
                         
                     ELSE
-                    
---                        IF  P_BONUS_PERCENTAGE <> 0 AND P_BONUS_AMOUNT = 0 THEN
---                            var_bonus_interest := (var_asps_payment_interest * P_BONUS_PERCENTAGE) / 100;
---                        ELSIF P_BONUS_PERCENTAGE = 0 AND P_BONUS_AMOUNT <> 0 THEN
---                            var_bonus_interest := P_BONUS_AMOUNT;
---                        ELSE
---                            RAISE CREATION_GL_EXCEPTION;
---                        END IF; 
+ 
                         
                         ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
                             P_HEADER_ID => var_header_id,
@@ -6208,7 +6147,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END IF;
         
         COMMIT;
---        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
     EXCEPTION
         WHEN QRY_LOAN_BALANCE THEN
@@ -6940,7 +6879,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
                              );  
             
---            ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+            ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'COMMIT EJECUTADO.');
                 
             
@@ -7590,7 +7529,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         /**********************************************************/    
         
         COMMIT;
---        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;                                  
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;                                  
                                                                       
     EXCEPTION
         WHEN PRE_PROCESSING_EXCEPTION THEN
@@ -8030,9 +7969,27 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_credit_amount           NUMBER;
         var_validate                NUMBER;
         
+        var_bank_code_comb          VARCHAR2(100);
+        var_int_ear_code_comb       VARCHAR2(100);
+        var_bank_account_id         NUMBER;
+        var_int_ear_account_id      NUMBER;
+        
+        var_header_id               NUMBER;
+        
+        CURSOR ACCOUNTED_DETAILS IS
+            SELECT AXL2.LINE_NUMBER,
+                   AXL2.CODE_COMBINATION_ID,
+                   AXL2.DESCRIPTION,
+                   AXL2.ACCOUNTED_DR,
+                   AXL2.ACCOUNTED_CR
+              FROM ATET_XLA_LINES           AXL2
+             WHERE 1 = 1
+               AND AXL2.HEADER_ID = var_header_id
+             ORDER BY AXL2.LINE_NUMBER;
+        
     BEGIN
     
-        SELECT COUNT(ASMA.ATTRIBUTE6)
+        SELECT COUNT(ASMA.MEMBER_ACCOUNT_ID)
           INTO var_validate
           FROM ATET_SB_MEMBERS_ACCOUNTS ASMA,
                ATET_SB_MEMBERS          ASM
@@ -8040,8 +7997,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
            AND ASMA.MEMBER_ID = ASM.MEMBER_ID
            AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID
            AND ASMA.LOAN_ID IS NULL
-           AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_ELEMENT_NAME')
-           AND ASMA.ATTRIBUTE6 = 'PAYED';
+           AND ASMA.ACCOUNT_DESCRIPTION = GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_ELEMENT_NAME');
            
            
         IF var_validate = 0  THEN 
@@ -8200,9 +8156,75 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                LPAD(TRIM(TO_CHAR(var_sum_saving_balance, '999G999G999D99')), 30, ' ') ||
                                                LPAD(TRIM(TO_CHAR(var_sum_interest_earned, '999G999G999D99')), 30, ' ')); 
                                                
+            /*******************************************************/
+            /****           POLIZA DE INTERES GANADO            ****/
+            /*******************************************************/
+            
+            var_bank_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'BANK_CODE_COMB');
+            var_int_ear_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'INTEREST_CODE_COMB');
+            var_bank_account_id := GET_CODE_COMBINATION_ID(var_bank_code_comb);
+            var_int_ear_account_id := GET_CODE_COMBINATION_ID(var_int_ear_code_comb);
+            
+            ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'EARNED',
+                                                       P_EVENT_TYPE_CODE    => 'INTEREST_EARNED',
+                                                       P_BATCH_NAME         => 'INTERES GANADO',
+                                                       P_JOURNAL_NAME       => 'CALCULO DE INTERES GANADO ' || GET_SAVING_BANK_YEAR,
+                                                       P_HEADER_ID          => var_header_id);
+                                                       
+                                                             
+            ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                     P_ROW_NUMBER              => 1,
+                                                     P_CODE_COMBINATION_ID     => var_bank_account_id,
+                                                     P_ACCOUNTING_CLASS_CODE   => 'INTEREST_EARNED',
+                                                     P_ACCOUNTED_DR            => var_sum_interest_earned,
+                                                     P_ACCOUNTED_CR            => 0,
+                                                     P_DESCRIPTION             => 'CALCULO DE INTERES GANADO ' || GET_SAVING_BANK_YEAR,
+                                                     P_SOURCE_ID               => -1,
+                                                     P_SOURCE_LINK_TABLE       => NULL);
+                                                               
+            ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                     P_ROW_NUMBER              => 2,
+                                                     P_CODE_COMBINATION_ID     => var_int_ear_account_id,
+                                                     P_ACCOUNTING_CLASS_CODE   => 'INTEREST_EARNED',
+                                                     P_ACCOUNTED_DR            => 0,
+                                                     P_ACCOUNTED_CR            => var_sum_interest_earned,
+                                                     P_DESCRIPTION             => 'CALCULO DE INTERES GANADO ' || GET_SAVING_BANK_YEAR,
+                                                     P_SOURCE_ID               => -1,
+                                                     P_SOURCE_LINK_TABLE       => NULL);
+                                                     
+            /*************************************************/
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS CONTABLES');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                
+            var_debit_amount := 0;
+            var_credit_amount := 0;
+                
+            FOR DETAIL IN ACCOUNTED_DETAILS LOOP
+                
+                var_debit_amount := var_debit_amount + DETAIL.ACCOUNTED_DR;
+                var_credit_amount := var_credit_amount + DETAIL.ACCOUNTED_CR;
+                    
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(GET_CODE_COMBINATION(DETAIL.CODE_COMBINATION_ID) , 40, ' ')
+                                                 ||RPAD(DETAIL.DESCRIPTION, 40, ' ')
+                                                 ||LPAD(DETAIL.ACCOUNTED_DR,40, ' ')
+                                                 ||LPAD(DETAIL.ACCOUNTED_CR,40, ' '));
+                
+            END LOOP;
+                
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('TOTAL:', 80, ' ')
+                            ||LPAD(var_debit_amount, 40, ' ')
+                            ||LPAD(var_credit_amount, 40, ' '));
+
+                                               
             COMMIT;
         ELSE
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'YA SE PROCESO EL PAGO DE DEVOLUCIÓN DE AHORRO.');
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'YA SE PROCESO ANTERIORMENTE EL PAGO DE DEVOLUCIÓN DE AHORRO.');
             P_RETCODE := 1;
             ROLLBACK;
         END IF;
