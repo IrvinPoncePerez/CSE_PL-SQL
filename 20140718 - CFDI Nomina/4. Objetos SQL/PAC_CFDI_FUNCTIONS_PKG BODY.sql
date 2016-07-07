@@ -462,6 +462,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      NVL((SELECT DISTINCT 
                                  (CASE WHEN PAPF.EMPLOYEE_NUMBER = 13 OR PAPF.EMPLOYEE_NUMBER = 24 THEN
                                         'TRANSFERENCIA ELECTRONICA'
+                                       WHEN PCS.CONSOLIDATION_SET_NAME = 'FINIQUITOS' THEN
+                                        'CHEQUE'
                                        WHEN POPM.ORG_PAYMENT_METHOD_NAME LIKE '%EFECTIVO%' THEN
                                         'EFECTIVO'
                                        WHEN (POPM.ORG_PAYMENT_METHOD_NAME LIKE '%BANCOMER%'
