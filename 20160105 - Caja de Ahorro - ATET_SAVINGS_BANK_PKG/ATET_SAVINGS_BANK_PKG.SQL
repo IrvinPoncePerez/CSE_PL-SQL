@@ -352,6 +352,10 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
     FUNCTION    GET_INTEREST_MEMBER_ACCOUNT_ID(
                     P_MEMBER_ID                 NUMBER
                 ) RETURN    NUMBER;
+                
+    PROCEDURE   SETTLEMENT_LOAN_WITH_SAVING(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2);
     
 
 END ATET_SAVINGS_BANK_PKG;

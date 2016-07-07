@@ -8221,7 +8221,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                             ||LPAD(var_debit_amount, 40, ' ')
                             ||LPAD(var_credit_amount, 40, ' '));
 
-                                               
+            ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;                                  
             COMMIT;
         ELSE
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'YA SE PROCESO ANTERIORMENTE EL PAGO DE DEVOLUCIÓN DE AHORRO.');
@@ -8256,7 +8256,106 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
         RETURN var_member_account_id;
     END GET_INTEREST_MEMBER_ACCOUNT_ID;
-                
+    
+    
+    PROCEDURE   SETTLEMENT_LOAN_WITH_SAVING(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2)
+    IS
+    
+        var_code_company            VARCHAR2(50);
+        var_time_period_id          NUMBER;
+        var_period_name             VARCHAR2(100);
+        var_payment_date            DATE;
+        var_payment_schedule_id     NUMBER;
+        
+        
+        COMPANY_EX                  EXCEPTION;
+        PAYMENTS_SCHEDULE_EX        EXCEPTION;
+    
+        CURSOR  LOANS_DETAILS   IS
+            SELECT ASM.MEMBER_ID,
+                   ASM.PERSON_ID,
+                   ASM.EMPLOYEE_NUMBER,
+                   ASM.EMPLOYEE_FULL_NAME,
+                   ASMA1.MEMBER_ACCOUNT_ID  AS  SAVING_MEMBER_ACCOUNT_ID,
+                   ASMA1.FINAL_BALANCE      AS  SAVING_FINAL_BALANCE,
+                   ASMA2.MEMBER_ACCOUNT_ID  AS  INTEREST_MEMBER_ACCOUNT_ID,
+                   ASMA2.FINAL_BALANCE      AS  INTEREST_FINAL_BALANCE,
+                   ASL.LOAN_ID,
+                   ASL.LOAN_NUMBER,
+                   ASL.LOAN_BALANCE
+              FROM ATET_SB_MEMBERS          ASM,
+                   ATET_SB_MEMBERS_ACCOUNTS ASMA1,
+                   ATET_SB_MEMBERS_ACCOUNTS ASMA2,
+                   ATET_SB_LOANS            ASL
+             WHERE 1 = 1
+               AND ASL.MEMBER_ID = ASM.MEMBER_ID
+               AND ASM.MEMBER_ID = ASMA1.MEMBER_ID
+               AND ASMA1.ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO'
+               AND ASMA1.FINAL_BALANCE > 0
+               AND ASM.MEMBER_ID = ASMA2.MEMBER_ID
+               AND ASMA2.ACCOUNT_DESCRIPTION = 'INTERES GANADO'
+               AND ASMA2.FINAL_BALANCE > 0
+               AND ASL.LOAN_STATUS_FLAG = 'ACTIVE'
+               AND ASL.LOAN_BALANCE > 0
+               AND ASM.SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID;
+   
+    BEGIN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SETTLEMENT_LOAN_WITH_SAVING');
+        
+        FOR detail IN LOANS_DETAILS LOOP
+        
+            BEGIN
+            
+                SELECT DISTINCT SUBSTR(PPF.PAYROLL_NAME, 0, 2) AS COMPANY_CODE
+                  INTO var_code_company
+                  FROM PAY_PAYROLLS_F       PPF,
+                       PER_ASSIGNMENTS_F    PAF,
+                       ATET_SB_MEMBERS      ASM            
+                 WHERE 1 = 1
+                   AND PAF.PAYROLL_ID = PPF.PAYROLL_ID
+                   AND PAF.PERSON_ID = ASM.PERSON_ID
+                   AND ASM.MEMBER_ID = detail.MEMBER_ID
+                   AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                   AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE;
+            
+            EXCEPTION WHEN OTHERS THEN
+                RAISE COMPANY_EX;
+            END;
+            
+            BEGIN   
+                SELECT ASPS.TIME_PERIOD_ID,
+                       ASPS.PERIOD_NAME,
+                       ASPS.PAYMENT_DATE,
+                       ASPS.PAYMENT_SCHEDULE_ID
+                  INTO var_time_period_id,
+                       var_period_name,
+                       var_payment_date,
+                       var_payment_schedule_id
+                  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+                 WHERE 1 = 1
+                   AND ASPS.LOAN_ID = detail.LOAN_ID
+                   AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED')
+                   AND ROWNUM = 1;
+            EXCEPTION WHEN OTHERS THEN
+                RAISE PAYMENTS_SCHEDULE_EX;
+            END;
+        
+        END LOOP;
+        
+    EXCEPTION
+        WHEN COMPANY_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: COMPANY_EX.');
+            P_RETCODE := 2;
+        WHEN PAYMENTS_SCHEDULE_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: PAYMENTS_SCHEDULE_EX.');
+            P_RETCODE := 2;    
+        WHEN OTHERS THEN
+            ROLLBACK;
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: OTHERS_EXCEPTION.');
+            P_RETCODE := 2;
+    END SETTLEMENT_LOAN_WITH_SAVING;    
                     
 
 END ATET_SAVINGS_BANK_PKG;
