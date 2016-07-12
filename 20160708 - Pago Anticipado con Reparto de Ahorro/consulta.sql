@@ -30,7 +30,7 @@ SELECT ASM.MEMBER_ID,
                AND ASL.LOAN_ID = ASPS.LOAN_ID
                AND ASPS.STATUS_FLAG = 'PENDING'
                AND ASM.SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
-               AND ASM.PERSON_ID IN (3842, 5079, 3127, 2425, 2449)
+               AND ASM.MEMBER_ID IN (1131, 1132, 1133, 1135, 1136, 1111, 1113, 1126, 1128, 1130)
              GROUP BY ASM.MEMBER_ID,
                        ASM.PERSON_ID,
                        ASM.EMPLOYEE_NUMBER,
@@ -57,3 +57,6 @@ SELECT ASM.MEMBER_ID,
                FROM ATET_SB_MEMBERS ASM
                WHERE 1 = 1
                  AND ASM.PERSON_ID IN (3842, 5079, 3127, 2425, 2449);
+                 
+                 
+                 

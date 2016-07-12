@@ -355,7 +355,15 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                 
     PROCEDURE   SETTLEMENT_LOAN_WITH_SAVING(
                     P_ERRBUF        OUT NOCOPY VARCHAR2,
-                    P_RETCODE       OUT NOCOPY VARCHAR2);
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_YEAR                     NUMBER);
+                    
+    FUNCTION    ATET_ROUND_RETIREMENT_PRC(
+                    P_SALARY                    NUMBER
+                ) RETURN NUMBER;
+                    
+    PROCEDURE   CURRENCY_DISTRIBUTION(
+                    P_YEAR                      NUMBER);
     
 
 END ATET_SAVINGS_BANK_PKG;
