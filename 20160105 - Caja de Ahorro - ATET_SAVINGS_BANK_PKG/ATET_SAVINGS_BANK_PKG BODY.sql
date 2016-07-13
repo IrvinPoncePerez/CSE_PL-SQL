@@ -8443,6 +8443,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                           CREDIT_AMOUNT,
                                                           ATTRIBUTE1,
                                                           ATTRIBUTE6,
+                                                          ATTRIBUTE7,
                                                           ACCOUNTED_FLAG,
                                                           CREATION_DATE,
                                                           CREATED_BY,
@@ -8461,6 +8462,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                                           var_credit_amount,
                                                           var_saving_retirement_seq,
                                                           'RETIRO POR PAGO ANTICIPADO',
+                                                          'REPARTO DE AHORRO',
                                                           'ACCOUNTED',
                                                           SYSDATE,
                                                           var_user_id,
@@ -9137,177 +9139,48 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     END SETTLEMENT_LOAN_WITH_SAVING;    
     
     
-    PROCEDURE SET_CURRENCY_DISTRIBUTION(
-       P_MEMBER_ID          IN  NUMBER,      
-       P_SAVING_RETIREMENT  IN  NUMBER)
-    AS
-           var_500      NUMBER;
-           var_200      NUMBER;
-           var_100      NUMBER;
-           var_50       NUMBER;
-           var_20       NUMBER;
-           var_10       NUMBER;
-           var_5        NUMBER;
-           var_2        NUMBER;
-           var_1        NUMBER;
-           var_50c      NUMBER;
-           var_rest     NUMBER := ATET_ROUND_RETIREMENT_PRC(P_SAVING_RETIREMENT); 
-    BEGIN
-        
-        --Quinientos pesos.
-        IF (TRUNC(var_rest / 500) > 0) THEN
-           var_500 := TRUNC(var_rest / 500);
-           var_rest := var_rest - (var_500 * 500);
-        ELSE
-           var_500 := 0;
-        END IF;
-
-        --Doscientos pesos.
-        IF (TRUNC(var_rest / 200) > 0) THEN
-            var_200 := TRUNC(var_rest / 200);
-            var_rest := var_rest - (var_200 * 200);
-        ELSE
-            var_200 := 0;
-        END IF;
-        
-        --Cien pesos.
-        IF (TRUNC(var_rest / 100) > 0) THEN
-            var_100 := TRUNC(var_rest / 100);
-            var_rest := var_rest - (var_100 * 100);
-        ELSE
-            var_100 := 0;
-        END IF;
-        
-        --Cincuenta pesos.
-        IF (TRUNC(var_rest / 50) > 0) THEN
-            var_50 := TRUNC(var_rest / 50);
-            var_rest := var_rest - (var_50 * 50);
-        ELSE
-            var_50 := 0;
-        END IF;
-        
-        --Veinte pesos.
-        IF (TRUNC(var_rest / 20) > 0) THEN
-            var_20 := TRUNC(var_rest / 20);
-            var_rest := var_rest - (var_20 * 20);
-        ELSE
-            var_20 := 0;
-        END IF;
-        
-        --Diez pesos.
-        IF (TRUNC(var_rest / 10) > 0) THEN
-            var_10 := TRUNC(var_rest / 10);
-            var_rest := var_rest -(var_10 * 10);
-        ELSE
-            var_10 := 0;
-        END IF;
-        
-        --Cinco pesos.
-        IF (TRUNC(var_rest / 5) > 0) THEN
-            var_5 := TRUNC(var_rest / 5);
-            var_rest := var_rest - (var_5 * 5);
-        ELSE
-            var_5 := 0;
-        END IF;
-        
-        --Dos pesos.
-        IF (TRUNC(var_rest / 2) > 0) THEN
-            var_2 := TRUNC(var_rest / 2);
-            var_rest := var_rest - (var_2 * 2);
-        ELSE
-            var_2 := 0;
-        END IF;
-        
-        --Un peso.
-        IF (TRUNC(var_rest) > 0) THEN
-            var_1 := TRUNC(var_rest);
-            var_rest := var_rest - (var_1);
-        ELSE
-            var_1 := 0;
-        END IF;
-        
-        --Cincuenta centavos.
-        IF (TRUNC(var_rest / .50) > 0) THEN
-            var_50c := TRUNC(var_rest / .50);
-            var_rest := var_rest - (var_50c * .50);
-        ELSE
-            var_50c := 0;
-        END IF;
-        
-        INSERT INTO ATET_CURRENCY_DISTRIBUTION_TB(MEMBER_ID,
-                                                  SAVING_RETIREMENT,
-                                                  SAVING_RETIREMENT_ROUND,
-                                                  CURRENCY_500,
-                                                  CURRENCY_200,
-                                                  CURRENCY_100,
-                                                  CURRENCY_50,
-                                                  CURRENCY_20,
-                                                  CURRENCY_10,
-                                                  CURRENCY_5,
-                                                  CURRENCY_2,
-                                                  CURRENCY_1,
-                                                  CURRENCY_50c)
-                                         VALUES (P_MEMBER_ID,
-                                                 P_SAVING_RETIREMENT,
-                                                 ATET_ROUND_RETIREMENT_PRC(P_SAVING_RETIREMENT),
-                                                 var_500,
-                                                 var_200,
-                                                 var_100,
-                                                 var_50,
-                                                 var_20,
-                                                 var_10,
-                                                 var_5,
-                                                 var_2,
-                                                 var_1,
-                                                 var_50c);
-        
-    END SET_CURRENCY_DISTRIBUTION;
     
-    FUNCTION ATET_ROUND_RETIREMENT_PRC(P_SALARY    NUMBER) RETURN NUMBER
-    IS
-        var_salary          NUMBER(12, 2);
-        var_centavos        VARCHAR2(10);
-    BEGIN
-
-        --Para el caso en dónde los netos a pagar existan decimales, se considerará lo siguiente:
-        IF ( INSTR(P_SALARY, '.') > 0 ) THEN
-
-            var_centavos    := SUBSTR(P_SALARY, INSTR(P_SALARY, '.'), LENGTH(P_SALARY));
-            var_salary      := TO_NUMBER(REPLACE(P_SALARY, var_centavos));
-        
-            --Con decimales de 0.01 al 0.25 'Se quedará en CERO pesos
-            IF (TO_NUMBER(var_centavos, '9.99') >= .01 AND TO_NUMBER(var_centavos, '9.99') <= .24) THEN
-            
-                var_salary := var_salary;
-            
-            --Con decimales de 0.26 al 0.75 'Se quedará en 0.50 Centavos
-            ELSIF (TO_NUMBER(var_centavos, '9.99') >= .25 AND TO_NUMBER(var_centavos, '9.99') <= .74) THEN
-            
-                var_salary := var_salary + 0.50;
-            
-            --Con decimales de 0.76 al 0.99 'Se quedará en 1 peso
-            ELSIF (TO_NUMBER(var_centavos, '9.99') >= .75 AND TO_NUMBER(var_centavos, '9.99') <= .99) THEN
-            
-                var_salary := var_salary + 1;
-            
-            END IF;
-
-        ELSE
-         
-           var_salary := P_SALARY;
-        
-        END IF;
-        
-        IF var_salary IS NULL THEN
-            var_salary := 0;
-        END IF;
-        
-        RETURN var_salary;
-    END ATET_ROUND_RETIREMENT_PRC;
     
     PROCEDURE   CURRENCY_DISTRIBUTION(
                     P_YEAR                      NUMBER)
     IS
+        var_validate                    NUMBER;
+        var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
+        
+        INT_ROUND_RETIREMENT_EX         EXCEPTION;
+        INT_CURRENCY_DISTRIBUTION_EX    EXCEPTION;
+        INSERT_SAVING_EX                EXCEPTION; 
+        NO_SAVING_BALANCE_EX            EXCEPTION;
+        SELECT_SAVING_EX                EXCEPTION;
+        UPDATE_SAVING_EX                EXCEPTION;
+        INT_SAVING_RETIREMENT_EX        EXCEPTION;
+        
+        CURSOR INTEREST_TRANSACTIONS IS
+                SELECT ACD.SAVING_RETIREMENT_ROUND,
+                       ASM.MEMBER_ID,
+                       ASM.EMPLOYEE_NUMBER,
+                       ASM.EMPLOYEE_FULL_NAME
+                  FROM ATET_CURRENCY_DISTRIBUTION_TB    ACD,
+                       ATET_SB_MEMBERS                  ASM,
+                       ATET_SB_MEMBERS_ACCOUNTS         ASMA,
+                       ATET_SB_SAVINGS_TRANSACTIONS     ASST
+                 WHERE 1 = 1
+                   AND ACCOUNT_DESCRIPTION = 'INTERES GANADO'
+                   AND SAVING_BANK_ID = GET_SAVING_BANK_ID
+                   AND ASM.MEMBER_ID = ACD.MEMBER_ID
+                   AND ASM.MEMBER_ID = ASMA.MEMBER_ID
+                   AND ASMA.ACCOUNT_DESCRIPTION = ACD.ACCOUNT_DESCRIPTION
+                   AND ASM.MEMBER_ID = ASST.MEMBER_ID
+                   AND ASST.MEMBER_ACCOUNT_ID = ASMA.MEMBER_ACCOUNT_ID
+                   AND ASST.ATTRIBUTE2 = 
+                   ;
+        
+        CURSOR SAVING_TRANSACTIONS IS
+                SELECT 
+                  FROM ATET_CURRENCY_DISTRIBUTION_TB    ACD
+                 WHERE 1 = 1
+                   AND ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO'
+                   AND SAVING_BANK_ID = GET_SAVING_BANK_ID;                                     
     
         CURSOR SAVINGS_RETIREMENT_DETAILS IS
                 SELECT ASM.MEMBER_ID,
@@ -9316,7 +9189,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                        ASM.EMPLOYEE_FULL_NAME,
                        (ASMA1.FINAL_BALANCE + ASMA2.FINAL_BALANCE) AS   FINAL_BALANCE,
                        ASMA1.FINAL_BALANCE                         AS   SAVING_FINAL_BALANCE,
-                       ASMA2.FINAL_BALANCE                         AS   INTEREST_FINAL_BALANCE
+                       ASMA1.MEMBER_ACCOUNT_ID                     AS   SAVING_ACCOUNT_ID,
+                       ASMA1.ACCOUNT_DESCRIPTION                   AS   SAVING_ACCOUNT_DESCRIPTION,
+                       ASMA2.FINAL_BALANCE                         AS   INTEREST_FINAL_BALANCE,
+                       ASMA2.MEMBER_ACCOUNT_ID                     AS   INTEREST_ACCOUNT_ID,
+                       ASMA2.ACCOUNT_DESCRIPTION                   AS   INTEREST_ACCOUNT_DESCRIPTION
                   FROM ATET_SB_MEMBERS                  ASM,
                        ATET_SB_MEMBERS_ACCOUNTS         ASMA1,
                        ATET_SB_MEMBERS_ACCOUNTS         ASMA2,
@@ -9337,10 +9214,381 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    AND SYSDATE BETWEEN OPM.EFFECTIVE_START_DATE AND OPM.EFFECTIVE_END_DATE
                    AND OPM.ORG_PAYMENT_METHOD_NAME LIKE '%EFECTIVO%'
                    AND ASM.MEMBER_ID IN (416, 337, 359, 355, 387);
+                   
+        FUNCTION INTERNAL_ROUND_RETIREMENT(
+            P_SALARY    NUMBER) RETURN NUMBER
+        IS
+            var_salary          NUMBER(12, 2);
+            var_centavos        VARCHAR2(10);
+        BEGIN
+
+            --Para el caso en dónde los netos a pagar existan decimales, se considerará lo siguiente:
+            IF ( INSTR(P_SALARY, '.') > 0 ) THEN
+
+                var_centavos    := SUBSTR(P_SALARY, INSTR(P_SALARY, '.'), LENGTH(P_SALARY));
+                var_salary      := TO_NUMBER(REPLACE(P_SALARY, var_centavos));
+            
+                IF (TO_NUMBER(var_centavos, '9.99') >= .01 AND TO_NUMBER(var_centavos, '9.99') <= .49) THEN
+                
+                    var_salary := var_salary;
+                
+
+                ELSIF (TO_NUMBER(var_centavos, '9.99') >= .50 AND TO_NUMBER(var_centavos, '9.99') <= .99) THEN
+                
+                    var_salary := var_salary + 0.50;
+                
+                
+--                ELSIF (TO_NUMBER(var_centavos, '9.99') >= .75 AND TO_NUMBER(var_centavos, '9.99') <= .99) THEN
+--                
+--                    var_salary := var_salary + 1;
+--                
+                END IF;
+
+            ELSE
+             
+               var_salary := P_SALARY;
+            
+            END IF;
+            
+            IF var_salary IS NULL THEN
+                var_salary := 0;
+            END IF;
+            
+            RETURN var_salary;
+            
+        EXCEPTION WHEN OTHERS THEN
+            RAISE INT_ROUND_RETIREMENT_EX;            
+        END;           
                     
+        PROCEDURE INTERNAL_CURRENCY_DISTRIBUTION(
+           P_MEMBER_ID              IN  NUMBER,      
+           P_SAVING_RETIREMENT      IN  NUMBER,
+           P_ACCOUNT_DESCRIPTION    IN  VARCHAR2)   
+        AS
+               var_500      NUMBER;
+               var_200      NUMBER;
+               var_100      NUMBER;
+               var_50       NUMBER;
+               var_20       NUMBER;
+               var_10       NUMBER;
+               var_5        NUMBER;
+               var_2        NUMBER;
+               var_1        NUMBER;
+               var_50c      NUMBER;
+               var_rest     NUMBER := INTERNAL_ROUND_RETIREMENT(P_SAVING_RETIREMENT);
+               var_round    NUMBER := INTERNAL_ROUND_RETIREMENT(P_SAVING_RETIREMENT);
+        BEGIN
+            
+            --Quinientos pesos.
+            IF (TRUNC(var_rest / 500) > 0) THEN
+               var_500 := TRUNC(var_rest / 500);
+               var_rest := var_rest - (var_500 * 500);
+            ELSE
+               var_500 := 0;
+            END IF;
+
+            --Doscientos pesos.
+            IF (TRUNC(var_rest / 200) > 0) THEN
+                var_200 := TRUNC(var_rest / 200);
+                var_rest := var_rest - (var_200 * 200);
+            ELSE
+                var_200 := 0;
+            END IF;
+            
+            --Cien pesos.
+            IF (TRUNC(var_rest / 100) > 0) THEN
+                var_100 := TRUNC(var_rest / 100);
+                var_rest := var_rest - (var_100 * 100);
+            ELSE
+                var_100 := 0;
+            END IF;
+            
+            --Cincuenta pesos.
+            IF (TRUNC(var_rest / 50) > 0) THEN
+                var_50 := TRUNC(var_rest / 50);
+                var_rest := var_rest - (var_50 * 50);
+            ELSE
+                var_50 := 0;
+            END IF;
+            
+            --Veinte pesos.
+            IF (TRUNC(var_rest / 20) > 0) THEN
+                var_20 := TRUNC(var_rest / 20);
+                var_rest := var_rest - (var_20 * 20);
+            ELSE
+                var_20 := 0;
+            END IF;
+            
+            --Diez pesos.
+            IF (TRUNC(var_rest / 10) > 0) THEN
+                var_10 := TRUNC(var_rest / 10);
+                var_rest := var_rest -(var_10 * 10);
+            ELSE
+                var_10 := 0;
+            END IF;
+            
+            --Cinco pesos.
+            IF (TRUNC(var_rest / 5) > 0) THEN
+                var_5 := TRUNC(var_rest / 5);
+                var_rest := var_rest - (var_5 * 5);
+            ELSE
+                var_5 := 0;
+            END IF;
+            
+            --Dos pesos.
+            IF (TRUNC(var_rest / 2) > 0) THEN
+                var_2 := TRUNC(var_rest / 2);
+                var_rest := var_rest - (var_2 * 2);
+            ELSE
+                var_2 := 0;
+            END IF;
+            
+            --Un peso.
+            IF (TRUNC(var_rest) > 0) THEN
+                var_1 := TRUNC(var_rest);
+                var_rest := var_rest - (var_1);
+            ELSE
+                var_1 := 0;
+            END IF;
+            
+            --Cincuenta centavos.
+            IF (TRUNC(var_rest / .50) > 0) THEN
+                var_50c := TRUNC(var_rest / .50);
+                var_rest := var_rest - (var_50c * .50);
+            ELSE
+                var_50c := 0;
+            END IF;
+            
+            INSERT INTO ATET_CURRENCY_DISTRIBUTION_TB(MEMBER_ID,
+                                                      ACCOUNT_DESCRIPTION,
+                                                      SAVING_RETIREMENT,
+                                                      SAVING_RETIREMENT_ROUND,
+                                                      CURRENCY_500,
+                                                      CURRENCY_200,
+                                                      CURRENCY_100,
+                                                      CURRENCY_50,
+                                                      CURRENCY_20,
+                                                      CURRENCY_10,
+                                                      CURRENCY_5,
+                                                      CURRENCY_2,
+                                                      CURRENCY_1,
+                                                      CURRENCY_50c,
+                                                      SAVING_BANK_ID)
+                                             VALUES (P_MEMBER_ID,
+                                                     P_ACCOUNT_DESCRIPTION,
+                                                     P_SAVING_RETIREMENT,
+                                                     var_round,
+                                                     var_500,
+                                                     var_200,
+                                                     var_100,
+                                                     var_50,
+                                                     var_20,
+                                                     var_10,
+                                                     var_5,
+                                                     var_2,
+                                                     var_1,
+                                                     var_50c,
+                                                     GET_SAVING_BANK_ID);
+        EXCEPTION WHEN OTHERS THEN
+            RAISE INT_CURRENCY_DISTRIBUTION_EX;
+        END;
+        
+        PROCEDURE INTERNAL_SAVING_RETIREMENT(
+            PP_ACCOUNT_DESCRIPTION          VARCHAR2,
+            PP_MEMBER_ID                    NUMBER,
+            PP_MEMBER_ACCOUNT_ID            NUMBER,
+            PP_SAVING_RETIREMENT            NUMBER,
+            PP_SAVING_RETIREMENT_ROUND      NUMBER)
+        IS
+            var_saving_balance          NUMBER;
+            var_debit_amount            NUMBER;
+            var_credit_amount           NUMBER;
+            var_saving_retirement       NUMBER;
+            var_saving_retirement_seq   NUMBER;
+            var_saving_transaction_id   NUMBER;
+        BEGIN
+            
+            SELECT ASMA.FINAL_BALANCE
+              INTO var_saving_balance
+              FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+             WHERE 1 = 1
+               AND ASMA.MEMBER_ID = PP_MEMBER_ID
+               AND ASMA.LOAN_ID IS NULL
+               AND ASMA.ACCOUNT_DESCRIPTION = PP_ACCOUNT_DESCRIPTION;
+               
+            var_debit_amount := 0;
+            var_credit_amount := 0;
+            
+            IF var_saving_balance = 0 THEN
+                RAISE NO_SAVING_BALANCE_EX;
+            END IF;
+            
+            SELECT ATET_SB_SAVING_RETIREMENT_SEQ.NEXTVAL
+              INTO var_saving_retirement_seq 
+              FROM DUAL;
+              
+            var_debit_amount := var_saving_retirement;
+            var_credit_amount := 0;
+            
+            BEGIN
+                            
+                INSERT INTO ATET_SB_SAVINGS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
+                                                          MEMBER_ID,
+                                                          PAYROLL_RESULT_ID,
+                                                          PERSON_ID,
+                                                          EARNED_DATE,
+                                                          PERIOD_NAME,
+                                                          ELEMENT_NAME,
+                                                          ENTRY_VALUE,
+                                                          TRANSACTION_CODE,
+                                                          DEBIT_AMOUNT,
+                                                          CREDIT_AMOUNT,
+                                                          ATTRIBUTE1,
+                                                          ATTRIBUTE2,
+                                                          ATTRIBUTE6,
+                                                          ATTRIBUTE7,
+                                                          ACCOUNTED_FLAG,
+                                                          CREATION_DATE,
+                                                          CREATED_BY,
+                                                          LAST_UPDATE_DATE,
+                                                          LAST_UPDATED_BY)
+                                                  VALUES (PP_MEMBER_ACCOUNT_ID,
+                                                          PP_MEMBER_ID,
+                                                          -1,
+                                                          GET_PERSON_ID(PP_MEMBER_ID),
+                                                          TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                                                          'RETIRO',
+                                                          'RETIRO POR REPARTO DE AHORRO',
+                                                          var_saving_retirement,
+                                                          'RETIREMENT',
+                                                          var_debit_amount,
+                                                          var_credit_amount,
+                                                          var_saving_retirement_seq,
+                                                          PP_SAVING_RETIREMENT_ROUND,
+                                                          'RETIRO POR REPARTO DE AHORRO',
+                                                          'REPARTO DE AHORRO',
+                                                          'ACCOUNTED',
+                                                          SYSDATE,
+                                                          var_user_id,
+                                                          SYSDATE,
+                                                          var_user_id);                                                                          
+                            
+            EXCEPTION WHEN OTHERS THEN
+                RAISE INSERT_SAVING_EX;                                                                          
+            END;
+            
+            BEGIN                                     
+                                                      
+                SELECT ASST.SAVING_TRANSACTION_ID
+                  INTO var_saving_transaction_id
+                  FROM ATET_SB_SAVINGS_TRANSACTIONS ASST
+                 WHERE 1 = 1
+                   AND ASST.MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID
+                   AND ASST.MEMBER_ID = PP_MEMBER_ID
+                   AND ASST.PERSON_ID = GET_PERSON_ID(PP_MEMBER_ID)
+                   AND ASST.PERIOD_NAME = 'RETIRO'
+                   AND ASST.ELEMENT_NAME = 'RETIRO POR REPARTO DE AHORRO'
+                   AND ASST.TRANSACTION_CODE = 'RETIREMENT'
+                   AND ASST.ATTRIBUTE7 = 'REPARTO DE AHORRO';
+                   
+            EXCEPTION WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE(SQLERRM);
+                RAISE SELECT_SAVING_EX;
+            END;
+            
+            BEGIN
+                                                                      
+                UPDATE ATET_SB_MEMBERS_ACCOUNTS
+                   SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
+                       CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                       LAST_TRANSACTION_DATE = SYSDATE               
+                 WHERE MEMBER_ID = PP_MEMBER_ID
+                   AND MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID;
+
+                              
+                UPDATE ATET_SB_MEMBERS_ACCOUNTS
+                   SET FINAL_BALANCE = CREDIT_BALANCE - DEBIT_BALANCE,
+                       LAST_UPDATE_DATE = SYSDATE,
+                       LAST_UPDATED_BY = var_user_id             
+                 WHERE MEMBER_ID = PP_MEMBER_ID
+                   AND MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID;
+                            
+            EXCEPTION WHEN OTHERS THEN
+                RAISE UPDATE_SAVING_EX;
+            END;
+        
+        EXCEPTION WHEN OTHERS THEN
+            RAISE INT_SAVING_RETIREMENT_EX;
+        END;                
         
     BEGIN
-        NULL;
+    
+        SELECT COUNT(ACD.MEMBER_ID)
+          INTO var_validate
+          FROM ATET_CURRENCY_DISTRIBUTION_TB ACD;
+        
+        IF var_validate = 0 THEN
+        
+            FOR detail IN SAVINGS_RETIREMENT_DETAILS LOOP
+                
+                
+                     
+                IF detail.INTEREST_FINAL_BALANCE > 0 THEN
+                    INTERNAL_CURRENCY_DISTRIBUTION
+                        (
+                            P_MEMBER_ID             => detail.MEMBER_ID,      
+                            P_SAVING_RETIREMENT     => detail.INTEREST_FINAL_BALANCE,
+                            P_ACCOUNT_DESCRIPTION   => detail.INTEREST_ACCOUNT_DESCRIPTION
+                        );
+                
+                    INTERNAL_SAVING_RETIREMENT
+                        (
+                            PP_ACCOUNT_DESCRIPTION      => detail.INTEREST_ACCOUNT_DESCRIPTION,
+                            PP_MEMBER_ID                => detail.MEMBER_ID,
+                            PP_MEMBER_ACCOUNT_ID        => detail.INTEREST_ACCOUNT_ID,
+                            PP_SAVING_RETIREMENT        => detail.INTEREST_FINAL_BALANCE,
+                            PP_SAVING_RETIREMENT_ROUND  => INTERNAL_ROUND_RETIREMENT(detail.INTEREST_FINAL_BALANCE)
+                        );
+                END IF;
+                
+                IF detail.SAVING_FINAL_BALANCE > 0 THEN
+                    INTERNAL_CURRENCY_DISTRIBUTION
+                        (
+                            P_MEMBER_ID             => detail.MEMBER_ID,      
+                            P_SAVING_RETIREMENT     => detail.SAVING_FINAL_BALANCE,
+                            P_ACCOUNT_DESCRIPTION   => detail.SAVING_ACCOUNT_DESCRIPTION
+                        );
+                    
+                    INTERNAL_SAVING_RETIREMENT
+                        (
+                            PP_ACCOUNT_DESCRIPTION      => detail.SAVING_ACCOUNT_DESCRIPTION,
+                            PP_MEMBER_ID                => detail.MEMBER_ID,
+                            PP_MEMBER_ACCOUNT_ID        => detail.SAVING_ACCOUNT_ID,
+                            PP_SAVING_RETIREMENT        => detail.SAVING_FINAL_BALANCE,
+                            PP_SAVING_RETIREMENT_ROUND  => INTERNAL_ROUND_RETIREMENT(detail.SAVING_FINAL_BALANCE)
+                        );
+                END IF;
+            
+            END LOOP;
+        
+        END IF;
+        
+        
+    EXCEPTION
+        WHEN INT_ROUND_RETIREMENT_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INT_ROUND_RETIREMENT_EX');
+        WHEN INT_CURRENCY_DISTRIBUTION_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INT_CURRENCY_DISTRIBUTION_EX');
+        WHEN INSERT_SAVING_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INSERT_SAVING_EX'); 
+        WHEN NO_SAVING_BALANCE_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'NO_SAVING_BALANCE_EX');
+        WHEN SELECT_SAVING_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'SELECT_SAVING_EX');
+        WHEN UPDATE_SAVING_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'UPDATE_SAVING_EX');
+        WHEN INT_SAVING_RETIREMENT_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INT_SAVING_RETIREMENT_EX');
     END CURRENCY_DISTRIBUTION;
                     
 

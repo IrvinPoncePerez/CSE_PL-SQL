@@ -358,9 +358,6 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_RETCODE       OUT NOCOPY VARCHAR2,
                     P_YEAR                     NUMBER);
                     
-    FUNCTION    ATET_ROUND_RETIREMENT_PRC(
-                    P_SALARY                    NUMBER
-                ) RETURN NUMBER;
                     
     PROCEDURE   CURRENCY_DISTRIBUTION(
                     P_YEAR                      NUMBER);
