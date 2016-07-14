@@ -8301,6 +8301,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_credit_amount           NUMBER;
         var_header_id               NUMBER;
         
+        var_interest_balance        NUMBER;
+        var_saving_balance          NUMBER;
+        
         COMPANY_EX                  EXCEPTION;
         PAYMENTS_SCHEDULE_EX        EXCEPTION;
         INSERT_SAVING_EXCEPTION     EXCEPTION;
@@ -8378,8 +8381,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                AND ASL.LOAN_STATUS_FLAG = 'ACTIVE'
                AND ASL.LOAN_BALANCE > 0
                AND ASM.SAVING_BANK_ID = ASB.SAVING_BANK_ID
-               AND ASB.YEAR = P_YEAR
-               AND ASM.MEMBER_ID IN (1131, 1132, 1133, 1135, 1136, 1111, 1113, 1126, 1128, 1130);
+               AND ASB.YEAR = P_YEAR;
+--               AND ASM.MEMBER_ID IN (1131, 1132, 1133, 1135, 1136, 1111, 1113, 1126, 1128, 1130);
                
         PROCEDURE INTERNAL_SAVING_RETIREMENT(
             PP_ACCOUNT_DESCRIPTION          VARCHAR2,
@@ -8410,7 +8413,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             var_credit_amount := 0;
             
             IF var_saving_balance = 0 THEN
-                RAISE NO_SAVING_BALANCE_EX;
+                var_saving_retirement := 0;
+                PP_BALANCE := PP_PAYMENT_AMOUNT - var_saving_retirement;
+                PP_SAVING_RETIREMENT := var_saving_retirement;
+                PP_SAVING_TRANSACTION_ID := -1;
+                
+                RETURN;
             ELSIF var_saving_balance >= PP_PAYMENT_AMOUNT THEN
                 var_saving_retirement := PP_PAYMENT_AMOUNT;
                 PP_BALANCE := PP_PAYMENT_AMOUNT - var_saving_retirement;
@@ -8517,8 +8525,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 RAISE UPDATE_SAVING_EXCEPTION;
             END;
         
-        EXCEPTION WHEN OTHERS THEN
-            RAISE INT_SAVING_RETIREMENT_EX;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE INT_SAVING_RETIREMENT_EX;
         END; 
      
         PROCEDURE INTERNAL_LOAN_TRANSACTION(
@@ -8857,238 +8866,286 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         FOR detail IN LOANS_DETAILS LOOP
         
-            BEGIN
-            
-                SELECT DISTINCT SUBSTR(PPF.PAYROLL_NAME, 0, 2) AS COMPANY_CODE
-                  INTO var_code_company
-                  FROM PAY_PAYROLLS_F       PPF,
-                       PER_ASSIGNMENTS_F    PAF,
-                       ATET_SB_MEMBERS      ASM            
-                 WHERE 1 = 1
-                   AND PAF.PAYROLL_ID = PPF.PAYROLL_ID
-                   AND PAF.PERSON_ID = ASM.PERSON_ID
-                   AND ASM.MEMBER_ID = detail.MEMBER_ID
-                   AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
-                   AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE;
-            
-            EXCEPTION WHEN OTHERS THEN
-                RAISE COMPANY_EX;
-            END;
-            
-            BEGIN   
-                SELECT ASPS.TIME_PERIOD_ID,
-                       ASPS.PERIOD_NAME,
-                       ASPS.PAYMENT_DATE,
-                       ASPS.PAYMENT_SCHEDULE_ID
-                  INTO var_time_period_id,
-                       var_period_name,
-                       var_payment_date,
-                       var_payment_schedule_id
-                  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
-                 WHERE 1 = 1
-                   AND ASPS.LOAN_ID = detail.LOAN_ID
-                   AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED')
-                   AND ROWNUM = 1;
-            EXCEPTION WHEN OTHERS THEN
-                RAISE PAYMENTS_SCHEDULE_EX;
-            END;
-                           
-            var_loan_balance := detail.loan_balance;
-            var_interest_retirement := 0;
-            var_saving_retirement := 0;
-            var_loan_transac_balance := 0;
-            
-            /********************************************************/
-            /*          RETIRO DE AHORRO - INTERES GANADO           */ 
-            /********************************************************/
+            var_code_company            := NULL;
+            var_time_period_id          := NULL;
+            var_period_name             := NULL;
+            var_payment_date            := NULL;
+            var_payment_schedule_id     := NULL;
+            var_loan_balance            := NULL;
+            var_saving_retirement       := NULL;
+            var_interest_retirement     := NULL;
+            var_loan_transac_balance    := NULL;
+            var_interest_transaction_id := NULL;
+            var_saving_transaction_id   := NULL;
+            var_debit_amount            := NULL;
+            var_credit_amount           := NULL;
+            var_header_id               := NULL;
+            var_interest_balance        := NULL;
+            var_saving_balance          := NULL;
+        
+            SELECT ASMA.FINAL_BALANCE
+              INTO var_interest_balance
+              FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+             WHERE 1 = 1
+               AND ASMA.MEMBER_ACCOUNT_ID = detail.INTEREST_MEMBER_ACCOUNT_ID
+               AND ASMA.MEMBER_ID = detail.MEMBER_ID;
                
-            INTERNAL_SAVING_RETIREMENT
-                (
-                    PP_ACCOUNT_DESCRIPTION  => 'INTERES GANADO',
-                    PP_MEMBER_ID            => detail.MEMBER_ID,
-                    PP_PAYMENT_AMOUNT       => var_loan_balance,
-                    PP_MEMBER_ACCOUNT_ID    => detail.INTEREST_MEMBER_ACCOUNT_ID,
-                    PP_BALANCE              => var_loan_balance,
-                    PP_SAVING_RETIREMENT    => var_interest_retirement,
-                    PP_SAVING_TRANSACTION_ID=> var_interest_transaction_id
-                );
-                
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DE INTERES GANADO    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            SELECT ASMA.FINAL_BALANCE
+              INTO var_saving_balance
+              FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+             WHERE 1 = 1
+               AND ASMA.MEMBER_ACCOUNT_ID = detail.SAVING_MEMBER_ACCOUNT_ID
+               AND ASMA.MEMBER_ID = detail.MEMBER_ID;
+               
+            IF var_interest_balance > 0 OR var_saving_balance > 0 THEN               
             
-                    
-            var_debit_amount := 0;
-            var_credit_amount := 0;
-                    
-            FOR saving_detail IN SAVINGS_DETAILS (detail.MEMBER_ID, detail.INTEREST_MEMBER_ACCOUNT_ID) LOOP
-                    
-                var_debit_amount := var_debit_amount + saving_detail.DEBIT_AMOUNT;
-                var_credit_amount := var_credit_amount + saving_detail.CREDIT_AMOUNT;
-                        
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(saving_detail.EARNED_DATE, 40, ' ')
-                                                 ||RPAD(saving_detail.PERIOD_NAME, 40, ' ')
-                                                 ||LPAD(saving_detail.DEBIT_AMOUNT,40, ' ')
-                                                 ||LPAD(saving_detail.CREDIT_AMOUNT,40, ' '));
-                    
-            END LOOP;
-                    
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('RESUMEN:', 80, ' ')
-                            ||LPAD(var_debit_amount, 40, ' ')
-                            ||LPAD(var_credit_amount, 40, ' '));
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('SALDO:', 80, ' ')
-                            ||LPAD(' ', 40, ' ')
-                            ||LPAD((var_credit_amount - var_debit_amount), 40, ' '));
+                BEGIN
                 
-            var_loan_transac_balance := var_loan_transac_balance + var_interest_retirement;
-            
-            /********************************************************/
-            /*          RETIRO DE AHORRO - AHORRO ACUMULADO         */
-            /********************************************************/
-            
-            IF var_loan_balance > 0 THEN
-                INTERNAL_SAVING_RETIREMENT
-                    (
-                        PP_ACCOUNT_DESCRIPTION  => 'D071_CAJA DE AHORRO',
-                        PP_MEMBER_ID            => detail.MEMBER_ID,
-                        PP_PAYMENT_AMOUNT       => var_loan_balance,
-                        PP_MEMBER_ACCOUNT_ID    => detail.SAVING_MEMBER_ACCOUNT_ID,
-                        PP_BALANCE              => var_loan_balance,
-                        PP_SAVING_RETIREMENT    => var_saving_retirement,
-                        PP_SAVING_TRANSACTION_ID=> var_saving_transaction_id
-                    );
-                    
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DE AHORRO    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    SELECT DISTINCT SUBSTR(PPF.PAYROLL_NAME, 0, 2) AS COMPANY_CODE
+                      INTO var_code_company
+                      FROM PAY_PAYROLLS_F       PPF,
+                           PER_ASSIGNMENTS_F    PAF,
+                           ATET_SB_MEMBERS      ASM            
+                     WHERE 1 = 1
+                       AND PAF.PAYROLL_ID = PPF.PAYROLL_ID
+                       AND PAF.PERSON_ID = ASM.PERSON_ID
+                       AND ASM.MEMBER_ID = detail.MEMBER_ID
+                       AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                       AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE;
                 
-                        
-                var_debit_amount := 0;
-                var_credit_amount := 0;
-                        
-                FOR saving_detail IN SAVINGS_DETAILS (detail.MEMBER_ID, detail.SAVING_MEMBER_ACCOUNT_ID) LOOP
-                        
-                    var_debit_amount := var_debit_amount + saving_detail.DEBIT_AMOUNT;
-                    var_credit_amount := var_credit_amount + saving_detail.CREDIT_AMOUNT;
+                EXCEPTION WHEN OTHERS THEN
+                    RAISE COMPANY_EX;
+                END;
+                
+                BEGIN   
+                    SELECT ASPS.TIME_PERIOD_ID,
+                           ASPS.PERIOD_NAME,
+                           ASPS.PAYMENT_DATE,
+                           ASPS.PAYMENT_SCHEDULE_ID
+                      INTO var_time_period_id,
+                           var_period_name,
+                           var_payment_date,
+                           var_payment_schedule_id
+                      FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+                     WHERE 1 = 1
+                       AND ASPS.LOAN_ID = detail.LOAN_ID
+                       AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED', 'SKIP')
+                       AND ROWNUM = 1;
+                EXCEPTION WHEN OTHERS THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : LOAN_ID = ' || detail.LOAN_ID);
+                    RAISE PAYMENTS_SCHEDULE_EX;
+                END;
+                               
+                var_loan_balance := detail.loan_balance;
+                var_interest_retirement := 0;
+                var_saving_retirement := 0;
+                var_loan_transac_balance := 0;
+                
+                /********************************************************/
+                /*          RETIRO DE AHORRO - INTERES GANADO           */ 
+                /********************************************************/
+                   
+                IF var_interest_balance > 0 THEN                
+                    INTERNAL_SAVING_RETIREMENT
+                        (
+                            PP_ACCOUNT_DESCRIPTION  => 'INTERES GANADO',
+                            PP_MEMBER_ID            => detail.MEMBER_ID,
+                            PP_PAYMENT_AMOUNT       => var_loan_balance,
+                            PP_MEMBER_ACCOUNT_ID    => detail.INTEREST_MEMBER_ACCOUNT_ID,
+                            PP_BALANCE              => var_loan_balance,
+                            PP_SAVING_RETIREMENT    => var_interest_retirement,
+                            PP_SAVING_TRANSACTION_ID=> var_interest_transaction_id
+                        );
+                
+                    
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DE INTERES GANADO    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    
                             
-                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(saving_detail.EARNED_DATE, 40, ' ')
-                                                     ||RPAD(saving_detail.PERIOD_NAME, 40, ' ')
-                                                     ||LPAD(saving_detail.DEBIT_AMOUNT,40, ' ')
-                                                     ||LPAD(saving_detail.CREDIT_AMOUNT,40, ' '));
+                    var_debit_amount := 0;
+                    var_credit_amount := 0;
+                            
+                    FOR saving_detail IN SAVINGS_DETAILS (detail.MEMBER_ID, detail.INTEREST_MEMBER_ACCOUNT_ID) LOOP
+                            
+                        var_debit_amount := var_debit_amount + saving_detail.DEBIT_AMOUNT;
+                        var_credit_amount := var_credit_amount + saving_detail.CREDIT_AMOUNT;
+                                
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(saving_detail.EARNED_DATE, 40, ' ')
+                                                         ||RPAD(saving_detail.PERIOD_NAME, 40, ' ')
+                                                         ||LPAD(saving_detail.DEBIT_AMOUNT,40, ' ')
+                                                         ||LPAD(saving_detail.CREDIT_AMOUNT,40, ' '));
+                            
+                    END LOOP;
+                            
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('RESUMEN:', 80, ' ')
+                                    ||LPAD(var_debit_amount, 40, ' ')
+                                    ||LPAD(var_credit_amount, 40, ' '));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('SALDO:', 80, ' ')
+                                    ||LPAD(' ', 40, ' ')
+                                    ||LPAD((var_credit_amount - var_debit_amount), 40, ' '));
                         
-                END LOOP;
+                    var_loan_transac_balance := var_loan_transac_balance + var_interest_retirement;
+                
+                END IF;
+                
+                var_loan_transac_balance := var_loan_transac_balance + var_interest_retirement;
+                
+                /********************************************************/
+                /*          RETIRO DE AHORRO - AHORRO ACUMULADO         */
+                /********************************************************/
+                
+                IF var_loan_balance > 0 AND var_saving_balance > 0 THEN
+                    INTERNAL_SAVING_RETIREMENT
+                        (
+                            PP_ACCOUNT_DESCRIPTION  => 'D071_CAJA DE AHORRO',
+                            PP_MEMBER_ID            => detail.MEMBER_ID,
+                            PP_PAYMENT_AMOUNT       => var_loan_balance,
+                            PP_MEMBER_ACCOUNT_ID    => detail.SAVING_MEMBER_ACCOUNT_ID,
+                            PP_BALANCE              => var_loan_balance,
+                            PP_SAVING_RETIREMENT    => var_saving_retirement,
+                            PP_SAVING_TRANSACTION_ID=> var_saving_transaction_id
+                        );
                         
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('RESUMEN:', 80, ' ')
-                                ||LPAD(var_debit_amount, 40, ' ')
-                                ||LPAD(var_credit_amount, 40, ' '));
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('SALDO:', 80, ' ')
-                                ||LPAD(' ', 40, ' ')
-                                ||LPAD((var_credit_amount - var_debit_amount), 40, ' '));
-            END IF; 
-            
-            var_loan_transac_balance := var_loan_transac_balance + var_saving_retirement;
-            
-            /********************************************************/
-            /*      PAGO ANTICIPADO - CON REPARTO DE AHORRO         */
-            /********************************************************/
-            
-            INTERNAL_LOAN_TRANSACTION
-                (
-                    PP_MEMBER_ID            => detail.MEMBER_ID,
-                    PP_PERSON_ID            => detail.PERSON_ID,
-                    PP_PAYMENT_DATE         => var_payment_date,
-                    PP_TIME_PERIOD_ID       => var_time_period_id,
-                    PP_PERIOD_NAME          => var_period_name,
-                    PP_PAYMENT_AMOUNT       => var_loan_transac_balance, 
-                    PP_PAYMENT_SCHEDULE_ID  => var_payment_schedule_id,
-                    PP_LOAN_ID              => detail.LOAN_ID
-                );
-                
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DEL PRESTAMO    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-                
-            var_debit_amount := 0;
-            var_credit_amount := 0;
-                
-            FOR detail_loan IN LOAN_TRANSACTION_DETAILS  (detail.LOAN_ID) LOOP
-                
-                var_debit_amount := var_debit_amount + detail_loan.DEBIT_AMOUNT;
-                var_credit_amount := var_credit_amount + detail_loan.CREDIT_AMOUNT;
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DE AHORRO    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
                     
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(detail_loan.EARNED_DATE, 40, ' ')
-                                                 ||RPAD(detail_loan.PERIOD_NAME, 40, ' ')
-                                                 ||LPAD(detail_loan.DEBIT_AMOUNT,40, ' ')
-                                                 ||LPAD(detail_loan.CREDIT_AMOUNT,40, ' '));
+                            
+                    var_debit_amount := 0;
+                    var_credit_amount := 0;
+                            
+                    FOR saving_detail IN SAVINGS_DETAILS (detail.MEMBER_ID, detail.SAVING_MEMBER_ACCOUNT_ID) LOOP
+                            
+                        var_debit_amount := var_debit_amount + saving_detail.DEBIT_AMOUNT;
+                        var_credit_amount := var_credit_amount + saving_detail.CREDIT_AMOUNT;
+                                
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(saving_detail.EARNED_DATE, 40, ' ')
+                                                         ||RPAD(saving_detail.PERIOD_NAME, 40, ' ')
+                                                         ||LPAD(saving_detail.DEBIT_AMOUNT,40, ' ')
+                                                         ||LPAD(saving_detail.CREDIT_AMOUNT,40, ' '));
+                            
+                    END LOOP;
+                            
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('RESUMEN:', 80, ' ')
+                                    ||LPAD(var_debit_amount, 40, ' ')
+                                    ||LPAD(var_credit_amount, 40, ' '));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('SALDO:', 80, ' ')
+                                    ||LPAD(' ', 40, ' ')
+                                    ||LPAD((var_credit_amount - var_debit_amount), 40, ' '));
+                END IF; 
                 
-            END LOOP;
+                var_loan_transac_balance := var_loan_transac_balance + var_saving_retirement;
                 
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('RESUMEN:', 80, ' ')
-                            ||LPAD(var_debit_amount, 40, ' ')
-                            ||LPAD(var_credit_amount, 40, ' '));
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('SALDO:', 80, ' ')
-                            ||LPAD(' ', 40, ' ')
-                            ||LPAD((var_debit_amount - var_credit_amount), 40, ' ')); 
-            
-            
-            /********************************************************/
-            /*                  CREACIÓN DE POLIZA                  */
-            /********************************************************/
-            INTERNAL_CREATE_JOURNAL
-                (
-                    PP_PERSON_ID                => detail.PERSON_ID,
-                    PP_MEMBER_ID                => detail.MEMBER_ID,
-                    PP_EMPLOYEE_NUMBER          => detail.EMPLOYEE_NUMBER,
-                    PP_EMPLOYEE_FULL_NAME       => detail.EMPLOYEE_FULL_NAME,
-                    PP_LOAN_ID                  => detail.LOAN_ID,
-                    PP_LOAN_NUMBER              => detail.LOAN_NUMBER,
-                    PP_PAYMENT_AMOUNT           => var_loan_transac_balance,
-                    PP_INTEREST_RETIREMENT      => var_interest_retirement,
-                    PP_INTEREST_TRANSACTION_ID  => var_interest_transaction_id,
-                    PP_SAVING_RETIREMENT        => var_saving_retirement,
-                    PP_SAVING_TRANSACTION_ID    => var_saving_transaction_id,
-                    PP_TIME_PERIOD_ID           => var_time_period_id,
-                    PP_NOT_REC_ACCOUNT_ID       => detail.LOAN_CODE_COMBINATION_ID,
-                    PP_SAV_ACCOUNT_ID           => detail.SAVING_CODE_COMBINATION_ID,
-                    PP_INT_EAR_ACCOUNT_ID       => detail.INTEREST_CODE_COMBINATION_ID,
-                    PP_HEADER_ID                => var_header_id
-                );
+                /********************************************************/
+                /*      PAGO ANTICIPADO - CON REPARTO DE AHORRO         */
+                /********************************************************/
                 
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS CONTABLES    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                IF var_loan_transac_balance > 0 THEN
                 
-            var_debit_amount := 0;
-            var_credit_amount := 0;
-                
-            FOR detail_accounted IN ACCOUNTED_DETAILS(var_header_id) LOOP
-                
-                var_debit_amount := var_debit_amount + detail_accounted.ACCOUNTED_DR;
-                var_credit_amount := var_credit_amount + detail_accounted.ACCOUNTED_CR;
+                    INTERNAL_LOAN_TRANSACTION
+                        (
+                            PP_MEMBER_ID            => detail.MEMBER_ID,
+                            PP_PERSON_ID            => detail.PERSON_ID,
+                            PP_PAYMENT_DATE         => var_payment_date,
+                            PP_TIME_PERIOD_ID       => var_time_period_id,
+                            PP_PERIOD_NAME          => var_period_name,
+                            PP_PAYMENT_AMOUNT       => var_loan_transac_balance, 
+                            PP_PAYMENT_SCHEDULE_ID  => var_payment_schedule_id,
+                            PP_LOAN_ID              => detail.LOAN_ID
+                        );
+                        
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DEL PRESTAMO    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                        
+                    var_debit_amount := 0;
+                    var_credit_amount := 0;
+                        
+                    FOR detail_loan IN LOAN_TRANSACTION_DETAILS  (detail.LOAN_ID) LOOP
+                        
+                        var_debit_amount := var_debit_amount + detail_loan.DEBIT_AMOUNT;
+                        var_credit_amount := var_credit_amount + detail_loan.CREDIT_AMOUNT;
+                            
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(detail_loan.EARNED_DATE, 40, ' ')
+                                                         ||RPAD(detail_loan.PERIOD_NAME, 40, ' ')
+                                                         ||LPAD(detail_loan.DEBIT_AMOUNT,40, ' ')
+                                                         ||LPAD(detail_loan.CREDIT_AMOUNT,40, ' '));
+                        
+                    END LOOP;
+                        
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('RESUMEN:', 80, ' ')
+                                    ||LPAD(var_debit_amount, 40, ' ')
+                                    ||LPAD(var_credit_amount, 40, ' '));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('SALDO:', 80, ' ')
+                                    ||LPAD(' ', 40, ' ')
+                                    ||LPAD((var_debit_amount - var_credit_amount), 40, ' ')); 
                     
-                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(GET_CODE_COMBINATION(detail_accounted.CODE_COMBINATION_ID) , 40, ' ')
-                                                 ||RPAD(detail_accounted.DESCRIPTION, 40, ' ')
-                                                 ||LPAD(detail_accounted.ACCOUNTED_DR,40, ' ')
-                                                 ||LPAD(detail_accounted.ACCOUNTED_CR,40, ' '));
+                    
+                    /********************************************************/
+                    /*                  CREACIÓN DE POLIZA                  */
+                    /********************************************************/
+                    INTERNAL_CREATE_JOURNAL
+                        (
+                            PP_PERSON_ID                => detail.PERSON_ID,
+                            PP_MEMBER_ID                => detail.MEMBER_ID,
+                            PP_EMPLOYEE_NUMBER          => detail.EMPLOYEE_NUMBER,
+                            PP_EMPLOYEE_FULL_NAME       => detail.EMPLOYEE_FULL_NAME,
+                            PP_LOAN_ID                  => detail.LOAN_ID,
+                            PP_LOAN_NUMBER              => detail.LOAN_NUMBER,
+                            PP_PAYMENT_AMOUNT           => var_loan_transac_balance,
+                            PP_INTEREST_RETIREMENT      => var_interest_retirement,
+                            PP_INTEREST_TRANSACTION_ID  => var_interest_transaction_id,
+                            PP_SAVING_RETIREMENT        => var_saving_retirement,
+                            PP_SAVING_TRANSACTION_ID    => var_saving_transaction_id,
+                            PP_TIME_PERIOD_ID           => var_time_period_id,
+                            PP_NOT_REC_ACCOUNT_ID       => detail.LOAN_CODE_COMBINATION_ID,
+                            PP_SAV_ACCOUNT_ID           => detail.SAVING_CODE_COMBINATION_ID,
+                            PP_INT_EAR_ACCOUNT_ID       => detail.INTEREST_CODE_COMBINATION_ID,
+                            PP_HEADER_ID                => var_header_id
+                        );
+                        
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS CONTABLES    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                        
+                    var_debit_amount := 0;
+                    var_credit_amount := 0;
+                        
+                    FOR detail_accounted IN ACCOUNTED_DETAILS(var_header_id) LOOP
+                        
+                        var_debit_amount := var_debit_amount + detail_accounted.ACCOUNTED_DR;
+                        var_credit_amount := var_credit_amount + detail_accounted.ACCOUNTED_CR;
+                            
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(GET_CODE_COMBINATION(detail_accounted.CODE_COMBINATION_ID) , 40, ' ')
+                                                         ||RPAD(detail_accounted.DESCRIPTION, 40, ' ')
+                                                         ||LPAD(detail_accounted.ACCOUNTED_DR,40, ' ')
+                                                         ||LPAD(detail_accounted.ACCOUNTED_CR,40, ' '));
+                        
+                    END LOOP;
+                        
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('TOTAL:', 80, ' ')
+                                    ||LPAD(var_debit_amount, 40, ' ')
+                                    ||LPAD(var_credit_amount, 40, ' '));
+                    
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('+', 160, '+'));
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                    
+                    COMMIT;
                 
-            END LOOP;
-                
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('TOTAL:', 80, ' ')
-                            ||LPAD(var_debit_amount, 40, ' ')
-                            ||LPAD(var_credit_amount, 40, ' '));
+                END IF;
             
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('+', 160, '+'));
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            END IF;
         
         END LOOP;
         
@@ -9165,22 +9222,21 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                        ATET_SB_MEMBERS_ACCOUNTS         ASMA,
                        ATET_SB_SAVINGS_TRANSACTIONS     ASST
                  WHERE 1 = 1
-                   AND ACCOUNT_DESCRIPTION = 'INTERES GANADO'
-                   AND SAVING_BANK_ID = GET_SAVING_BANK_ID
+                   AND ACD.ACCOUNT_DESCRIPTION = 'INTERES GANADO'
+                   AND ACD.SAVING_BANK_ID = GET_SAVING_BANK_ID
                    AND ASM.MEMBER_ID = ACD.MEMBER_ID
                    AND ASM.MEMBER_ID = ASMA.MEMBER_ID
                    AND ASMA.ACCOUNT_DESCRIPTION = ACD.ACCOUNT_DESCRIPTION
                    AND ASM.MEMBER_ID = ASST.MEMBER_ID
                    AND ASST.MEMBER_ACCOUNT_ID = ASMA.MEMBER_ACCOUNT_ID
-                   AND ASST.ATTRIBUTE2 = 
-                   ;
+                   AND ASST.ATTRIBUTE2 = ACD.SAVING_RETIREMENT_ROUND;
         
-        CURSOR SAVING_TRANSACTIONS IS
-                SELECT 
-                  FROM ATET_CURRENCY_DISTRIBUTION_TB    ACD
-                 WHERE 1 = 1
-                   AND ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO'
-                   AND SAVING_BANK_ID = GET_SAVING_BANK_ID;                                     
+--        CURSOR SAVING_TRANSACTIONS IS
+--                SELECT 
+--                  FROM ATET_CURRENCY_DISTRIBUTION_TB    ACD
+--                 WHERE 1 = 1
+--                   AND ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO'
+--                   AND SAVING_BANK_ID = GET_SAVING_BANK_ID;                                     
     
         CURSOR SAVINGS_RETIREMENT_DETAILS IS
                 SELECT ASM.MEMBER_ID,
