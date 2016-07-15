@@ -9140,8 +9140,6 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('+', 160, '+'));
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
-                    
-                    COMMIT;
                 
                 END IF;
             

@@ -50,17 +50,6 @@
                ATET_SB_LOANS_TRANSACTIONS
                ATET_SB_MEMBERS_ACCOUNTS
                ATET_SB_PAYMENTS_SCHEDULE
-               
-               SELECT ASM.EMPLOYEE_NUMBER,
-                      ASM.EMPLOYEE_FULL_NAME,
-                      ASM.MEMBER_ID
-               FROM ATET_SB_MEMBERS ASM
-               WHERE 1 = 1
-                 AND ASM.PERSON_ID IN (3842, 5079, 3127, 2425, 2449);
-                 
-                 
-                 
-                 
                  
                  
     SELECT *
