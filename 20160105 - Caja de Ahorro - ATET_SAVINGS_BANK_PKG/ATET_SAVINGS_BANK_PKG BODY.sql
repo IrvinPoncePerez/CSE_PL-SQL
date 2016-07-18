@@ -2370,8 +2370,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
              WHERE ASL.LOAN_ID = var_loan_id;
 
              
+           
             MERGE INTO ATET_SB_MEMBERS      ASM
-                 USING ATET_SB_ENDORSEMENTS ASE
+                 USING (SELECT DISTINCT ASE.LOAN_ID,
+                                        ASE.MEMBER_ENDORSEMENT_ID
+                          FROM ATET_SB_ENDORSEMENTS ASE
+                         WHERE 1 = 1) ASE
                     ON (    ASE.LOAN_ID = var_loan_id
                         AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
             WHEN MATCHED THEN 
@@ -2389,7 +2393,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
 
             IF var_validate = 0 THEN 
                 MERGE INTO ATET_SB_MEMBERS      ASM
-                     USING ATET_SB_ENDORSEMENTS ASE
+                     USING (SELECT DISTINCT ASE.LOAN_ID,
+                                            ASE.MEMBER_BORROWER_ID
+                              FROM ATET_SB_ENDORSEMENTS ASE
+                             WHERE 1 = 1) ASE
                         ON (    ASE.LOAN_ID = var_loan_id
                             AND ASE.MEMBER_BORROWER_ID = ASM.MEMBER_ID)
                 WHEN MATCHED THEN 
@@ -8313,6 +8320,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         INT_SAVING_RETIREMENT_EX    EXCEPTION;
         INT_LOAN_TRANSACTION_EX     EXCEPTION;
         INT_CREATE_JOURNAL_EX       EXCEPTION;
+        INSERT_LOAN_EX              EXCEPTION;
+        GROUP_INSERT_LOAN_EX        EXCEPTION;
     
         CURSOR SAVINGS_DETAILS (PP_MEMBER_ID  NUMBER, PP_MEMBER_ACCOUNT_ID NUMBER)IS
             SELECT ASST.EARNED_DATE,
@@ -8382,7 +8391,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                AND ASL.LOAN_BALANCE > 0
                AND ASM.SAVING_BANK_ID = ASB.SAVING_BANK_ID
                AND ASB.YEAR = P_YEAR;
---               AND ASM.MEMBER_ID IN (1131, 1132, 1133, 1135, 1136, 1111, 1113, 1126, 1128, 1130);
+--               AND ASM.MEMBER_ID IN (1003);
                
         PROCEDURE INTERNAL_SAVING_RETIREMENT(
             PP_ACCOUNT_DESCRIPTION          VARCHAR2,
@@ -8543,105 +8552,113 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             var_result                  VARCHAR2(10);
         BEGIN
         
-            var_result := INSERT_LOAN_TRANSACTION(P_EXPORT_REQUEST_ID => -1,
-                                                  P_PAYROLL_RESULT_ID => -1,
-                                                  P_PERSON_ID => PP_PERSON_ID,
-                                                  P_RUN_RESULT_ID => -1,
-                                                  P_EARNED_DATE => PP_PAYMENT_DATE,
-                                                  P_TIME_PERIOD_ID => PP_TIME_PERIOD_ID,
-                                                  P_PERIOD_NAME => PP_PERIOD_NAME,
-                                                  P_ELEMENT_NAME => 'PAGO ANTICIPADO',
-                                                  P_ENTRY_NAME => 'Pay Value',
-                                                  P_ENTRY_UNITS => 'Dinero',
-                                                  P_ENTRY_VALUE => PP_PAYMENT_AMOUNT,
-                                                  P_DEBIT_AMOUNT => 0,
-                                                  P_CREDIT_AMOUNT => PP_PAYMENT_AMOUNT,
-                                                  P_PAYMENT_SCHEDULE_ID => PP_PAYMENT_SCHEDULE_ID);
+            BEGIN
+                var_result := INSERT_LOAN_TRANSACTION(P_EXPORT_REQUEST_ID => -1,
+                                                      P_PAYROLL_RESULT_ID => -1,
+                                                      P_PERSON_ID => PP_PERSON_ID,
+                                                      P_RUN_RESULT_ID => -1,
+                                                      P_EARNED_DATE => PP_PAYMENT_DATE,
+                                                      P_TIME_PERIOD_ID => PP_TIME_PERIOD_ID,
+                                                      P_PERIOD_NAME => PP_PERIOD_NAME,
+                                                      P_ELEMENT_NAME => 'PAGO ANTICIPADO',
+                                                      P_ENTRY_NAME => 'Pay Value',
+                                                      P_ENTRY_UNITS => 'Dinero',
+                                                      P_ENTRY_VALUE => PP_PAYMENT_AMOUNT,
+                                                      P_DEBIT_AMOUNT => 0,
+                                                      P_CREDIT_AMOUNT => PP_PAYMENT_AMOUNT,
+                                                      P_PAYMENT_SCHEDULE_ID => PP_PAYMENT_SCHEDULE_ID);
+            EXCEPTION WHEN OTHERS THEN
+                RAISE INSERT_LOAN_EX;
+            END;
            
-            INSERT INTO
-                ATET_SB_LOANS_TRANSACTIONS(
-                    MEMBER_ACCOUNT_ID,
-                    MEMBER_ID,
-                    PAYROLL_RESULT_ID,
-                    LOAN_ID,
-                    PERSON_ID,
-                    RUN_RESULT_ID,
-                    EARNED_DATE,
-                    TIME_PERIOD_ID,
-                    PERIOD_NAME,
-                    ELEMENT_NAME,
-                    ENTRY_NAME,
-                    ENTRY_UNITS,
-                    ENTRY_VALUE,
-                    TRANSACTION_CODE,
-                    DEBIT_AMOUNT,
-                    CREDIT_AMOUNT,
-                    PAYMENT_AMOUNT,
-                    PAYMENT_CAPITAL,
-                    PAYMENT_INTEREST,
-                    PAYMENT_INTEREST_LATE,
-                    REQUEST_ID,
-                    ACCOUNTED_FLAG,
-                    ATTRIBUTE6,
-                    ATTRIBUTE7,
-                    CREATION_DATE,
-                    CREATED_BY,
-                    LAST_UPDATE_DATE,
-                    LAST_UPDATED_BY)
-            SELECT  MEMBER_ACCOUNT_ID,
-                    MEMBER_ID,
-                    PAYROLL_RESULT_ID,
-                    LOAN_ID,
-                    PERSON_ID,
-                    RUN_RESULT_ID,
-                    EARNED_DATE,
-                    TIME_PERIOD_ID,
-                    ELEMENT_NAME,
-                    ELEMENT_NAME,
-                    ENTRY_NAME,
-                    ENTRY_UNITS,
-                    PP_PAYMENT_AMOUNT,
-                    TRANSACTION_CODE,
-                    DEBIT_AMOUNT,
-                    PP_PAYMENT_AMOUNT,
-                    PP_PAYMENT_AMOUNT,
-                    SUM(PAYMENT_CAPITAL),
-                    SUM(PAYMENT_INTEREST),
-                    SUM(PAYMENT_INTEREST_LATE),
-                    REQUEST_ID,
-                    'ACCOUNTED',
-                    'PAGO ANTICIPADO: TIME_PERIOD_ID='||PP_TIME_PERIOD_ID||',PERIOD_NAME='|| PP_PERIOD_NAME,
-                    'REPARTO DE AHORRO',
-                    SYSDATE,
-                    CREATED_BY,
-                    SYSDATE,
-                    LAST_UPDATED_BY
-              FROM ATET_SB_LOANS_TRANSACTIONS   ASLT 
-             WHERE 1 = 1 
-               AND ASLT.MEMBER_ID = PP_MEMBER_ID
-               AND ASLT.PERSON_ID = PP_PERSON_ID
-               AND ASLT.TIME_PERIOD_ID = PP_TIME_PERIOD_ID
-               AND ASLT.PERIOD_NAME = PP_PERIOD_NAME
-               AND ASLT.ELEMENT_NAME = 'PAGO ANTICIPADO'
-               AND ASLT.LOAN_ID = PP_LOAN_ID
-             GROUP BY MEMBER_ACCOUNT_ID,
-                      MEMBER_ID,
-                      PAYROLL_RESULT_ID,
-                      LOAN_ID,
-                      PERSON_ID,
-                      RUN_RESULT_ID,
-                      EARNED_DATE,
-                      TIME_PERIOD_ID,
-                      PERIOD_NAME,
-                      ELEMENT_NAME,
-                      ENTRY_NAME,
-                      ENTRY_UNITS,
-                      TRANSACTION_CODE,
-                      DEBIT_AMOUNT,
-                      REQUEST_ID,
-                      CREATED_BY,
-                      LAST_UPDATED_BY;
-               
+        
+            BEGIN
+                INSERT INTO
+                    ATET_SB_LOANS_TRANSACTIONS(
+                        MEMBER_ACCOUNT_ID,
+                        MEMBER_ID,
+                        PAYROLL_RESULT_ID,
+                        LOAN_ID,
+                        PERSON_ID,
+                        RUN_RESULT_ID,
+                        EARNED_DATE,
+                        TIME_PERIOD_ID,
+                        PERIOD_NAME,
+                        ELEMENT_NAME,
+                        ENTRY_NAME,
+                        ENTRY_UNITS,
+                        ENTRY_VALUE,
+                        TRANSACTION_CODE,
+                        DEBIT_AMOUNT,
+                        CREDIT_AMOUNT,
+                        PAYMENT_AMOUNT,
+                        PAYMENT_CAPITAL,
+                        PAYMENT_INTEREST,
+                        PAYMENT_INTEREST_LATE,
+                        REQUEST_ID,
+                        ACCOUNTED_FLAG,
+                        ATTRIBUTE6,
+                        ATTRIBUTE7,
+                        CREATION_DATE,
+                        CREATED_BY,
+                        LAST_UPDATE_DATE,
+                        LAST_UPDATED_BY)
+                SELECT  MEMBER_ACCOUNT_ID,
+                        MEMBER_ID,
+                        PAYROLL_RESULT_ID,
+                        LOAN_ID,
+                        PERSON_ID,
+                        RUN_RESULT_ID,
+                        EARNED_DATE,
+                        TIME_PERIOD_ID,
+                        ELEMENT_NAME,
+                        ELEMENT_NAME,
+                        ENTRY_NAME,
+                        ENTRY_UNITS,
+                        PP_PAYMENT_AMOUNT,
+                        TRANSACTION_CODE,
+                        DEBIT_AMOUNT,
+                        PP_PAYMENT_AMOUNT,
+                        PP_PAYMENT_AMOUNT,
+                        SUM(PAYMENT_CAPITAL),
+                        SUM(PAYMENT_INTEREST),
+                        SUM(PAYMENT_INTEREST_LATE),
+                        REQUEST_ID,
+                        'ACCOUNTED',
+                        'PAGO ANTICIPADO: TIME_PERIOD_ID='||PP_TIME_PERIOD_ID||',PERIOD_NAME='|| PP_PERIOD_NAME,
+                        'REPARTO DE AHORRO',
+                        SYSDATE,
+                        CREATED_BY,
+                        SYSDATE,
+                        LAST_UPDATED_BY
+                  FROM ATET_SB_LOANS_TRANSACTIONS   ASLT 
+                 WHERE 1 = 1 
+                   AND ASLT.MEMBER_ID = PP_MEMBER_ID
+                   AND ASLT.PERSON_ID = PP_PERSON_ID
+                   AND ASLT.TIME_PERIOD_ID = PP_TIME_PERIOD_ID
+                   AND ASLT.PERIOD_NAME = PP_PERIOD_NAME
+                   AND ASLT.ELEMENT_NAME = 'PAGO ANTICIPADO'
+                   AND ASLT.LOAN_ID = PP_LOAN_ID
+                 GROUP BY MEMBER_ACCOUNT_ID,
+                          MEMBER_ID,
+                          PAYROLL_RESULT_ID,
+                          LOAN_ID,
+                          PERSON_ID,
+                          RUN_RESULT_ID,
+                          EARNED_DATE,
+                          TIME_PERIOD_ID,
+                          PERIOD_NAME,
+                          ELEMENT_NAME,
+                          ENTRY_NAME,
+                          ENTRY_UNITS,
+                          TRANSACTION_CODE,
+                          DEBIT_AMOUNT,
+                          REQUEST_ID,
+                          CREATED_BY,
+                          LAST_UPDATED_BY;
+            EXCEPTION WHEN OTHERS THEN
+                RAISE GROUP_INSERT_LOAN_EX;
+            END;
             
             DELETE FROM ATET_SB_LOANS_TRANSACTIONS ASLT
              WHERE 1 = 1 
@@ -8784,30 +8801,32 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 /*********************************************/
                 /* CARGO   -   INTERES POR DEVENGAR          */
                 /*********************************************/
-                ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
-                    P_HEADER_ID => PP_HEADER_ID,
-                    P_ROW_NUMBER => 4,
-                    P_CODE_COMBINATION_ID => var_une_int_account_id,
-                    P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
-                    P_ACCOUNTED_DR => var_asps_payment_interest,
-                    P_ACCOUNTED_CR => 0,
-                    P_DESCRIPTION => var_description,
-                    P_SOURCE_ID => PP_LOAN_ID,
-                    P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS');
-                    
-                /*********************************************/
-                /* ABONO   -   INTERES COBRADO               */
-                /*********************************************/
-                ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
-                    P_HEADER_ID => PP_HEADER_ID,
-                    P_ROW_NUMBER => 5,
-                    P_CODE_COMBINATION_ID => var_int_rec_account_id,
-                    P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
-                    P_ACCOUNTED_DR => 0,
-                    P_ACCOUNTED_CR => var_asps_payment_interest,
-                    P_DESCRIPTION => var_description,
-                    P_SOURCE_ID => PP_LOAN_ID,
-                    P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS');  
+                IF var_asps_payment_interest > 0 THEN
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
+                        P_HEADER_ID => PP_HEADER_ID,
+                        P_ROW_NUMBER => 4,
+                        P_CODE_COMBINATION_ID => var_une_int_account_id,
+                        P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
+                        P_ACCOUNTED_DR => var_asps_payment_interest,
+                        P_ACCOUNTED_CR => 0,
+                        P_DESCRIPTION => var_description,
+                        P_SOURCE_ID => PP_LOAN_ID,
+                        P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS');
+                        
+                    /*********************************************/
+                    /* ABONO   -   INTERES COBRADO               */
+                    /*********************************************/
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
+                        P_HEADER_ID => PP_HEADER_ID,
+                        P_ROW_NUMBER => 5,
+                        P_CODE_COMBINATION_ID => var_int_rec_account_id,
+                        P_ACCOUNTING_CLASS_CODE => 'LOAN_PREPAID',
+                        P_ACCOUNTED_DR => 0,
+                        P_ACCOUNTED_CR => var_asps_payment_interest,
+                        P_DESCRIPTION => var_description,
+                        P_SOURCE_ID => PP_LOAN_ID,
+                        P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS');
+                END IF;  
                     
                 IF var_asps_payment_int_late > 0 THEN
                     IF var_code_company = '02' THEN
@@ -8941,6 +8960,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 var_saving_retirement := 0;
                 var_loan_transac_balance := 0;
                 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_balance * ' || var_loan_balance);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_interest_retirement * ' || var_interest_retirement);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_saving_retirement * ' || var_saving_retirement);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_transac_balance * ' || var_loan_transac_balance);
+                
                 /********************************************************/
                 /*          RETIRO DE AHORRO - INTERES GANADO           */ 
                 /********************************************************/
@@ -8957,6 +8981,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                             PP_SAVING_TRANSACTION_ID=> var_interest_transaction_id
                         );
                 
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_balance * ' || var_loan_balance);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_interest_retirement * ' || var_interest_retirement);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_saving_retirement * ' || var_saving_retirement);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_transac_balance * ' || var_loan_transac_balance);
                     
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DE INTERES GANADO    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
@@ -8987,11 +9015,12 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                     ||LPAD(' ', 40, ' ')
                                     ||LPAD((var_credit_amount - var_debit_amount), 40, ' '));
                         
-                    var_loan_transac_balance := var_loan_transac_balance + var_interest_retirement;
                 
                 END IF;
                 
                 var_loan_transac_balance := var_loan_transac_balance + var_interest_retirement;
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_transac_balance * ' || var_loan_transac_balance);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_interest_retirement * ' || var_interest_retirement);  
                 
                 /********************************************************/
                 /*          RETIRO DE AHORRO - AHORRO ACUMULADO         */
@@ -9008,6 +9037,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                             PP_SAVING_RETIREMENT    => var_saving_retirement,
                             PP_SAVING_TRANSACTION_ID=> var_saving_transaction_id
                         );
+                        
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_balance * ' || var_loan_balance);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_interest_retirement * ' || var_interest_retirement);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_saving_retirement * ' || var_saving_retirement);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_transac_balance * ' || var_loan_transac_balance);
                         
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DE AHORRO    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
@@ -9040,6 +9074,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 END IF; 
                 
                 var_loan_transac_balance := var_loan_transac_balance + var_saving_retirement;
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_transac_balance * ' || var_loan_transac_balance);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_saving_retirement * ' || var_saving_retirement);
                 
                 /********************************************************/
                 /*      PAGO ANTICIPADO - CON REPARTO DE AHORRO         */
@@ -9058,6 +9094,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                             PP_PAYMENT_SCHEDULE_ID  => var_payment_schedule_id,
                             PP_LOAN_ID              => detail.LOAN_ID
                         );
+                        
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_transac_balance * ' || var_loan_transac_balance);
                         
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS DEL PRESTAMO    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
@@ -9111,6 +9149,11 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                             PP_HEADER_ID                => var_header_id
                         );
                         
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_balance * ' || var_loan_balance);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_interest_retirement * ' || var_interest_retirement);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_saving_retirement * ' || var_saving_retirement);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_loan_transac_balance * ' || var_loan_transac_balance);                                            
+                        
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS CONTABLES    ' || detail.EMPLOYEE_NUMBER || ' - ' || detail.EMPLOYEE_FULL_NAME);
                     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
@@ -9144,6 +9187,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                 END IF;
             
             END IF;
+            
+
         
         END LOOP;
         
@@ -9151,6 +9196,14 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
     EXCEPTION
+        WHEN INSERT_LOAN_EX THEN
+            ROLLBACK;
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: INSERT_LOAN_EX.');
+            P_RETCODE := 2;
+        WHEN GROUP_INSERT_LOAN_EX THEN
+            ROLLBACK;
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: GROUP_INSERT_LOAN_EX.');
+            P_RETCODE := 2;
         WHEN INT_SAVING_RETIREMENT_EX THEN
             ROLLBACK;
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: INT_SAVING_RETIREMENT_EX.');

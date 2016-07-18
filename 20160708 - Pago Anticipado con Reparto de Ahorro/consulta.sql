@@ -49,6 +49,7 @@
                ATET_SB_SAVINGS_TRANSACTIONS
                ATET_SB_LOANS_TRANSACTIONS
                ATET_SB_MEMBERS_ACCOUNTS
+               ATET_SB_LOANS
                ATET_SB_PAYMENTS_SCHEDULE
                  
                  
@@ -143,3 +144,54 @@
                AND ASL.LOAN_BALANCE > 0
                AND ASM.SAVING_BANK_ID = ASB.SAVING_BANK_ID
                AND ASB.YEAR = :P_YEAR;
+               
+               
+
+SELECT *
+  FROM (SELECT AXH.HEADER_ID,
+               AXH.JOURNAL_NAME,
+               AXH.CREATION_DATE,
+               SUM(AXL.ACCOUNTED_DR)    AS  ACCOUNTED_DR,
+               SUM(AXL.ACCOUNTED_CR)    AS  ACCOUNTED_CR
+          FROM ATET_XLA_HEADERS     AXH,
+               ATET_XLA_LINES       AXL
+         WHERE 1 = 1
+           AND AXH.HEADER_ID = AXL.HEADER_ID
+         GROUP BY AXH.HEADER_ID,
+                  AXH.JOURNAL_NAME,
+                  AXH.CREATION_DATE
+         ORDER BY AXH.CREATION_DATE DESC
+        ) D
+  WHERE 1 = 1
+    AND D.ACCOUNTED_DR <> D.ACCOUNTED_CR;
+    
+
+
+
+SELECT *
+  FROM (SELECT ASL.MEMBER_ID,
+               ASL.LOAN_ID,
+               ASL.LOAN_BALANCE,
+               ASMA.MEMBER_ACCOUNT_ID,
+               ASMA.FINAL_BALANCE,
+               SUM(NVL(ASPS.OWED_AMOUNT, ASPS.PAYMENT_AMOUNT))  PAYMENT_AMOUNT
+          FROM ATET_SB_LOANS                ASL,
+               ATET_SB_MEMBERS_ACCOUNTS     ASMA,
+               ATET_SB_PAYMENTS_SCHEDULE    ASPS
+         WHERE 1 = 1
+           AND LOAN_STATUS_FLAG = 'ACTIVE'
+           AND ASL.MEMBER_ID = ASMA.MEMBER_ID
+           AND ASL.LOAN_ID = ASMA.LOAN_ID
+           AND ASPS.LOAN_ID = ASL.LOAN_ID
+           AND ASPS.STATUS_FLAG NOT IN ('PAYED', 'REFINANCED')
+         GROUP BY ASL.MEMBER_ID,
+                  ASL.LOAN_ID,
+                  ASL.LOAN_BALANCE,
+                  ASMA.MEMBER_ACCOUNT_ID,
+                  ASMA.FINAL_BALANCE
+        ) D
+  WHERE 1 = 1
+    AND (   LOAN_BALANCE <> FINAL_BALANCE
+         OR LOAN_BALANCE <> PAYMENT_AMOUNT
+         OR FINAL_BALANCE <> PAYMENT_AMOUNT);
+ 

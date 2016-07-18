@@ -4,22 +4,25 @@ SELECT UNIQUE
        D.ACCOUNTED_DR,
        D.ACCOUNTED_CR,
        AXL.SOURCE_ID    AS  LOAN_ID,
-       ASL.MEMBER_ID
+       ASL.MEMBER_ID,
+       D.CREATION_DATE
   FROM (SELECT AXH.JOURNAL_NAME,
                AXH.HEADER_ID,
-               SUM(AXL.ACCOUNTED_DR)    AS  ACCOUNTED_DR,
-               SUM(AXL.ACCOUNTED_CR)    AS  ACCOUNTED_CR
+               SUM(AXL.ACCOUNTED_DR)                    AS  ACCOUNTED_DR,
+               SUM(AXL.ACCOUNTED_CR)                    AS  ACCOUNTED_CR,
+               TO_DATE(AXH.CREATION_DATE, 'DD/MM/RRRR') AS  CREATION_DATE
           FROM ATET_XLA_HEADERS     AXH,
                ATET_XLA_LINES       AXL
          WHERE 1 = 1 
            AND AXH.JOURNAL_NAME LIKE '%PAGO ANTICIPADO CON REPARTO DE AHORRO%'
            AND AXH.HEADER_ID = AXL.HEADER_ID
          GROUP BY AXH.JOURNAL_NAME,
-                  AXH.HEADER_ID) D,
+                  AXH.HEADER_ID,
+                  AXH.CREATION_DATE) D,
        ATET_XLA_LINES   AXL,
        ATET_SB_LOANS    ASL
  WHERE 1 = 1 
-   AND D.ACCOUNTED_DR <> D.ACCOUNTED_CR
+--   AND D.ACCOUNTED_DR <> D.ACCOUNTED_CR
    AND D.HEADER_ID = AXL.HEADER_ID
    AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
    AND AXL.SOURCE_ID = ASL.LOAN_ID;
@@ -34,22 +37,25 @@ DECLARE
                D.ACCOUNTED_DR,
                D.ACCOUNTED_CR,
                AXL.SOURCE_ID    AS  LOAN_ID,
-               ASL.MEMBER_ID
+               ASL.MEMBER_ID,
+               D.CREATION_DATE
           FROM (SELECT AXH.JOURNAL_NAME,
                        AXH.HEADER_ID,
-                       SUM(AXL.ACCOUNTED_DR)    AS  ACCOUNTED_DR,
-                       SUM(AXL.ACCOUNTED_CR)    AS  ACCOUNTED_CR
+                       SUM(AXL.ACCOUNTED_DR)                    AS  ACCOUNTED_DR,
+                       SUM(AXL.ACCOUNTED_CR)                    AS  ACCOUNTED_CR,
+                       TO_DATE(AXH.CREATION_DATE, 'DD/MM/RRRR') AS  CREATION_DATE
                   FROM ATET_XLA_HEADERS     AXH,
                        ATET_XLA_LINES       AXL
                  WHERE 1 = 1 
                    AND AXH.JOURNAL_NAME LIKE '%PAGO ANTICIPADO CON REPARTO DE AHORRO%'
                    AND AXH.HEADER_ID = AXL.HEADER_ID
                  GROUP BY AXH.JOURNAL_NAME,
-                          AXH.HEADER_ID) D,
+                          AXH.HEADER_ID,
+                          AXH.CREATION_DATE) D,
                ATET_XLA_LINES   AXL,
                ATET_SB_LOANS    ASL
          WHERE 1 = 1 
-           AND D.ACCOUNTED_DR <> D.ACCOUNTED_CR
+        --   AND D.ACCOUNTED_DR <> D.ACCOUNTED_CR
            AND D.HEADER_ID = AXL.HEADER_ID
            AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
            AND AXL.SOURCE_ID = ASL.LOAN_ID;
@@ -91,7 +97,7 @@ BEGIN
           FROM ATET_SB_PAYMENTS_SCHEDULE
          WHERE 1 = 1
            AND LOAN_ID = detail.LOAN_ID
-           AND TO_DATE(CREATION_DATE, 'DD/MM/RRRR') = TO_DATE('14/07/2016', 'DD/MM/RRRR');
+           AND TO_DATE(CREATION_DATE, 'DD/MM/RRRR') = TO_DATE(detail.CREATION_DATE, 'DD/MM/RRRR');
             
         UPDATE ATET_SB_PAYMENTS_SCHEDULE
            SET ATTRIBUTE6 = NULL,
@@ -106,7 +112,7 @@ BEGIN
                OWED_INTEREST_LATE = NULL
          WHERE 1 = 1
            AND LOAN_ID = detail.LOAN_ID
-           AND TO_DATE(LAST_UPDATE_DATE, 'DD/MM/RRRR') = TO_DATE('14/07/2016', 'DD/MM/RRRR');
+           AND TO_DATE(LAST_UPDATE_DATE, 'DD/MM/RRRR') = TO_DATE(detail.CREATION_DATE, 'DD/MM/RRRR');
            
         var_debit_balance := 0;
         var_credit_balance := 0;
@@ -253,4 +259,5 @@ COMMIT;
                        ASL.LOAN_ID,
                        ASL.LOAN_NUMBER,
                        ASMA3.FINAL_BALANCE,
-                       ASL.LOAN_BALANCE;
+                       ASL.LOAN_BALANCE
+             ORDER BY ASM.MEMBER_ID;
