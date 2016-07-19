@@ -9712,11 +9712,18 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         var_interest_retirement         NUMBER;
         var_int_code_combination_id     NUMBER;
         
+        var_bank_code_comb              VARCHAR2(100);
+        var_bank_account_id             NUMBER;
+        
         var_saving_transaction_id       NUMBER;
         var_interest_transaction_id     NUMBER;
         
         var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
         var_check_id                    NUMBER;
+        var_header_id                   NUMBER;
+        
+        var_employee_number             VARCHAR2(50);
+        var_employee_full_name          VARCHAR2(500);
         
         INSERT_SAVING_EX                EXCEPTION;
         SELECT_SAVING_EX                EXCEPTION;
@@ -10030,8 +10037,10 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         END;
         
         BEGIN
-            SELECT ASMA.FINAL_BALANCE
-              INTO var_interest_retirement
+            SELECT ASMA.FINAL_BALANCE,
+                   ASMA.CODE_COMBINATION_ID
+              INTO var_interest_retirement,
+                   var_int_code_combination_id
               FROM ATET_SB_MEMBERS_ACCOUNTS     ASMA
              WHERE 1 = 1
                AND ASMA.MEMBER_ID = P_MEMBER_ID
@@ -10070,6 +10079,16 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
          WHERE 1 = 1
            AND ASM.MEMBER_ID = P_MEMBER_ID;     
            
+        
+        SELECT ASM.EMPLOYEE_NUMBER,
+               ASM.EMPLOYEE_FULL_NAME
+          INTO var_employee_number,
+               var_employee_full_name
+          FROM ATET_SB_MEMBERS      ASM
+         WHERE 1 = 1
+           AND ASM.MEMBER_ID = P_MEMBER_ID;
+           
+           
         /**********************************************************/
         /*******             CREACIÓN DE CHEQUE                ****/
         /**********************************************************/
@@ -10088,10 +10107,54 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         /**********************************************************/
         /*******             CREACIÓN DE POLIZA                ****/
         /**********************************************************/
+        var_bank_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'BANK_CODE_COMB');
+        var_bank_account_id := GET_CODE_COMBINATION_ID(var_bank_code_comb);
+
+                    
+        ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'SAVINGS',
+                                                   P_EVENT_TYPE_CODE    => 'SAVING_RETIREMENT',
+                                                   P_BATCH_NAME         => 'RETIRO DE AHORRO',
+                                                   P_JOURNAL_NAME       => 'RETIRO POR REPARTO DE AHORRO : ' || var_employee_number || '-' || var_employee_full_name,
+                                                   P_HEADER_ID          => var_header_id);
+
+        IF var_interest_retirement <> 0 THEN                                                   
+            ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                     P_ROW_NUMBER              => 1,
+                                                     P_CODE_COMBINATION_ID     => var_int_code_combination_id,
+                                                     P_ACCOUNTING_CLASS_CODE   => 'SAVING_RETIREMENT',
+                                                     P_ACCOUNTED_DR            => var_interest_retirement,
+                                                     P_ACCOUNTED_CR            => 0,
+                                                     P_DESCRIPTION             => 'RETIRO DE INTERES GANADO : ' || var_employee_number || '-' || var_employee_full_name,
+                                                     P_SOURCE_ID               => var_interest_transaction_id,
+                                                     P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
+        END IF;                                                   
+               
+        IF var_saving_retirement <> 0 THEN                                                                                           
+            ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                     P_ROW_NUMBER              => 2,
+                                                     P_CODE_COMBINATION_ID     => var_sav_code_combination_id,
+                                                     P_ACCOUNTING_CLASS_CODE   => 'SAVING_RETIREMENT',
+                                                     P_ACCOUNTED_DR            => var_saving_retirement,
+                                                     P_ACCOUNTED_CR            => 0,
+                                                     P_DESCRIPTION             => 'RETIRO DE AHORRO ACUMULADO : ' || var_employee_number || '-' || var_employee_full_name,
+                                                     P_SOURCE_ID               => var_saving_transaction_id,
+                                                     P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
+        END IF;
+                                                             
+        ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                 P_ROW_NUMBER              => 2,
+                                                 P_CODE_COMBINATION_ID     => var_bank_account_id,
+                                                 P_ACCOUNTING_CLASS_CODE   => 'SAVING_RETIREMENT',
+                                                 P_ACCOUNTED_DR            => 0,
+                                                 P_ACCOUNTED_CR            => var_interest_retirement + var_saving_retirement,
+                                                 P_DESCRIPTION             => 'RETIRO POR REPARTO DE AHORRO : ' || var_employee_number || '-' || var_employee_full_name,
+                                                 P_SOURCE_ID               => var_check_id,
+                                                 P_SOURCE_LINK_TABLE       => 'ATET_SB_CHECKS_ALL');                                                      
         
         /**********************************************************/
         /*******                   OUTPUT                      ****/
-        /**********************************************************/                                      
+        /**********************************************************/   
+                                           
     
     END SAVING_DISTRIBUTION_WITH_CHECK;
 
