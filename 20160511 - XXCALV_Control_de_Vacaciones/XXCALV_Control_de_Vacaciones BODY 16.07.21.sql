@@ -2579,11 +2579,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
     FOR v_cancelacion IN c_CANCELACIONES LOOP
         
        DELETE FROM XXCALV_VAC_EVENTOS_DET
-		 WHERE 1 = 1
-		   AND ID_EVENTO = v_cancelacion.ID_EVENTO;
-		
+         WHERE 1 = 1
+           AND ID_EVENTO = v_cancelacion.ID_EVENTO;
         
-		UPDATE PER_ALL_PEOPLE_F
+        
+        UPDATE PER_ALL_PEOPLE_F
            SET ATTRIBUTE29 = NULL
          WHERE 1 = 1
            AND PERSON_ID = v_cancelacion.PERSON_ID;
@@ -2669,8 +2669,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                   
                   
         DELETE FROM XXCALV_VAC_EVENTOS
-		 WHERE 1 = 1
-		   AND PERSON_ID = v_restructuracion.PERSON_ID;
+         WHERE 1 = 1
+           AND PERSON_ID = v_restructuracion.PERSON_ID;
            
            
            
