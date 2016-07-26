@@ -1,4 +1,10 @@
- SELECT ASM.MEMBER_ID,
+BEGIN
+    ATET_SAVINGS_BANK_PKG.CURRENCY_DISTRIBUTION(2016, 'ASOCIACION DE TRABAJADORES DE TEHUACAN');
+END;
+
+ROLLBACK;
+
+SELECT ASM.MEMBER_ID,
                        ASM.PERSON_ID,
                        ASM.EMPLOYEE_NUMBER,
                        ASM.EMPLOYEE_FULL_NAME,
@@ -29,10 +35,8 @@
                    AND SYSDATE BETWEEN OPM.EFFECTIVE_START_DATE AND OPM.EFFECTIVE_END_DATE
                    AND OPM.ORG_PAYMENT_METHOD_NAME LIKE '%EFECTIVO%'
                    AND ASM.MEMBER_ID IN (416, 337, 359, 355, 387);
-        
-     
-     
-    SELECT ASM.MEMBER_ID,
+                   
+SELECT ASM.MEMBER_ID,
            ASM.EMPLOYEE_NUMBER,
            ASM.EMPLOYEE_FULL_NAME
       FROM ATET_SB_MEMBERS                  ASM,
@@ -46,26 +50,34 @@
        AND (ASMA1.FINAL_BALANCE + ASMA2.FINAL_BALANCE) > 0
      ORDER BY 2 ;
      
-     SELECT ACD.SAVING_RETIREMENT_ROUND,
-                       ASM.MEMBER_ID,
-                       ASM.EMPLOYEE_NUMBER,
-                       ASM.EMPLOYEE_FULL_NAME
-                  FROM ATET_CURRENCY_DISTRIBUTION_TB    ACD,
-                       ATET_SB_MEMBERS                  ASM,
-                       ATET_SB_MEMBERS_ACCOUNTS         ASMA,
-                       ATET_SB_SAVINGS_TRANSACTIONS     ASST
-                 WHERE 1 = 1
-                   AND ACD.ACCOUNT_DESCRIPTION = 'INTERES GANADO'
-                   AND ACD.SAVING_BANK_ID = atet_savings_bank_pkg.GET_SAVING_BANK_ID
-                   AND ASM.MEMBER_ID = ACD.MEMBER_ID
-                   AND ASM.MEMBER_ID = ASMA.MEMBER_ID
-                   AND ASMA.ACCOUNT_DESCRIPTION = ACD.ACCOUNT_DESCRIPTION
-                   AND ASM.MEMBER_ID = ASST.MEMBER_ID
-                   AND ASST.MEMBER_ACCOUNT_ID = ASMA.MEMBER_ACCOUNT_ID
-                   AND ASST.ATTRIBUTE2 = ACD.SAVING_RETIREMENT_ROUND;
-                   
-                   
-    SELECT *
+     
+SELECT *
+  FROM ATET_SB_CHECKS_ALL
+ ORDER BY CREATION_DATE DESC;
+ 
+SELECT *
+  FROM ATET_SB_SAVINGS_TRANSACTIONS
+ ORDER BY CREATION_DATE DESC; 
+ 
+SELECT *
+ FROM ATET_SB_MEMBERS_ACCOUNTS
+ WHERE MEMBER_ID = 337;
+ 
+SELECT *
+  FROM ATET_CURRENCY_DISTRIBUTION_TB;
+  
+SELECT *
+FROM ATET_XLA_HEADERS
+ORDER BY CREATION_DATE DESC;
+
+SELECT *
+FROM ATET_XLA_LINES
+WHERE HEADER_ID = 6486;
+
+ SELECT ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID,
+        CURRENCY,
+        QUANTITY,
+        TOTAL
   FROM (SELECT SUM(CURRENCY_500) AS "CURRENCY_500",
                SUM(CURRENCY_200) AS "CURRENCY_200",
                SUM(CURRENCY_100) AS "CURRENCY_100",
@@ -99,3 +111,62 @@
                                                             (CURRENCY_C, TOTAL_C) AS 'CINCUENTA CENTAVOS'
                                                            )
                        );
+ 
+ SELECT ACD.SAVING_BANK_ID,
+        ACD.MEMBER_ID,
+        ASM.EMPLOYEE_NUMBER,
+        ASM.EMPLOYEE_FULL_NAME,
+        SUM(SAVING_RETIREMENT)      AS  SAVING_RETIREMENT,
+        SUM(SAVING_RETIREMENT_ROUND)AS  SAVING_RETIREMENT_ROUND,
+        SUM(CURRENCY_500)           AS "500",
+        SUM(CURRENCY_200)           AS "200",
+        SUM(CURRENCY_100)           AS "100",
+        SUM(CURRENCY_50)            AS "50",
+        SUM(CURRENCY_20)            AS "20",
+        SUM(CURRENCY_10)            AS "10",
+        SUM(CURRENCY_5)             AS "5",
+        SUM(CURRENCY_2)             AS "2",
+        SUM(CURRENCY_1)             AS "1",
+        SUM(CURRENCY_50C)           AS "50c"
+   FROM ATET_CURRENCY_DISTRIBUTION_TB   ACD,
+        ATET_SB_MEMBERS                 ASM
+  WHERE 1 = 1
+    AND ACD.SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
+    AND ACD.MEMBER_ID = ASM.MEMBER_ID
+  GROUP BY ACD.SAVING_BANK_ID,
+           ACD.MEMBER_ID,
+           ASM.EMPLOYEE_NUMBER,
+           ASM.EMPLOYEE_FULL_NAME
+  ORDER BY EMPLOYEE_NUMBER;  
+     
+   
+  
+SELECT SUM(D.SAVING_RETIREMENT),
+       SUM(D.SAVING_RETIREMENT_ROUND)
+  FROM ( SELECT ACD.SAVING_BANK_ID,
+                ACD.MEMBER_ID,
+                ASM.EMPLOYEE_NUMBER,
+                ASM.EMPLOYEE_FULL_NAME,
+                SUM(SAVING_RETIREMENT)      AS  SAVING_RETIREMENT,
+                SUM(SAVING_RETIREMENT_ROUND)AS  SAVING_RETIREMENT_ROUND,
+                SUM(CURRENCY_500)           AS "500",
+                SUM(CURRENCY_200)           AS "200",
+                SUM(CURRENCY_100)           AS "100",
+                SUM(CURRENCY_50)            AS "50",
+                SUM(CURRENCY_20)            AS "20",
+                SUM(CURRENCY_10)            AS "10",
+                SUM(CURRENCY_5)             AS "5",
+                SUM(CURRENCY_2)             AS "2",
+                SUM(CURRENCY_1)             AS "1",
+                SUM(CURRENCY_50C)           AS "50c"
+           FROM ATET_CURRENCY_DISTRIBUTION_TB   ACD,
+                ATET_SB_MEMBERS                 ASM
+          WHERE 1 = 1
+            AND ACD.SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
+            AND ACD.MEMBER_ID = ASM.MEMBER_ID
+          GROUP BY ACD.SAVING_BANK_ID,
+                   ACD.MEMBER_ID,
+                   ASM.EMPLOYEE_NUMBER,
+                   ASM.EMPLOYEE_FULL_NAME
+          ORDER BY EMPLOYEE_NUMBER) D; 
+        
