@@ -9250,6 +9250,8 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
     
     PROCEDURE   CURRENCY_DISTRIBUTION(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
                     P_YEAR                      NUMBER,
                     P_MEMBER_NAME               VARCHAR2)
     IS
@@ -9272,6 +9274,15 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         SELECT_SAVING_EX                EXCEPTION;
         UPDATE_SAVING_EX                EXCEPTION;
         INT_SAVING_RETIREMENT_EX        EXCEPTION;
+        
+        ADD_LAYOUT_BOOLEAN   BOOLEAN;
+        V_REQUEST_ID         NUMBER;
+        WAITING              BOOLEAN;
+        PHASE                VARCHAR2 (80 BYTE);
+        STATUS               VARCHAR2 (80 BYTE);
+        DEV_PHASE            VARCHAR2 (80 BYTE);
+        DEV_STATUS           VARCHAR2 (80 BYTE);
+        V_MESSAGE            VARCHAR2 (4000 BYTE);
         
         CURSOR RETIREMENT_TRANSACTIONS IS
                 SELECT ACD.SAVING_RETIREMENT_ROUND,
@@ -9710,7 +9721,7 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                    || ','
                    || P_MEMBER_NAME
                    || ','
-                   || FND_GLOBAL.USER_ID
+                   || var_user_id
                    || ','
                    || TO_CHAR (CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS.FF');
 
@@ -9774,9 +9785,9 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
                                          ENCRYPTED_RAW,
                                          KEY_BYTES_RAW,
                                          'REPARTO DE AHORRO',
-                                         FND_GLOBAL.USER_ID,
+                                         var_user_id,
                                          SYSDATE,
-                                         FND_GLOBAL.USER_ID,
+                                         var_user_id,
                                          SYSDATE);
 
                         P_CHECK_ID := LN_CHECK_ID;
@@ -9928,6 +9939,16 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
             /**********************************************************/
             /*******             IMPRESIÓN DE CHEQUE               ****/
             /**********************************************************/
+            FND_GLOBAL.APPS_INITIALIZE 
+                (
+                    USER_ID        => var_user_id,
+                    RESP_ID        => 53698,
+                    RESP_APPL_ID   => 101);
+            MO_GLOBAL.SET_POLICY_CONTEXT 
+                (
+                    P_ACCESS_MODE  => 'S',
+                    P_ORG_ID       => 1329);
+            
             PRINT_SAVING_RETIREMENT_CHECK
                 (
                     P_CHECK_ID => var_check_id
@@ -9967,6 +9988,55 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
         
         END IF;
         
+        
+        FND_GLOBAL.APPS_INITIALIZE 
+            (
+                USER_ID        => var_user_id,
+                RESP_ID        => 53698,
+                RESP_APPL_ID   => 101);
+        MO_GLOBAL.SET_POLICY_CONTEXT 
+            (
+                P_ACCESS_MODE  => 'S',
+                P_ORG_ID       => 1329);
+        
+        
+        ADD_LAYOUT_BOOLEAN :=
+            FND_REQUEST.ADD_LAYOUT 
+                (
+                   TEMPLATE_APPL_NAME   => 'PER',
+                   TEMPLATE_CODE        => 'ATET_CURRENCY_DISTRIBUTION',
+                   TEMPLATE_LANGUAGE    => 'Spanish', 
+                   TEMPLATE_TERRITORY   => 'Mexico', 
+                   OUTPUT_FORMAT        => 'EXCEL' 
+                );
+
+
+
+         V_REQUEST_ID :=
+            FND_REQUEST.SUBMIT_REQUEST 
+                (
+                    APPLICATION         =>  'PER', 
+                    PROGRAM             =>  'ATET_CURRENCY_DISTRIBUTION', 
+                    DESCRIPTION         =>  '',
+                    START_TIME          =>  '',
+                    SUB_REQUEST         =>  FALSE,
+                    ARGUMENT1           =>  TO_CHAR (P_YEAR)
+                );
+         
+         STANDARD.COMMIT;
+         
+         WAITING := 
+            FND_CONCURRENT.WAIT_FOR_REQUEST 
+                (
+                    REQUEST_ID          =>  V_REQUEST_ID,
+                    INTERVAL            =>  1,
+                    MAX_WAIT            =>  0,
+                    PHASE               =>  PHASE,
+                    STATUS              =>  STATUS,
+                    DEV_PHASE           =>  DEV_PHASE,
+                    DEV_STATUS          =>  DEV_STATUS,
+                    MESSAGE             =>  V_MESSAGE
+                );   
         
     EXCEPTION
         WHEN INT_ROUND_RETIREMENT_EX THEN

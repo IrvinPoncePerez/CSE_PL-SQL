@@ -360,6 +360,8 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     
                     
     PROCEDURE   CURRENCY_DISTRIBUTION(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
                     P_YEAR                      NUMBER,
                     P_MEMBER_NAME               VARCHAR2);
                     
