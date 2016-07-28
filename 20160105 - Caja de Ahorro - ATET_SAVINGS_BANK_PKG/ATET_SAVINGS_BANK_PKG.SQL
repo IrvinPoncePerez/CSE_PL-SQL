@@ -369,6 +369,13 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_ERRBUF        OUT NOCOPY VARCHAR2,
                     P_RETCODE       OUT NOCOPY VARCHAR2,
                     P_MEMBER_ID     NUMBER);
+                    
+    PROCEDURE   RETIREMENT_DISPERSION(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_YEAR                      NUMBER,
+                    P_MEMBER_NAME               VARCHAR2,
+                    P_PAYMENT_METHOD_ID         NUMBER);
     
 
 END ATET_SAVINGS_BANK_PKG;

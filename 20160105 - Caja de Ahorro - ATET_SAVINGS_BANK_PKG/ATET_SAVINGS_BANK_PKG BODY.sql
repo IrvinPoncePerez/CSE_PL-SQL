@@ -10624,4 +10624,664 @@ CREATE OR REPLACE PACKAGE BODY ATET_SAVINGS_BANK_PKG IS
     
     END SAVING_DISTRIBUTION_WITH_CHECK;
 
+    PROCEDURE   RETIREMENT_DISPERSION(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_YEAR                      NUMBER,
+                    P_MEMBER_NAME               VARCHAR2,
+                    P_PAYMENT_METHOD_ID         NUMBER)
+    IS
+        var_validate                    NUMBER;
+        var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
+        var_saving_transaction_id       NUMBER;
+        var_bank_code_comb              VARCHAR2(100);
+        var_bank_account_id             NUMBER;
+        var_header_id                   NUMBER;
+        var_accounted_cr                NUMBER;
+        var_check_id                    NUMBER;
+        var_debit_amount                NUMBER;
+        var_credit_amount               NUMBER;
+        var_row_index                   NUMBER;
+        var_payment_method_name         VARCHAR2(200);
+        
+        INT_ROUND_RETIREMENT_EX         EXCEPTION;
+        INT_CURRENCY_DISTRIBUTION_EX    EXCEPTION;
+        INSERT_SAVING_EX                EXCEPTION; 
+        NO_SAVING_BALANCE_EX            EXCEPTION;
+        SELECT_SAVING_EX                EXCEPTION;
+        UPDATE_SAVING_EX                EXCEPTION;
+        INT_SAVING_RETIREMENT_EX        EXCEPTION;
+        
+        ADD_LAYOUT_BOOLEAN   BOOLEAN;
+        V_REQUEST_ID         NUMBER;
+        WAITING              BOOLEAN;
+        PHASE                VARCHAR2 (80 BYTE);
+        STATUS               VARCHAR2 (80 BYTE);
+        DEV_PHASE            VARCHAR2 (80 BYTE);
+        DEV_STATUS           VARCHAR2 (80 BYTE);
+        V_MESSAGE            VARCHAR2 (4000 BYTE);
+        
+        CURSOR RETIREMENT_TRANSACTIONS IS
+                SELECT ARD.SAVING_TRANSACTION_ID,
+                       ASM.MEMBER_ID,
+                       ASM.EMPLOYEE_NUMBER,
+                       ASM.EMPLOYEE_FULL_NAME,
+                       ASMA.ACCOUNT_DESCRIPTION,
+                       ASMA.CODE_COMBINATION_ID,
+                       ARD.SAVING_RETIREMENT
+                  FROM ATET_RETIREMENT_DISPERSION_TB    ARD,
+                       ATET_SB_MEMBERS                  ASM,
+                       ATET_SB_MEMBERS_ACCOUNTS         ASMA
+                 WHERE 1 = 1
+                   AND ARD.ACCOUNT_DESCRIPTION IN ('INTERES GANADO', 'D071_CAJA DE AHORRO')
+                   AND ARD.SAVING_BANK_ID = GET_SAVING_BANK_ID
+                   AND ASM.MEMBER_ID = ARD.MEMBER_ID
+                   AND ASM.MEMBER_ID = ASMA.MEMBER_ID
+                   AND ASMA.ACCOUNT_DESCRIPTION = ARD.ACCOUNT_DESCRIPTION
+                   AND ARD.PAYMENT_METHOD_ID = P_PAYMENT_METHOD_ID
+                 ORDER BY ASM.EMPLOYEE_NUMBER,
+                          ASMA.ACCOUNT_DESCRIPTION;
+                                   
+    
+        CURSOR SAVINGS_RETIREMENT_DETAILS IS
+                SELECT ASM.MEMBER_ID,
+                       ASM.PERSON_ID,
+                       ASM.EMPLOYEE_NUMBER,
+                       ASM.EMPLOYEE_FULL_NAME,
+                       (ASMA1.FINAL_BALANCE + ASMA2.FINAL_BALANCE) AS   FINAL_BALANCE,
+                       ASMA1.FINAL_BALANCE                         AS   SAVING_FINAL_BALANCE,
+                       ASMA1.MEMBER_ACCOUNT_ID                     AS   SAVING_ACCOUNT_ID,
+                       ASMA1.ACCOUNT_DESCRIPTION                   AS   SAVING_ACCOUNT_DESCRIPTION,
+                       ASMA2.FINAL_BALANCE                         AS   INTEREST_FINAL_BALANCE,
+                       ASMA2.MEMBER_ACCOUNT_ID                     AS   INTEREST_ACCOUNT_ID,
+                       ASMA2.ACCOUNT_DESCRIPTION                   AS   INTEREST_ACCOUNT_DESCRIPTION
+                  FROM ATET_SB_MEMBERS                  ASM,
+                       ATET_SB_MEMBERS_ACCOUNTS         ASMA1,
+                       ATET_SB_MEMBERS_ACCOUNTS         ASMA2,
+                       PER_ASSIGNMENTS_F                PAF,
+                       PAY_PERSONAL_PAYMENT_METHODS_F   PPM,
+                       PAY_ORG_PAYMENT_METHODS_F        OPM
+                 WHERE 1 = 1
+                   AND ASM.MEMBER_ID = ASMA1.MEMBER_ID
+                   AND ASM.MEMBER_ID = ASMA2.MEMBER_ID
+                   AND ASMA1.ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO'
+                   AND ASMA2.ACCOUNT_DESCRIPTION = 'INTERES GANADO'
+                   AND (ASMA1.FINAL_BALANCE + ASMA2.FINAL_BALANCE) > 0
+                   AND ASM.PERSON_ID = PAF.PERSON_ID
+                   AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+                   AND PAF.ASSIGNMENT_ID = PPM.ASSIGNMENT_ID
+                   AND SYSDATE BETWEEN PPM.EFFECTIVE_START_DATE AND PPM.EFFECTIVE_END_DATE
+                   AND OPM.ORG_PAYMENT_METHOD_ID = PPM.ORG_PAYMENT_METHOD_ID
+                   AND SYSDATE BETWEEN OPM.EFFECTIVE_START_DATE AND OPM.EFFECTIVE_END_DATE
+                   AND OPM.ORG_PAYMENT_METHOD_ID = P_PAYMENT_METHOD_ID;
+                   
+        CURSOR ACCOUNTED_DETAILS (PP_HEADER_ID NUMBER) IS
+            SELECT AXL2.LINE_NUMBER,
+                   AXL2.CODE_COMBINATION_ID,
+                   AXL2.DESCRIPTION,
+                   AXL2.ACCOUNTED_DR,
+                   AXL2.ACCOUNTED_CR
+              FROM ATET_XLA_LINES           AXL2
+             WHERE 1 = 1
+               AND AXL2.HEADER_ID = PP_HEADER_ID
+             ORDER BY AXL2.LINE_NUMBER;
+                              
+        PROCEDURE INTERNAL_SAVING_RETIREMENT(
+            PP_ACCOUNT_DESCRIPTION          VARCHAR2,
+            PP_MEMBER_ID                    NUMBER,
+            PP_MEMBER_ACCOUNT_ID            NUMBER,
+            PP_SAVING_RETIREMENT            NUMBER,
+            PP_SAVING_TRANSACTION_ID    OUT NUMBER)
+        IS
+            var_saving_balance          NUMBER;
+            var_debit_amount            NUMBER;
+            var_credit_amount           NUMBER;
+            var_saving_retirement_seq   NUMBER;
+        BEGIN
+            
+            SELECT ASMA.FINAL_BALANCE
+              INTO var_saving_balance
+              FROM ATET_SB_MEMBERS_ACCOUNTS ASMA
+             WHERE 1 = 1
+               AND ASMA.MEMBER_ID = PP_MEMBER_ID
+               AND ASMA.LOAN_ID IS NULL
+               AND ASMA.ACCOUNT_DESCRIPTION = PP_ACCOUNT_DESCRIPTION;
+               
+            var_debit_amount := 0;
+            var_credit_amount := 0;
+            
+            IF var_saving_balance = 0 THEN
+                RAISE NO_SAVING_BALANCE_EX;
+            END IF;
+            
+            SELECT ATET_SB_SAVING_RETIREMENT_SEQ.NEXTVAL
+              INTO var_saving_retirement_seq 
+              FROM DUAL;
+              
+            var_debit_amount := PP_SAVING_RETIREMENT;
+            var_credit_amount := 0;
+            
+            BEGIN
+                            
+                INSERT INTO ATET_SB_SAVINGS_TRANSACTIONS (MEMBER_ACCOUNT_ID,
+                                                          MEMBER_ID,
+                                                          PAYROLL_RESULT_ID,
+                                                          PERSON_ID,
+                                                          EARNED_DATE,
+                                                          PERIOD_NAME,
+                                                          ELEMENT_NAME,
+                                                          ENTRY_VALUE,
+                                                          TRANSACTION_CODE,
+                                                          DEBIT_AMOUNT,
+                                                          CREDIT_AMOUNT,
+                                                          ATTRIBUTE1,
+                                                          ATTRIBUTE6,
+                                                          ATTRIBUTE7,
+                                                          ACCOUNTED_FLAG,
+                                                          CREATION_DATE,
+                                                          CREATED_BY,
+                                                          LAST_UPDATE_DATE,
+                                                          LAST_UPDATED_BY)
+                                                  VALUES (PP_MEMBER_ACCOUNT_ID,
+                                                          PP_MEMBER_ID,
+                                                          -1,
+                                                          GET_PERSON_ID(PP_MEMBER_ID),
+                                                          TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                                                          'RETIRO',
+                                                          'RETIRO POR REPARTO DE AHORRO',
+                                                          PP_SAVING_RETIREMENT,
+                                                          'RETIREMENT',
+                                                          var_debit_amount,
+                                                          var_credit_amount,
+                                                          var_saving_retirement_seq,
+                                                          'RETIRO POR REPARTO DE AHORRO',
+                                                          'REPARTO DE AHORRO',
+                                                          'ACCOUNTED',
+                                                          SYSDATE,
+                                                          var_user_id,
+                                                          SYSDATE,
+                                                          var_user_id);                                                                          
+                            
+            EXCEPTION WHEN OTHERS THEN
+                RAISE INSERT_SAVING_EX;                                                                          
+            END;
+            
+            BEGIN                                     
+                                                      
+                SELECT ASST.SAVING_TRANSACTION_ID
+                  INTO PP_SAVING_TRANSACTION_ID
+                  FROM ATET_SB_SAVINGS_TRANSACTIONS ASST
+                 WHERE 1 = 1
+                   AND ASST.MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID
+                   AND ASST.MEMBER_ID = PP_MEMBER_ID
+                   AND ASST.PERSON_ID = GET_PERSON_ID(PP_MEMBER_ID)
+                   AND ASST.PERIOD_NAME = 'RETIRO'
+                   AND ASST.ELEMENT_NAME = 'RETIRO POR REPARTO DE AHORRO'
+                   AND ASST.TRANSACTION_CODE = 'RETIREMENT'
+                   AND ASST.ATTRIBUTE7 = 'REPARTO DE AHORRO';
+                   
+            EXCEPTION WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE(SQLERRM);
+                RAISE SELECT_SAVING_EX;
+            END;
+            
+            BEGIN
+                                                                      
+                UPDATE ATET_SB_MEMBERS_ACCOUNTS
+                   SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
+                       CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                       LAST_TRANSACTION_DATE = SYSDATE               
+                 WHERE MEMBER_ID = PP_MEMBER_ID
+                   AND MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID;
+
+                              
+                UPDATE ATET_SB_MEMBERS_ACCOUNTS
+                   SET FINAL_BALANCE = CREDIT_BALANCE - DEBIT_BALANCE,
+                       LAST_UPDATE_DATE = SYSDATE,
+                       LAST_UPDATED_BY = var_user_id             
+                 WHERE MEMBER_ID = PP_MEMBER_ID
+                   AND MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID;
+                            
+            EXCEPTION WHEN OTHERS THEN
+                RAISE UPDATE_SAVING_EX;
+            END;
+        
+        EXCEPTION WHEN OTHERS THEN
+            RAISE INT_SAVING_RETIREMENT_EX;
+        END;                
+        
+        PROCEDURE INTERNAL_CREATE_CHECK(
+            P_RETIREMENT               NUMBER,
+            P_MEMBER_NAME              VARCHAR2,               
+            P_CHECK_ID      OUT NOCOPY NUMBER)
+        IS
+            LN_BANK_ACCOUNT_ID           NUMBER;
+            LC_BANK_ACCOUNT_NAME         VARCHAR2 (150);
+            LC_BANK_ACCOUNT_NUM          VARCHAR2 (150);
+            LC_BANK_NAME                 VARCHAR2 (150);
+            LC_CURRENCY_CODE             VARCHAR2 (150);
+            
+            LD_TRANSACTION_DATE          DATE;
+            LN_CHECK_NUMBER              NUMBER;
+            LN_CHECK_ID                  NUMBER;
+
+            INPUT_STRING                 VARCHAR2 (200);
+            OUTPUT_STRING                VARCHAR2 (200);
+            ENCRYPTED_RAW                RAW (2000); 
+            DECRYPTED_RAW                RAW (2000); 
+            NUM_KEY_BYTES                NUMBER := 256 / 8; 
+            KEY_BYTES_RAW                RAW (32);  
+            ENCRYPTION_TYPE              PLS_INTEGER 
+             :=                                     
+               DBMS_CRYPTO.ENCRYPT_AES256
+                + DBMS_CRYPTO.CHAIN_CBC
+                + DBMS_CRYPTO.PAD_PKCS5;
+        BEGIN
+            BEGIN
+                 SELECT BANK_ACCOUNT_ID,
+                        BANK_ACCOUNT_NAME,
+                        BANK_ACCOUNT_NUM,
+                        BANK_NAME,
+                        CURRENCY_CODE
+                   INTO LN_BANK_ACCOUNT_ID,
+                        LC_BANK_ACCOUNT_NAME,
+                        LC_BANK_ACCOUNT_NUM,
+                        LC_BANK_NAME,
+                        LC_CURRENCY_CODE
+                   FROM ATET_SB_BANK_ACCOUNTS;
+            EXCEPTION
+             WHEN OTHERS
+             THEN
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'ERROR AL BUSCAR LA CUENTA BANCARIA');
+                RAISE;
+            END;
+            
+                       
+            SELECT ATET_SB_CHECKS_ALL_SEQ.NEXTVAL 
+              INTO LN_CHECK_ID 
+              FROM DUAL;
+
+            SELECT ATET_SB_CHECK_NUMBER_SEQ.NEXTVAL
+              INTO LN_CHECK_NUMBER
+              FROM DUAL;
+
+            BEGIN
+                INPUT_STRING :=
+                      TO_CHAR (P_RETIREMENT)
+                   || ','
+                   || LN_CHECK_ID
+                   || ','
+                   || LN_CHECK_NUMBER
+                   || ','
+                   || P_MEMBER_NAME
+                   || ','
+                   || var_user_id
+                   || ','
+                   || TO_CHAR (CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS.FF');
+
+                DBMS_OUTPUT.PUT_LINE ('Original string: ' || input_string);
+                key_bytes_raw := DBMS_CRYPTO.RANDOMBYTES (num_key_bytes);
+                encrypted_raw :=
+                   DBMS_CRYPTO.ENCRYPT (
+                      src   => UTL_I18N.STRING_TO_RAW (input_string, 'AL32UTF8'),
+                      typ   => encryption_type,
+                      key   => key_bytes_raw);
+                
+
+                decrypted_raw :=
+                   DBMS_CRYPTO.DECRYPT (src   => encrypted_raw,
+                                        typ   => encryption_type,
+                                        key   => key_bytes_raw);
+                output_string := UTL_I18N.RAW_TO_CHAR (decrypted_raw, 'AL32UTF8');
+                DBMS_OUTPUT.PUT_LINE ('Cadena a encriptar: ' || input_string);
+                DBMS_OUTPUT.PUT_LINE ('Cadena encriptada: ' || encrypted_raw);
+                DBMS_OUTPUT.PUT_LINE ('LLave: ' || key_bytes_raw);
+                DBMS_OUTPUT.PUT_LINE ('Decrypted string: ' || output_string);
+            EXCEPTION
+            WHEN OTHERS
+            THEN
+               FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'ERROR AL GENERAR FIRMA DIGITAL');
+            END;              
+            
+            BEGIN
+                INSERT 
+                  INTO ATET_SB_CHECKS_ALL (CHECK_ID,
+                                           AMOUNT,
+                                           BANK_ACCOUNT_ID,
+                                           BANK_ACCOUNT_NAME,
+                                           CHECK_DATE,
+                                           CHECK_NUMBER,
+                                           MEMBER_ID,
+                                           MEMBER_NAME,
+                                           CURRENCY_CODE,
+                                           PAYMENT_TYPE_FLAG,
+                                           STATUS_LOOKUP_CODE,
+                                           BANK_ACCOUNT_NUM,
+                                           DIGITAL_SIGNATURE,
+                                           DECRYPT_KEY,
+                                           PAYMENT_DESCRIPTION,
+                                           LAST_UPDATED_BY,
+                                           LAST_UPDATE_DATE,
+                                           CREATED_BY,
+                                           CREATION_DATE)
+                                 VALUES (LN_CHECK_ID,
+                                         P_RETIREMENT,
+                                         LN_BANK_ACCOUNT_ID,
+                                         LC_BANK_ACCOUNT_NAME,
+                                         SYSDATE,
+                                         LN_CHECK_NUMBER,
+                                         -1,
+                                         P_MEMBER_NAME,
+                                         LC_CURRENCY_CODE,
+                                         'CHECK_SAVING_RETIREMENT',
+                                         'CREATED',
+                                         LC_BANK_ACCOUNT_NUM,
+                                         ENCRYPTED_RAW,
+                                         KEY_BYTES_RAW,
+                                         'REPARTO DE AHORRO',
+                                         var_user_id,
+                                         SYSDATE,
+                                         var_user_id,
+                                         SYSDATE);
+
+                        P_CHECK_ID := LN_CHECK_ID;
+
+            EXCEPTION
+            WHEN OTHERS
+            THEN
+                DBMS_OUTPUT.PUT_LINE('Error : INSERT INTO ATET_SB_CHECKS_ALL :' || SQLERRM);
+               FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Error : INSERT INTO ATET_SB_CHECKS_ALL :' || SQLERRM);
+               RAISE;
+            END;
+    
+        EXCEPTION WHEN OTHERS THEN
+            RAISE;
+        END;
+        
+    
+        PROCEDURE INTERNAL_RETIREMENT_DISPERSION(
+            PP_MEMBER_ID                NUMBER,
+            PP_SAVING_TRANSACTION_ID    NUMBER,
+            PP_ACCOUNT_DESCRIPTION      VARCHAR2,
+            PP_SAVING_RETIREMENT        NUMBER,
+            PP_PAYMENT_METHOD_ID        NUMBER,
+            PP_SAVING_BANK_ID           NUMBER)
+        IS 
+        BEGIN
+            INSERT 
+              INTO ATET_RETIREMENT_DISPERSION_TB(MEMBER_ID,
+                                                 SAVING_TRANSACTION_ID,
+                                                 ACCOUNT_DESCRIPTION,
+                                                 SAVING_RETIREMENT,
+                                                 PAYMENT_METHOD_ID,
+                                                 SAVING_BANK_ID)
+                                         VALUES (PP_MEMBER_ID,
+                                                 PP_SAVING_TRANSACTION_ID,
+                                                 PP_ACCOUNT_DESCRIPTION,
+                                                 PP_SAVING_RETIREMENT,
+                                                 PP_PAYMENT_METHOD_ID,
+                                                 PP_SAVING_BANK_ID); 
+        END;
+    
+    BEGIN
+    
+        SELECT SUBSTR(POPM.ORG_PAYMENT_METHOD_NAME, 4)
+          INTO var_payment_method_name
+          FROM PAY_ORG_PAYMENT_METHODS_F    POPM
+         WHERE 1 = 1
+           AND POPM.ORG_PAYMENT_METHOD_ID = P_PAYMENT_METHOD_ID;
+    
+        SELECT COUNT(ARD.MEMBER_ID)
+          INTO var_validate
+          FROM ATET_RETIREMENT_DISPERSION_TB ARD
+         WHERE 1 = 1
+           AND ARD.SAVING_BANK_ID = GET_SAVING_BANK_ID
+           AND ARD.PAYMENT_METHOD_ID = P_PAYMENT_METHOD_ID;
+        
+        IF var_validate = 0 THEN
+        
+            FOR detail IN SAVINGS_RETIREMENT_DETAILS LOOP      
+            
+                var_saving_transaction_id := NULL;         
+                     
+                IF detail.INTEREST_FINAL_BALANCE > 0 THEN
+                
+                    INTERNAL_SAVING_RETIREMENT
+                        (
+                            PP_ACCOUNT_DESCRIPTION      => detail.INTEREST_ACCOUNT_DESCRIPTION,
+                            PP_MEMBER_ID                => detail.MEMBER_ID,
+                            PP_MEMBER_ACCOUNT_ID        => detail.INTEREST_ACCOUNT_ID,
+                            PP_SAVING_RETIREMENT        => detail.INTEREST_FINAL_BALANCE,
+                            PP_SAVING_TRANSACTION_ID    => var_saving_transaction_id
+                        );
+                
+                    INTERNAL_RETIREMENT_DISPERSION
+                        (
+                            PP_MEMBER_ID                => detail.MEMBER_ID,
+                            PP_SAVING_TRANSACTION_ID    => var_saving_transaction_id,
+                            PP_ACCOUNT_DESCRIPTION      => detail.INTEREST_ACCOUNT_DESCRIPTION,
+                            PP_SAVING_RETIREMENT        => detail.INTEREST_FINAL_BALANCE,
+                            PP_PAYMENT_METHOD_ID        => P_PAYMENT_METHOD_ID,
+                            PP_SAVING_BANK_ID           => GET_SAVING_BANK_ID
+                        );
+                    
+                END IF;
+                
+                IF detail.SAVING_FINAL_BALANCE > 0 THEN
+                    
+                    INTERNAL_SAVING_RETIREMENT
+                        (
+                            PP_ACCOUNT_DESCRIPTION      => detail.SAVING_ACCOUNT_DESCRIPTION,
+                            PP_MEMBER_ID                => detail.MEMBER_ID,
+                            PP_MEMBER_ACCOUNT_ID        => detail.SAVING_ACCOUNT_ID,
+                            PP_SAVING_RETIREMENT        => detail.SAVING_FINAL_BALANCE,
+                            PP_SAVING_TRANSACTION_ID    => var_saving_transaction_id
+                        );
+                    
+                    INTERNAL_RETIREMENT_DISPERSION
+                        (
+                            PP_MEMBER_ID                => detail.MEMBER_ID,
+                            PP_SAVING_TRANSACTION_ID    => var_saving_transaction_id,
+                            PP_ACCOUNT_DESCRIPTION      => detail.SAVING_ACCOUNT_DESCRIPTION,
+                            PP_SAVING_RETIREMENT        => detail.SAVING_FINAL_BALANCE,
+                            PP_PAYMENT_METHOD_ID        => P_PAYMENT_METHOD_ID,
+                            PP_SAVING_BANK_ID           => GET_SAVING_BANK_ID
+                        );
+                    
+                END IF;
+            
+            END LOOP;
+            
+            var_bank_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'BANK_CODE_COMB');
+            var_bank_account_id := GET_CODE_COMBINATION_ID(var_bank_code_comb);
+            var_accounted_cr := 0;
+            var_row_index := 0;
+        
+            ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE        => 'SAVINGS',
+                                                       P_EVENT_TYPE_CODE    => 'SAVING_RETIREMENT',
+                                                       P_BATCH_NAME         => 'RETIRO DE AHORRO',
+                                                       P_JOURNAL_NAME       => 'REPARTO DE AHORRO ' || var_payment_method_name || ' ' || GET_SAVING_BANK_YEAR,
+                                                       P_HEADER_ID          => var_header_id);
+            
+            FOR detail IN RETIREMENT_TRANSACTIONS LOOP
+
+                var_row_index := var_row_index + 1;    
+            
+                IF detail.ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO' THEN                                                   
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_row_index,
+                                                             P_CODE_COMBINATION_ID     => detail.CODE_COMBINATION_ID,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'SAVING_RETIREMENT',
+                                                             P_ACCOUNTED_DR            => detail.SAVING_RETIREMENT,
+                                                             P_ACCOUNTED_CR            => 0,
+                                                             P_DESCRIPTION             => 'RETIRO DE AHORRO ACUMULADO : ' || detail.EMPLOYEE_NUMBER || '-' || detail.EMPLOYEE_FULL_NAME,
+                                                             P_SOURCE_ID               => detail.SAVING_TRANSACTION_ID,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
+                END IF;                                                   
+                       
+                IF detail.ACCOUNT_DESCRIPTION = 'INTERES GANADO' THEN                                                                                           
+                    ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                             P_ROW_NUMBER              => var_row_index,
+                                                             P_CODE_COMBINATION_ID     => detail.CODE_COMBINATION_ID,
+                                                             P_ACCOUNTING_CLASS_CODE   => 'SAVING_RETIREMENT',
+                                                             P_ACCOUNTED_DR            => detail.SAVING_RETIREMENT,
+                                                             P_ACCOUNTED_CR            => 0,
+                                                             P_DESCRIPTION             => 'RETIRO DE INTERES GANADO : ' || detail.EMPLOYEE_NUMBER || '-' || detail.EMPLOYEE_FULL_NAME,
+                                                             P_SOURCE_ID               => detail.SAVING_TRANSACTION_ID,
+                                                             P_SOURCE_LINK_TABLE       => 'ATET_SB_SAVINGS_TRANSACTIONS');
+                END IF;
+
+                var_accounted_cr := var_accounted_cr + detail.SAVING_RETIREMENT;       
+                
+                UPDATE ATET_SB_MEMBERS  ASM
+                   SET ASM.MEMBER_END_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                       ASM.LAST_UPDATE_DATE = SYSDATE,
+                       ASM.LAST_UPDATED_BY = var_user_id
+                 WHERE 1 = 1
+                   AND ASM.MEMBER_ID = detail.MEMBER_ID;                                                       
+        
+            END LOOP;
+            
+            INTERNAL_CREATE_CHECK
+                (
+                    P_RETIREMENT    =>  var_accounted_cr,
+                    P_MEMBER_NAME   =>  P_MEMBER_NAME,
+                    P_CHECK_ID      =>  var_check_id
+                );
+            
+            ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(P_HEADER_ID               => var_header_id,
+                                                     P_ROW_NUMBER              => var_row_index + 1,
+                                                     P_CODE_COMBINATION_ID     => var_bank_account_id,
+                                                     P_ACCOUNTING_CLASS_CODE   => 'SAVING_RETIREMENT',
+                                                     P_ACCOUNTED_DR            => 0,
+                                                     P_ACCOUNTED_CR            => var_accounted_cr,
+                                                     P_DESCRIPTION             => 'REPARTO DE AHORRO ' || var_payment_method_name || ' ' || GET_SAVING_BANK_YEAR,
+                                                     P_SOURCE_ID               => var_check_id,
+                                                     P_SOURCE_LINK_TABLE       => 'ATET_SB_CHECKS_ALL');
+                                                     
+            /**********************************************************/
+            /*******                    COMMIT                     ****/
+            /**********************************************************/
+            COMMIT;
+                                                     
+            /**********************************************************/
+            /*******             IMPRESIÓN DE CHEQUE               ****/
+            /**********************************************************/
+            FND_GLOBAL.APPS_INITIALIZE 
+                (
+                    USER_ID        => var_user_id,
+                    RESP_ID        => 53698,
+                    RESP_APPL_ID   => 101);
+            MO_GLOBAL.SET_POLICY_CONTEXT 
+                (
+                    P_ACCESS_MODE  => 'S',
+                    P_ORG_ID       => 1329);
+            
+            PRINT_SAVING_RETIREMENT_CHECK
+                (
+                    P_CHECK_ID => var_check_id
+                ); 
+                
+            /**********************************************************/
+            /*******             TRANSFER TO GL                    ****/
+            /**********************************************************/    
+            ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL; 
+        
+            /**********************************************************/
+            /*******                    OUTPUT                     ****/
+            /**********************************************************/
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '    MOVIMIENTOS CONTABLES    ' );
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+                            
+            var_debit_amount := 0;
+            var_credit_amount := 0;
+                            
+            FOR detail_accounted IN ACCOUNTED_DETAILS(var_header_id) LOOP
+                            
+                var_debit_amount := var_debit_amount + detail_accounted.ACCOUNTED_DR;
+                var_credit_amount := var_credit_amount + detail_accounted.ACCOUNTED_CR;
+                                
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD(GET_CODE_COMBINATION(detail_accounted.CODE_COMBINATION_ID) , 40, ' ')
+                                                 ||RPAD(detail_accounted.DESCRIPTION, 40, ' ')
+                                                 ||LPAD(detail_accounted.ACCOUNTED_DR,40, ' ')
+                                                 ||LPAD(detail_accounted.ACCOUNTED_CR,40, ' '));
+                            
+            END LOOP;
+                            
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, RPAD('*',160, '*'));
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, LPAD('TOTAL:', 80, ' ')
+                            ||LPAD(var_debit_amount, 40, ' ')
+                            ||LPAD(var_credit_amount, 40, ' ')); 
+        
+        END IF;
+        
+        
+        FND_GLOBAL.APPS_INITIALIZE 
+            (
+                USER_ID        => var_user_id,
+                RESP_ID        => 53698,
+                RESP_APPL_ID   => 101);
+        MO_GLOBAL.SET_POLICY_CONTEXT 
+            (
+                P_ACCESS_MODE  => 'S',
+                P_ORG_ID       => 1329);
+        
+        
+        ADD_LAYOUT_BOOLEAN :=
+            FND_REQUEST.ADD_LAYOUT 
+                (
+                   TEMPLATE_APPL_NAME   => 'PER',
+                   TEMPLATE_CODE        => 'ATET_RETIREMENT_DISPERSION',
+                   TEMPLATE_LANGUAGE    => 'Spanish', 
+                   TEMPLATE_TERRITORY   => 'Mexico', 
+                   OUTPUT_FORMAT        => 'EXCEL' 
+                );
+
+
+
+         V_REQUEST_ID :=
+            FND_REQUEST.SUBMIT_REQUEST 
+                (
+                    APPLICATION         =>  'PER', 
+                    PROGRAM             =>  'ATET_RETIREMENT_DISPERSION', 
+                    DESCRIPTION         =>  '',
+                    START_TIME          =>  '',
+                    SUB_REQUEST         =>  FALSE,
+                    ARGUMENT1           =>  TO_CHAR (P_YEAR),
+                    ARGUMENT2           =>  TO_CHAR (P_PAYMENT_METHOD_ID)
+                );
+         
+         STANDARD.COMMIT;
+         
+         WAITING := 
+            FND_CONCURRENT.WAIT_FOR_REQUEST 
+                (
+                    REQUEST_ID          =>  V_REQUEST_ID,
+                    INTERVAL            =>  1,
+                    MAX_WAIT            =>  0,
+                    PHASE               =>  PHASE,
+                    STATUS              =>  STATUS,
+                    DEV_PHASE           =>  DEV_PHASE,
+                    DEV_STATUS          =>  DEV_STATUS,
+                    MESSAGE             =>  V_MESSAGE
+                );   
+        
+    EXCEPTION
+        WHEN INT_ROUND_RETIREMENT_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INT_ROUND_RETIREMENT_EX');
+        WHEN INT_CURRENCY_DISTRIBUTION_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INT_CURRENCY_DISTRIBUTION_EX');
+        WHEN INSERT_SAVING_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INSERT_SAVING_EX'); 
+        WHEN NO_SAVING_BALANCE_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'NO_SAVING_BALANCE_EX');
+        WHEN SELECT_SAVING_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'SELECT_SAVING_EX');
+        WHEN UPDATE_SAVING_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'UPDATE_SAVING_EX');
+        WHEN INT_SAVING_RETIREMENT_EX THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'INT_SAVING_RETIREMENT_EX');
+    END RETIREMENT_DISPERSION;   
+
 END ATET_SAVINGS_BANK_PKG;
