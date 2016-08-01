@@ -21,11 +21,9 @@ SELECT  xve.*
 			   AND XVE.ID_TIPO_EVENTO = XVTE.ID_TIPO_EVENTO
 			   AND XVE.ESTADO_REGISTRO = XVC.VALOR
                AND XVE.PERSON_ID = :P_PERSON_ID 
-               AND XVC.DESCRIPCION IN ('Aprobado', 'Procesado')
+               AND XVC.DESCRIPCION IN ('Aprobado', 'Procesado', 'Solicitado')
 			   AND XVTE.NOMBRE_TIPO_EVENTO = 'Solicitud de pago de vacaciones'
-               AND XVE.FECHA_DESDE >= TO_DATE(EXTRACT(DAY FROM :P_FECHA_INGRESO) || '/' ||
-                                              EXTRACT(MONTH FROM :P_FECHA_INGRESO) || '/' ||
-                                              (EXTRACT(YEAR FROM SYSDATE)-1), 'DD/MM/RRRR');
+               AND XVE.FECHA_DESDE >= :P_FECHA_INGRESO;
                
 
 SELECT NVL(PPS.ADJUSTED_SVC_DATE, PP7.ORIGINAL_DATE_OF_HIRE) HIRE_DATE
