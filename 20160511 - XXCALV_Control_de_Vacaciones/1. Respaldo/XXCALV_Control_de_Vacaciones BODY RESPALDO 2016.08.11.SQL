@@ -393,20 +393,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
          AND UCF.BASE_USER_COLUMN_NAME         = 'DIAS VACACIONES'
          AND UCI.USER_COLUMN_ID                = UCF.USER_COLUMN_ID
          AND p_Antiguedad + 0.1          BETWEEN UCI.ROW_LOW_RANGE_OR_NAME AND UCI.ROW_HIGH_RANGE;
-
-    CURSOR c_Dias_Siguiente ( p_Tipo_Nomina     VARCHAR2
-                             ,p_Antiguedad      NUMBER
-                             ) IS
-      SELECT UCI.VALUE
-        FROM PAY_USER_TABLES_FV               UTF
-            ,PAY_USER_COLUMNS_FV              UCF
-            ,XXCALV_PAY_USER_COLUMN_INST_V    UCI
-       WHERE 1 = 1
-         AND UTF.BASE_USER_TABLE_NAME          = p_Tipo_Nomina
-         AND UCF.USER_TABLE_ID                 = UTF.USER_TABLE_ID
-         AND UCF.BASE_USER_COLUMN_NAME         = 'DIAS VACACIONES'
-         AND UCI.USER_COLUMN_ID                = UCF.USER_COLUMN_ID
-         AND p_Antiguedad          BETWEEN UCI.ROW_LOW_RANGE_OR_NAME AND UCI.ROW_HIGH_RANGE;
     --
     v_Assignment_Id           NUMBER;
     v_Tipo_Nomina             HR_LOOKUPS.MEANING%TYPE;
@@ -502,7 +488,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
           WHEN NO_DATA_FOUND THEN
             IF p_Valida_Informativo = 'S' THEN
               --
-              errbuf  := 'El empleado aún no tiene el registro informativo de saldos.  Espere la ejecuciÛn del concurrente nocturno.';
+              errbuf  := 'El empleado a¿n no tiene el registro informativo de saldos.  Espere la ejecuciÛn del concurrente nocturno.';
               XXSTO_TOOLS_PKG.genera_salida(errbuf, 'B');
               retcode := 2;
               x_Dias_Siguiente := NULL;
@@ -511,12 +497,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
             ELSE
               --
               x_Dias_Siguiente := NULL;
-              OPEN  c_Dias_Siguiente (v_Tipo_Nomina, p_Antiguedad_Sig);
-              FETCH c_Dias_Siguiente INTO x_Dias_Siguiente;
-              IF c_Dias_Siguiente%NOTFOUND THEN
+              OPEN  c_Dias (v_Tipo_Nomina, p_Antiguedad_Sig);
+              FETCH c_Dias INTO x_Dias_Siguiente;
+              IF c_Dias%NOTFOUND THEN
                 x_Dias_Siguiente := NULL;
               END IF;
-              CLOSE c_Dias_Siguiente;
+              CLOSE c_Dias;
               x_Registro_Base_Sig := 'S';
               --
             END IF;
@@ -2390,68 +2376,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
               ,retcode                  OUT NUMBER
               ,p_person_id           IN     NUMBER
              ) IS
-
-    /************************************************************************************/
-    /**********         MODIFICACIÓN    IPONCE      20 - MAYO - 2016             ********/      
-    /************************************************************************************/             
-    CURSOR c_CANCELACIONES IS
-        SELECT DISTINCT 
-               PPF.PERSON_ID,
-               PPF.EMPLOYEE_NUMBER,
-               PPF.FULL_NAME,
-               XVE.ID_EVENTO
-          FROM PER_ALL_PEOPLE_F     PPF,
-               PER_ASSIGNMENTS_F    PAF,
-               PER_PERSON_TYPES     PPT,
-               XXCALV_VAC_EVENTOS   XVE
-         WHERE 1 = 1
-           AND PPF.PERSON_ID = PAF.PERSON_ID
-           AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
-           AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
-           AND PPT.PERSON_TYPE_ID = PPF.PERSON_TYPE_ID
-           AND PPT.USER_PERSON_TYPE IN ('Ex-employee', 'Ex-empleado')
-           AND XVE.ATTRIBUTE1 IS NULL
-           AND PPF.PERSON_ID = XVE.PERSON_ID;
-           
-    CURSOR c_RESTRUCTURACIONES IS
-         SELECT DISTINCT 
-               PPF.PERSON_ID,
-               PPF.EMPLOYEE_NUMBER,
-               PPF.FULL_NAME
-          FROM PER_ALL_PEOPLE_F     PPF,
-               PER_ASSIGNMENTS_F    PAF,
-               PER_PERSON_TYPES     PPT,
-               XXCALV_VAC_EVENTOS   XVE
-         WHERE 1 = 1
-           AND PPF.PERSON_ID = PAF.PERSON_ID
-           AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
-           AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
-           AND PPT.PERSON_TYPE_ID = PPF.PERSON_TYPE_ID
-           AND PPT.USER_PERSON_TYPE IN ('Ex-employee', 'Ex-empleado')
-           AND XVE.ATTRIBUTE1 IS NULL
-           AND PPF.PERSON_ID = XVE.PERSON_ID;     
-           
-    var_PERSON_ID               NUMBER;
-    var_ID_EVENTO               NUMBER;
-    var_ID_TIPO_EVENTO          NUMBER;
-    var_ESTADO_REGISTRO         VARCHAR2(1);
-    var_ESTADO_CONTROL          VARCHAR2(1);
-    var_FECHA_ESTADO_CONTROL    DATE;
-    var_ANIO_ANTIGUEDAD         NUMBER;
-    var_DIAS_EVENTO             NUMBER;
-    var_DIAS_DESPLEGAR          NUMBER;
-    var_SALDO_DIAS              NUMBER;
-    var_FECHA_DESDE             DATE;
-    var_FECHA_HASTA             DATE;
-    var_FECHA_DESDE_DESPLEGAR   DATE;
-    var_FECHA_HASTA_DESPLEGAR   DATE;
-    var_ID_EVENTO_PADRE         NUMBER;
-    var_OBJECT_ID               NUMBER;
-    var_OBJECT_VERSION_NUMBER   NUMBER;
-    var_DESPLEGAR_P1            VARCHAR2(1);    
-           
-    /************************************************************************************/
-    /************************************************************************************/
     --
     CURSOR c_Personas (p_Person_Id   IN NUMBER) IS
         SELECT DAT.ROW_ID
@@ -2495,8 +2419,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                            AND PP7.PERSON_ID                  = NVL(p_Person_Id, PP7.PERSON_ID)
                        ) COM
                ) DAT
-      WHERE 1 = 1
-        AND DAT.ANTIGUEDAD_NUE > 0
       ORDER BY DAT.EMPLOYEE_NUMBER;
     --
     CURSOR c_Asignaciones (p_Person_Id     IN NUMBER) IS
@@ -2570,182 +2492,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
     v_Total_Procesados := 0;
     v_Total_Grabados   := 0;
     v_Total_Errores    := 0;
-    
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Inicializar_Valores()');
-    
-    /************************************************************************************/
-    /**********         MODIFICACIÓN    IPONCE      20 - MAYO - 2016             ********/      
-    /************************************************************************************/ 
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'BEGIN LOOP v_cancelacion');
-    
-    FOR v_cancelacion IN c_CANCELACIONES LOOP
-        
-       DELETE FROM XXCALV_VAC_EVENTOS_DET
-         WHERE 1 = 1
-           AND ID_EVENTO = v_cancelacion.ID_EVENTO;
-        
-        
-        UPDATE PER_ALL_PEOPLE_F
-           SET ATTRIBUTE29 = NULL
-         WHERE 1 = 1
-           AND PERSON_ID = v_cancelacion.PERSON_ID;
-    
-    END LOOP;
-    
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'END LOOP v_cancelacion');
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'BEGIN LOOP v_restructuracion');
-    
-    FOR v_restructuracion IN c_RESTRUCTURACIONES LOOP
-    
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'PERSON_ID : ' || v_restructuracion.PERSON_ID);
-    
-        BEGIN
-            SELECT DET.PERSON_ID,
-                  DET.ID_EVENTO,
-                  DET.ID_TIPO_EVENTO,
-                  DET.ESTADO_REGISTRO,
-                  DET.ESTADO_CONTROL,
-                  DET.FECHA_ESTADO_CONTROL,
-                  DET.ANIO_ANTIGUEDAD,
-                  DET.DIAS_EVENTO,
-                  DET.DIAS_DESPLEGAR,
-                  DET.SALDO_DIAS,
-                  DET.FECHA_DESDE,
-                  DET.FECHA_HASTA,
-                  DET.FECHA_DESDE_DESPLEGAR,
-                  DET.FECHA_HASTA_DESPLEGAR,
-                  DET.ID_EVENTO_PADRE,
-                  DET.OBJECT_ID,
-                  DET.OBJECT_VERSION_NUMBER,
-                  DET.DESPLEGAR_P1
-             INTO var_PERSON_ID,
-                  var_ID_EVENTO,
-                  var_ID_TIPO_EVENTO,
-                  var_ESTADO_REGISTRO,
-                  var_ESTADO_CONTROL,
-                  var_FECHA_ESTADO_CONTROL,
-                  var_ANIO_ANTIGUEDAD,
-                  var_DIAS_EVENTO,
-                  var_DIAS_DESPLEGAR,
-                  var_SALDO_DIAS,
-                  var_FECHA_DESDE,
-                  var_FECHA_HASTA,
-                  var_FECHA_DESDE_DESPLEGAR,
-                  var_FECHA_HASTA_DESPLEGAR,
-                  var_ID_EVENTO_PADRE,
-                  var_OBJECT_ID,
-                  var_OBJECT_VERSION_NUMBER,
-                  var_DESPLEGAR_P1
-             FROM ( SELECT DISTINCT 
-                           PPF.PERSON_ID,
-                           PPF.EMPLOYEE_NUMBER,
-                           PPF.FULL_NAME,
-                           XVE.ID_EVENTO,
-                           XVE.ID_TIPO_EVENTO,
-                           XVE.ESTADO_REGISTRO,
-                           XVE.ESTADO_CONTROL,
-                           XVE.FECHA_ESTADO_CONTROL,
-                           XVE.ANIO_ANTIGUEDAD,
-                           XVE.DIAS_EVENTO,
-                           XVE.DIAS_DESPLEGAR,
-                           XVE.SALDO_DIAS,
-                           XVE.FECHA_DESDE,
-                           XVE.FECHA_HASTA,
-                           XVE.FECHA_DESDE_DESPLEGAR,
-                           XVE.FECHA_HASTA_DESPLEGAR,
-                           XVE.ID_EVENTO_PADRE,
-                           XVE.OBJECT_ID,
-                           XVE.OBJECT_VERSION_NUMBER,
-                           XVE.DESPLEGAR_P1
-                      FROM PER_ALL_PEOPLE_F     PPF,
-                           PER_ASSIGNMENTS_F    PAF,
-                           PER_PERSON_TYPES     PPT,
-                           XXCALV_VAC_EVENTOS   XVE
-                     WHERE 1 = 1
-                       AND PPF.PERSON_ID = PAF.PERSON_ID
-                       AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
-                       AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
-                       AND PPT.PERSON_TYPE_ID = PPF.PERSON_TYPE_ID
-                       AND PPF.PERSON_ID = XVE.PERSON_ID
-                       AND XVE.DESPLEGAR_P1 = 'S'
-                       AND PPF.PERSON_ID = v_restructuracion.PERSON_ID
-                     ORDER BY XVE.ID_EVENTO DESC,
-                              XVE.FECHA_ESTADO_CONTROL DESC) DET
-                    WHERE 1 = 1
-                      AND ROWNUM = 1;
-        EXCEPTION WHEN OTHERS THEN 
---            FND_FILE.PUT_LINE(FND_FILE.LOG, 'NO_DATA_FOUND    RESTRUCTURACIONES');
-            CONTINUE;
-        END;
-                  
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SELECT RESTRUCTURACIONES.');                  
-                  
-        DELETE FROM XXCALV_VAC_EVENTOS
-         WHERE 1 = 1
-           AND PERSON_ID = v_restructuracion.PERSON_ID;
-           
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'DELETE RESTRUCTURACION');   
-           
-        INSERT 
-          INTO XXCALV_VAC_EVENTOS (ID_EVENTO,
-                                   ID_TIPO_EVENTO,
-                                   PERSON_ID,
-                                   ESTADO_REGISTRO,
-                                   ESTADO_CONTROL,
-                                   FECHA_ESTADO_CONTROL,
-                                   ANIO_ANTIGUEDAD,
-                                   DIAS_EVENTO,
-                                   DIAS_DESPLEGAR,
-                                   SALDO_DIAS,
-                                   FECHA_DESDE,
-                                   FECHA_HASTA,
-                                   FECHA_DESDE_DESPLEGAR,
-                                   FECHA_HASTA_DESPLEGAR,
-                                   ID_EVENTO_PADRE,
-                                   OBJECT_ID,
-                                   OBJECT_VERSION_NUMBER,
-                                   DESPLEGAR_P1,
-                                   CREATION_DATE,
-                                   CREATED_BY,
-                                   LAST_UPDATE_DATE,
-                                   LAST_UPDATE_BY,
-                                   ATTRIBUTE1)
-                           VALUES (var_ID_EVENTO,                                   
-                                   11,
-                                   var_PERSON_ID,                           
-                                   var_ESTADO_REGISTRO,
-                                   var_ESTADO_CONTROL,
-                                   SYSDATE,
-                                   var_ANIO_ANTIGUEDAD,
-                                   var_SALDO_DIAS,
-                                   var_SALDO_DIAS, 
-                                   0, --var_DIAS_DESPLEGAR,
-                                   var_FECHA_DESDE,
-                                   var_FECHA_HASTA,
-                                   var_FECHA_DESDE_DESPLEGAR,
-                                   var_FECHA_HASTA_DESPLEGAR,
-                                   var_ID_EVENTO_PADRE,
-                                   var_OBJECT_ID,
-                                   var_OBJECT_VERSION_NUMBER,
-                                   var_DESPLEGAR_P1,
-                                   SYSDATE,
-                                   FND_GLOBAL.USER_ID,
-                                   SYSDATE,
-                                   FND_GLOBAL.USER_ID,
-                                   'POR BAJA');
-        
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'INSERT XXCALV_VAC_EVENTOS');
-    
-    END LOOP;
-    
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'END LOOP v_restructuracion');
-    
-    /************************************************************************************/ 
-    /************************************************************************************/ 
     --
-    
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'BEGIN LOOP v_Personas');
-    
     FOR v_Personas IN c_Personas(p_person_id) LOOP
       --
       v_Total_Procesados := v_Total_Procesados + 1;
