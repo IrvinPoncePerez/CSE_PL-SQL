@@ -392,7 +392,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
          AND UCF.USER_TABLE_ID                 = UTF.USER_TABLE_ID
          AND UCF.BASE_USER_COLUMN_NAME         = 'DIAS VACACIONES'
          AND UCI.USER_COLUMN_ID                = UCF.USER_COLUMN_ID
-         AND p_Antiguedad + 0.1          BETWEEN UCI.ROW_LOW_RANGE_OR_NAME AND UCI.ROW_HIGH_RANGE;
+         AND p_Antiguedad          BETWEEN UCI.ROW_LOW_RANGE_OR_NAME AND UCI.ROW_HIGH_RANGE;
 
     CURSOR c_Dias_Siguiente ( p_Tipo_Nomina     VARCHAR2
                              ,p_Antiguedad      NUMBER
@@ -2540,7 +2540,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
          AND UCF.USER_TABLE_ID                 = UTF.USER_TABLE_ID
          AND UCF.BASE_USER_COLUMN_NAME         = 'DIAS VACACIONES'
          AND UCI.USER_COLUMN_ID                = UCF.USER_COLUMN_ID
-         AND p_Antiguedad + 0.1          BETWEEN UCI.ROW_LOW_RANGE_OR_NAME AND UCI.ROW_HIGH_RANGE;
+         AND p_Antiguedad          BETWEEN UCI.ROW_LOW_RANGE_OR_NAME AND UCI.ROW_HIGH_RANGE;
     --
     v_Assignment_Id           NUMBER;
     v_Tipo_Nomina             HR_LOOKUPS.MEANING%TYPE;
