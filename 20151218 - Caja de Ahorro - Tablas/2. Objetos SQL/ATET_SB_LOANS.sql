@@ -64,12 +64,14 @@ DECLARE
     var_next_id  NUMBER;
 BEGIN
 
---    SELECT ATET_SB_LOANS_SEQ.NEXTVAL
---      INTO var_next_id
---      FROM dual;        
---      
---    :NEW.LOAN_ID := var_next_id;
+    IF :NEW.LOAN_ID IS NULL THEN
 
-    NULL;
+        SELECT ATET_SB_LOANS_SEQ.NEXTVAL
+          INTO var_next_id
+          FROM dual;        
+          
+        :NEW.LOAN_ID := var_next_id;
+
+    END IF;
 
 END;
