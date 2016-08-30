@@ -379,7 +379,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
          AND HLU.LOOKUP_CODE            = EEV.SCREEN_ENTRY_VALUE
          AND SYSDATE BETWEEN EEV.EFFECTIVE_START_DATE AND EEV.EFFECTIVE_END_DATE
          AND SYSDATE BETWEEN EEF.EFFECTIVE_START_DATE AND EEF.EFFECTIVE_END_DATE;
-    --
+    /************************************************************************************/
+    /**********         MODIFICACIÓN    IPONCE      30 - AGOSTO - 2016             ********/      
+    /************************************************************************************/ 
     CURSOR c_Dias ( p_Tipo_Nomina     VARCHAR2
                    ,p_Antiguedad      NUMBER
                   ) IS
@@ -479,6 +481,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             x_Dias_Actual := NULL;
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Antigüedad : ' || p_Antiguedad_Act);
             OPEN  c_Dias (v_Tipo_Nomina, p_Antiguedad_Act);
             FETCH c_Dias INTO x_Dias_Actual;
             IF c_Dias%NOTFOUND THEN
@@ -511,6 +514,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
             ELSE
               --
               x_Dias_Siguiente := NULL;
+              FND_FILE.PUT_LINE(FND_FILE.LOG, 'Antigüedad Siguiente : ' || p_Antiguedad_Sig);
               OPEN  c_Dias_Siguiente (v_Tipo_Nomina, p_Antiguedad_Sig);
               FETCH c_Dias_Siguiente INTO x_Dias_Siguiente;
               IF c_Dias_Siguiente%NOTFOUND THEN
@@ -2528,20 +2532,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
          AND SYSDATE BETWEEN EEV.EFFECTIVE_START_DATE AND EEV.EFFECTIVE_END_DATE
          AND SYSDATE BETWEEN EEF.EFFECTIVE_START_DATE AND EEF.EFFECTIVE_END_DATE;
     --
-    CURSOR c_Dias ( p_Tipo_Nomina     VARCHAR2
-                   ,p_Antiguedad      NUMBER
-                  ) IS
-      SELECT UCI.VALUE
-        FROM PAY_USER_TABLES_FV               UTF
-            ,PAY_USER_COLUMNS_FV              UCF
-            ,XXCALV_PAY_USER_COLUMN_INST_V    UCI
-       WHERE 1 = 1
-         AND UTF.BASE_USER_TABLE_NAME          = p_Tipo_Nomina
-         AND UCF.USER_TABLE_ID                 = UTF.USER_TABLE_ID
-         AND UCF.BASE_USER_COLUMN_NAME         = 'DIAS VACACIONES'
-         AND UCI.USER_COLUMN_ID                = UCF.USER_COLUMN_ID
-         AND p_Antiguedad          BETWEEN UCI.ROW_LOW_RANGE_OR_NAME AND UCI.ROW_HIGH_RANGE;
-    --
     v_Assignment_Id           NUMBER;
     v_Tipo_Nomina             HR_LOOKUPS.MEANING%TYPE;
     v_Dias_Asignados_Act      XXCALV_PAY_USER_COLUMN_INST_V.VALUE%TYPE;
@@ -2788,7 +2778,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                     ,retcode               => v_retcode
                     ,p_Person_Id           => v_Personas.person_id
                     ,p_Antiguedad_Act      => v_Personas.ANTIGUEDAD_NUE
-                    ,p_Antiguedad_Sig      => v_Personas.ANTIGUEDAD_NUE + 1
+                    ,p_Antiguedad_Sig      => v_Personas.ANTIGUEDAD_SIG
                     ,p_Business_Group_Id   => v_Personas.Business_Group_Id
                     ,p_Procesar_Fecha_Min  => 'N'
                     ,p_Valida_Informativo  => 'N'
