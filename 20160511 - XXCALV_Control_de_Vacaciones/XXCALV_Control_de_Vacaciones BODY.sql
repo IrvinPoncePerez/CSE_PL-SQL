@@ -2561,12 +2561,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
     v_Total_Grabados   := 0;
     v_Total_Errores    := 0;
     
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Inicializar_Valores()');
-    
     /************************************************************************************/
     /**********         MODIFICACIÓN    IPONCE      20 - MAYO - 2016             ********/      
     /************************************************************************************/ 
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'BEGIN LOOP v_cancelacion');
     
     FOR v_cancelacion IN c_CANCELACIONES LOOP
         
@@ -2582,13 +2579,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
     
     END LOOP;
     
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'END LOOP v_cancelacion');
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'BEGIN LOOP v_restructuracion');
-    
     FOR v_restructuracion IN c_RESTRUCTURACIONES LOOP
-    
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'PERSON_ID : ' || v_restructuracion.PERSON_ID);
-    
+        
         BEGIN
             SELECT DET.PERSON_ID,
                   DET.ID_EVENTO,
@@ -2664,17 +2656,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                     WHERE 1 = 1
                       AND ROWNUM = 1;
         EXCEPTION WHEN OTHERS THEN 
---            FND_FILE.PUT_LINE(FND_FILE.LOG, 'NO_DATA_FOUND    RESTRUCTURACIONES');
             CONTINUE;
-        END;
-                  
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SELECT RESTRUCTURACIONES.');                  
+        END;                  
                   
         DELETE FROM XXCALV_VAC_EVENTOS
          WHERE 1 = 1
-           AND PERSON_ID = v_restructuracion.PERSON_ID;
-           
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'DELETE RESTRUCTURACION');   
+           AND PERSON_ID = v_restructuracion.PERSON_ID;   
            
         INSERT 
           INTO XXCALV_VAC_EVENTOS (ID_EVENTO,
@@ -2723,18 +2710,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                                    SYSDATE,
                                    FND_GLOBAL.USER_ID,
                                    'POR BAJA');
-        
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'INSERT XXCALV_VAC_EVENTOS');
-    
+            
     END LOOP;
-    
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'END LOOP v_restructuracion');
-    
-    /************************************************************************************/ 
-    /************************************************************************************/ 
-    --
-    
---    FND_FILE.PUT_LINE(FND_FILE.LOG, 'BEGIN LOOP v_Personas');
     
     FOR v_Personas IN c_Personas(p_person_id) LOOP
       --
