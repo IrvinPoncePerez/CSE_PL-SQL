@@ -477,7 +477,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
            WHERE 1 = 1
              AND PERSON_ID         = p_Person_Id
              AND ID_TIPO_EVENTO    = 1       -- N¿mero de dÌas de saldo se tiene en este registro 
-             AND ANIO_ANTIGUEDAD   = p_Antiguedad_Act;
+             AND ANIO_ANTIGUEDAD   = p_Antiguedad_Act
+             AND TO_DATE(CREATION_DATE, 'DD/MM/RRRR') > TO_DATE('02/09/2016', 'DD/MM/RRRR');
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             x_Dias_Actual := NULL;
