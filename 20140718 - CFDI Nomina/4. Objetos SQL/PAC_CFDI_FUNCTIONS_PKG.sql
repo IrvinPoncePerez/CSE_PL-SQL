@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE PAC_CFDI_FUNCTIONS_PKG AS
+CREATE OR REPLACE PACKAGE APPS.PAC_CFDI_FUNCTIONS_PKG AS
 
     /*
     Suma de todas las percepciones suma de gravado mas excento

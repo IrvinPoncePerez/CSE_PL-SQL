@@ -258,10 +258,6 @@ BEGIN
           FROM PAYBV_CONSOLIDATION_SET PCS
          WHERE PCS.CONSOLIDATION_SET_ID = P_CONSOLIDATION_ID;
          
---        SELECT PRTX.RUN_TYPE_NAME
---          INTO var_run_type_name
---          FROM PAY_RUN_TYPES_X  PRTX
---         WHERE PRTX.RUN_TYPE_ID = P_RUN_TYPE_ID;
     
         var_file_name := 'CFDI_NOMINA_';
         
@@ -275,16 +271,7 @@ BEGIN
         
         var_file_name := var_file_name || REPLACE(NVL(P_PERIOD_NAME,P_MONTH || '_' || P_YEAR), ' ', '_') || '_';
         var_file_name := var_file_name || REPLACE(var_consolidation_name, 'Ó', 'O');
-        var_sequence_name := SUBSTR(REPLACE(REPLACE(var_file_name, 'NOMINA', ''), '_', ''), 0, 30);
-        
---        IF var_run_type_name LIKE 'Standard' THEN
---            var_file_name := var_file_name || '_Standard';
---        ELSIF var_run_type_name LIKE 'Process Separately' THEN
---            var_file_name := var_file_name || '_Separately';
---        ELSIF var_run_type_name LIKE 'Process Separately - Non Periodic' THEN
---            var_file_name := var_file_name || '_Separately_Non_Periodic';
---        END IF;
-        
+        var_sequence_name := SUBSTR(REPLACE(REPLACE(var_file_name, 'NOMINA', ''), '_', ''), 0, 30);       
         var_file_name := var_file_name || '.txt';
         
     EXCEPTION WHEN OTHERS THEN        
@@ -749,41 +736,7 @@ BEGIN
             dbms_output.put_line('**Error al Borrar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Borrar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
         END;
-        
-        
---        BEGIN
---        
---            STANDARD.COMMIT;
---            
---            V_REQUEST_ID :=
---                FND_REQUEST.SUBMIT_REQUEST (
---                   APPLICATION => 'PER',
---                   PROGRAM => 'MUEVE_CFDI_NOMINA',
---                   DESCRIPTION => '',
---                   START_TIME => '',
---                   SUB_REQUEST => FALSE,
---                   ARGUMENT1 => TO_CHAR(var_file_name)
---                                           );
---                                      
---                     
---            WAITING :=
---                FND_CONCURRENT.WAIT_FOR_REQUEST (
---                    REQUEST_ID => V_REQUEST_ID,
---                    INTERVAL => 1,
---                    MAX_WAIT => 0,
---                    PHASE => PHASE,
---                    STATUS => STATUS,
---                    DEV_PHASE => DEV_PHASE,
---                    DEV_STATUS => DEV_STATUS,
---                    MESSAGE => V_MESSAGE
---                                            );
---        
---        
---        EXCEPTION WHEN OTHERS THEN
---            dbms_output.put_line('**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
---            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
---        END;
-    
+            
     ELSE
         P_RETCODE := 1;
         P_ERRBUF := 'EL ARCHIVO ' || var_file_name || ' YA HA SIDO GENERADO ANTERIORMENTE.';

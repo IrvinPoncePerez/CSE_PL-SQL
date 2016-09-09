@@ -452,6 +452,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     MAX(NVL(APPS.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,
                                                                 'P001_SUELDO NORMAL',
                                                                 'Sueldo Diario'), '0'))             AS  NOM_SALBASE, 
+                    MAX(NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,
+                                                            'P039_DESPENSA',
+                                                            'Pay Value'), '0'))                     AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
                     MAX(NVL(APPS.PAC_CFDI_FUNCTIONS_PKG.GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
                                                             PPA.DATE_EARNED,
@@ -461,16 +464,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     APPS.PAC_CFDI_FUNCTIONS_PKG.GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)               AS  NOM_DESCRI,  
                      NVL((SELECT DISTINCT 
                                  (CASE WHEN PAPF.EMPLOYEE_NUMBER = 13 OR PAPF.EMPLOYEE_NUMBER = 24 THEN
-                                        'TRANSFERENCIA ELECTRONICA'
+                                        '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
                                        WHEN PCS.CONSOLIDATION_SET_NAME = 'FINIQUITOS' THEN
-                                        'CHEQUE'
+                                        '02-CHEQUE' --'CHEQUE'
                                        WHEN POPM.ORG_PAYMENT_METHOD_NAME LIKE '%EFECTIVO%' THEN
-                                        'EFECTIVO'
+                                        '01-EFECTIVO' --'EFECTIVO'
                                        WHEN (POPM.ORG_PAYMENT_METHOD_NAME LIKE '%BANCOMER%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%BANORTE%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%HSBC%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%INVERLAT%') THEN
-                                        'TRANSFERENCIA ELECTRONICA'
+                                        '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
                                        
                                   END)
                             FROM PER_ALL_ASSIGNMENTS_F          PAA,
@@ -485,7 +488,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                               AND POPM.ORG_PAYMENT_METHOD_NAME NOT LIKE '%EFECTIVALE%'
                               AND POPM.ORG_PAYMENT_METHOD_NAME NOT LIKE '%PENSIONES%')
                               AND ROWNUM = 1
-                                ), 'EFECTIVO')                                                      AS  METPAG,
+                                ), '01')                                                            AS  METPAG,
                     PPF.PAYROLL_ID,
                     PAAF.ASSIGNMENT_ID,
                     PPA.PAYROLL_ACTION_ID,
@@ -757,7 +760,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             UTL_FILE.PUT_LINE(var_file, 'MAIL    ' || DETAIL(rowIndex).MAIL);
                         END IF;
                         UTL_FILE.PUT_LINE(var_file, 'FORPAG  PAGO EN UNA SOLA EXCIBICION');
-                        UTL_FILE.PUT_LINE(var_file, 'METPAG  ' || DETAIL(rowIndex).METPAG);
+                        IF DETAIL(rowIndex).GROCERIES_VALUE = 0 THEN
+                            UTL_FILE.PUT_LINE(var_file, 'METPAG  ' || DETAIL(rowIndex).METPAG);
+                        ELSIF DETAIL(rowIndex).GROCERIES_VALUE > 0 THEN
+                            UTL_FILE.PUT_LINE(var_file, 'METPAG  ' || DETAIL(rowIndex).METPAG || ', 05-MONEDERO E');
+                        END IF;
                         UTL_FILE.PUT_LINE(var_file, 'LUGEXP  TEHUACAN'); 
                         UTL_FILE.PUT_LINE(var_file, 'SUBTBR  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'ISRRET  ' || TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
