@@ -347,6 +347,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
               ,x_Registro_Base_Sig            OUT VARCHAR2
               ,x_Fecha_Minima_Vac             OUT DATE
               ,x_Supervisor_Id                OUT NUMBER
+              ,QUERY_FLAG                  IN     VARCHAR2
              ) IS
     --
     CURSOR c_Asignaciones (p_Person_Id     IN NUMBER) IS
@@ -471,20 +472,37 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
       ELSE
         --
         BEGIN
-          SELECT NVL(SALDO_DIAS, 0)
-            INTO x_Dias_Actual
-            FROM XXCALV_VAC_EVENTOS
-           WHERE 1 = 1
-             AND PERSON_ID         = p_Person_Id
-             AND ID_TIPO_EVENTO    = 1       -- N¿mero de dÌas de saldo se tiene en este registro 
-             AND ANIO_ANTIGUEDAD   = p_Antiguedad_Act
-             AND TO_DATE(CREATION_DATE, 'DD/MM/RRRR') > TO_DATE('02/09/2016', 'DD/MM/RRRR');
+          /*******************************************************************************/
+          /*****            MODIFICACIÓN        05-SEPTIEMBRE-2016                    ****/
+          /*******************************************************************************/
+          IF QUERY_FLAG = 'Q' THEN 
+              SELECT NVL(SALDO_DIAS, 0)
+                INTO x_Dias_Actual
+                FROM XXCALV_VAC_EVENTOS
+               WHERE 1 = 1
+                 AND PERSON_ID         = p_Person_Id
+                 AND ID_TIPO_EVENTO    = 1       -- N¿mero de dÌas de saldo se tiene en este registro 
+                 AND ANIO_ANTIGUEDAD   = p_Antiguedad_Act;
+          ELSIF QUERY_FLAG = 'C' THEN
+             SELECT NVL(SALDO_DIAS, 0)
+               INTO x_Dias_Actual
+               FROM XXCALV_VAC_EVENTOS
+              WHERE 1 = 1
+                AND PERSON_ID         = p_Person_Id
+                AND ID_TIPO_EVENTO    = 1       -- N¿mero de dÌas de saldo se tiene en este registro 
+                AND ANIO_ANTIGUEDAD   = p_Antiguedad_Act
+                AND TO_DATE(CREATION_DATE, 'DD/MM/RRRR') > TO_DATE('05/09/2016', 'DD/MM/RRRR');
+          END IF;
+          
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'x_Dias_Actual : ' || x_Dias_Actual);
+             
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             x_Dias_Actual := NULL;
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Antigüedad : ' || p_Antiguedad_Act);
             OPEN  c_Dias (v_Tipo_Nomina, p_Antiguedad_Act);
             FETCH c_Dias INTO x_Dias_Actual;
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'x_Dias_Actual : ' || x_Dias_Actual);
             IF c_Dias%NOTFOUND THEN
               x_Dias_Actual := NULL;
             END IF;
@@ -502,6 +520,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
              AND PERSON_ID         = p_Person_Id
              AND ID_TIPO_EVENTO    = 1       -- N¿mero de dÌas de saldo se tiene en este registro 
              AND ANIO_ANTIGUEDAD   = p_Antiguedad_Sig;
+             FND_FILE.PUT_LINE(FND_FILE.LOG, 'x_Dias_Siguiente : ' || x_Dias_Siguiente);
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             IF p_Valida_Informativo = 'S' THEN
@@ -525,6 +544,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
               x_Registro_Base_Sig := 'S';
               --
             END IF;
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'x_Dias_Siguiente : ' || x_Dias_Siguiente);
             --
           WHEN OTHERS THEN
             x_Dias_Siguiente := NULL;
@@ -686,6 +706,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
               ,x_Registro_Base_Sig   => x_Registro_Base_Sig
               ,x_Fecha_Minima_Vac    => x_Fecha_Minima_Vac
               ,x_Supervisor_Id       => x_Supervisor_Id
+              ,QUERY_FLAG            => 'Q'
              );
 
       IF retcode = 2 THEN
@@ -781,6 +802,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
          SET SALDO_DIAS         = NVL2(p_Dias, v_Nuevo_Saldo, SALDO_DIAS)
        WHERE 1 = 1
          AND ROWID = v_Saldo.ROW_ID;
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'Actualización de saldo : ' ||  p_Dias || v_Nuevo_Saldo || ' PERSON_ID : ' || p_Person_Id);
       EXIT;
     END LOOP;
     --
@@ -1797,9 +1819,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
     FETCH c_Eventos INTO v_Reg_Eventos;
     IF c_Eventos%NOTFOUND THEN
       CLOSE c_Eventos;
-      errbuf  := 'No se encontrÛ el registro de saldo para la antiguedad: ' || p_Anio_Antiguedad;
+      errbuf  := 'No se encontro el registro de saldo para la antiguedad: ' || p_Anio_Antiguedad;
       XXSTO_TOOLS_PKG.genera_salida(errbuf, 'B');
-      retcode := 2;
       RETURN;
     END IF;
     CLOSE c_Eventos;
@@ -2547,6 +2568,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
     v_Total_Grabados          NUMBER;
     v_Total_Errores           NUMBER;
     v_Contar                  VARCHAR2(2);
+    v_registros_borrados      NUMBER;
+    v_correccion              NUMBER;
     --
   BEGIN
     --
@@ -2711,7 +2734,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                                    SYSDATE,
                                    FND_GLOBAL.USER_ID,
                                    'POR BAJA');
-            
+                                   
     END LOOP;
     
     FOR v_Personas IN c_Personas(p_person_id) LOOP
@@ -2766,12 +2789,34 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                     ,x_Registro_Base_Sig   => v_Registro_Base_Sig
                     ,x_Fecha_Minima_Vac    => v_Fecha_Minima_Vac
                     ,x_Supervisor_Id       => v_Supervisor_Id
+                    ,QUERY_FLAG            => 'C'
                    );
+             FND_FILE.PUT_LINE(FND_FILE.LOG, 'Dias Actuales Calculados : ' || v_Dias_Asignados_Act ||
+                                             'Dias Siguientes Calculados : ' || v_Dias_Asignados_Sig);
           END IF;
           --
           IF v_retcode <> 2 AND NVL(v_Dias_Asignados_Act, 0) > 0 THEN
             IF NVL(v_Registro_Base_Act, 'N') = 'S' THEN
-              IF  v_Personas.FECHA_CONTROL_VACACIONES IS NULL  THEN     -- Solo cuando el actual no habÌa sido creado previamente
+              /*************************************************************************/
+              /*            IRVIN           09 SEPTIEMBRE 2016                      ****/
+              /*************************************************************************/
+              v_registros_borrados := 0;
+              v_correccion := 0;
+              
+              DELETE XXCALV_VAC_EVENTOS
+               WHERE 1 = 1
+                 AND PERSON_ID         = v_Personas.person_id
+                 AND ID_TIPO_EVENTO    = 1       -- N¿mero de dÌas de saldo se tiene en este registro 
+                 AND ANIO_ANTIGUEDAD   = v_Personas.ANTIGUEDAD_NUE;
+                 
+              v_registros_borrados := sql%ROWCOUNT;
+              
+              IF v_registros_borrados > 0 THEN
+                v_correccion := 1;
+              END IF;
+              /*************************************************************************/
+            
+              IF  v_Personas.FECHA_CONTROL_VACACIONES IS NULL OR v_correccion = 1 THEN     -- Solo cuando el actual no habÌa sido creado previamente
                 --
                 g_xxcalv_vac_eventos                               := NULL;
                 g_xxcalv_vac_eventos.ID_TIPO_EVENTO                := 1;
@@ -2792,6 +2837,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
                 g_xxcalv_vac_eventos.CREATED_BY                    := g_User_Id;
                 g_xxcalv_vac_eventos.LAST_UPDATE_DATE              := SYSDATE;
                 g_xxcalv_vac_eventos.LAST_UPDATE_BY                := g_User_Id;
+                --
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Dias Actuales Registrados : ' || v_Dias_Asignados_Act);
                 --
                 Inserta_Registro_Historia_Enc
                    ( errbuf                => v_errbuf
@@ -2839,6 +2886,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_Control_de_Vacaciones IS
               g_xxcalv_vac_eventos.CREATED_BY                    := g_User_Id;
               g_xxcalv_vac_eventos.LAST_UPDATE_DATE              := SYSDATE;
               g_xxcalv_vac_eventos.LAST_UPDATE_BY                := g_User_Id;
+              --
+              FND_FILE.PUT_LINE(FND_FILE.LOG, 'Dias Siguientes Registrados : ' || v_Dias_Asignados_Sig);
               --
               Inserta_Registro_Historia_Enc
                  ( errbuf                => v_errbuf
