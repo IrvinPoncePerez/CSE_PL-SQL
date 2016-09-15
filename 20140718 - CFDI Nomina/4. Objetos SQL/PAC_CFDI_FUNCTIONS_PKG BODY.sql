@@ -50,7 +50,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P080_FONDO AHORRO TR ACUM',
                                               'P017_PRIMA DE ANTIGUEDAD',
                                               'P032_SUBSIDIO_PARA_EMPLEO',
-                                              'P047_ISPT ANUAL A FAVOR')
+                                              'P047_ISPT ANUAL A FAVOR',
+                                              'P010 AYUDA DE ALIMENTOS')
                    AND PIVF.UOM = 'M'
                    AND PIVF.NAME = 'Pay Value'
                    AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
@@ -225,7 +226,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                             'P080_FONDO AHORRO TR ACUM',
                                             'P017_PRIMA DE ANTIGUEDAD',
                                             'P032_SUBSIDIO_PARA_EMPLEO',
-                                            'P047_ISPT ANUAL A FAVOR'))
+                                            'P047_ISPT ANUAL A FAVOR',
+                                            'P010 AYUDA DE ALIMENTOS'))
            AND (PIVF.NAME = 'ISR Subject')
            AND PIVF.UOM = 'M'
            AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
@@ -286,7 +288,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P080_FONDO AHORRO TR ACUM',
                                               'P017_PRIMA DE ANTIGUEDAD',
                                               'P032_SUBSIDIO_PARA_EMPLEO',
-                                              'P047_ISPT ANUAL A FAVOR')
+                                              'P047_ISPT ANUAL A FAVOR',
+                                              'P010 AYUDA DE ALIMENTOS')
                    AND PIVF.UOM = 'M'
                    AND PIVF.NAME = 'Pay Value'
                    AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
@@ -409,9 +412,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                       WHERE PA.PERSON_ID = PAPF.PERSON_ID
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
-                    SUM(NVL(APPS.PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0')) AS  SUBTBR,     
-                    SUM(NVL(APPS.PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0')) AS  ISRRET,
-                    SUM(NVL(APPS.PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0')) AS  MONDET,  
+                    SUM(NVL(GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,     
+                    SUM(NVL(GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
+                    SUM(NVL(GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
                     (CASE
@@ -433,7 +436,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      END)                                                                           AS  NOM_FECINI,
                     PTP.END_DATE                                                                    AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(APPS.PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0')) AS  NOM_DIAPAG,
+                    MAX(NVL(GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
@@ -446,22 +449,22 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      END)                                                                           AS  NOM_FORPAG,
                     PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
                     APPS.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)               AS  NOM_REGPAT,
-                    MAX(NVL(APPS.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,
-                                                              'Integrated Daily Wage',
-                                                              'Pay Value'), '0'))                   AS  NOM_SDI,
-                    MAX(NVL(APPS.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,
-                                                                'P001_SUELDO NORMAL',
-                                                                'Sueldo Diario'), '0'))             AS  NOM_SALBASE, 
+                    MAX(NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,
+                                            'Integrated Daily Wage',
+                                            'Pay Value'), '0'))                                     AS  NOM_SDI,
                     MAX(NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,
-                                                            'P039_DESPENSA',
-                                                            'Pay Value'), '0'))                     AS  GROCERIES_VALUE,
+                                              'P001_SUELDO NORMAL',
+                                              'Sueldo Diario'), '0'))                               AS  NOM_SALBASE, 
+                    MAX(NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,
+                                              'P039_DESPENSA',
+                                              'Pay Value'), '0'))                                   AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
-                    MAX(NVL(APPS.PAC_CFDI_FUNCTIONS_PKG.GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
-                                                            PPA.DATE_EARNED,
-                                                            PAA.TAX_UNIT_ID), '0'))                  AS  NOM_FAHOACUM,
-                    SUM(NVL(APPS.PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  NOM_PER_TOTGRA,
-                    SUM(NVL(APPS.PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  NOM_PER_TOTEXE,  
-                    APPS.PAC_CFDI_FUNCTIONS_PKG.GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)               AS  NOM_DESCRI,  
+                    MAX(NVL(GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
+                                         PPA.DATE_EARNED,
+                                         PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
+                    SUM(NVL(GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
+                    SUM(NVL(GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
+                    GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,  
                      NVL((SELECT DISTINCT 
                                  (CASE WHEN PAPF.EMPLOYEE_NUMBER = 13 OR PAPF.EMPLOYEE_NUMBER = 24 THEN
                                         '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
@@ -931,7 +934,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                                                   'P080_FONDO AHORRO TR ACUM',
                                                                                   'P017_PRIMA DE ANTIGUEDAD',
                                                                                   'P032_SUBSIDIO_PARA_EMPLEO',
-                                                                                  'P047_ISPT ANUAL A FAVOR')
+                                                                                  'P047_ISPT ANUAL A FAVOR',
+                                                                                  'P010 AYUDA DE ALIMENTOS')
                                                        AND PIVF.UOM = 'M'
                                                        AND PIVF.NAME = 'Pay Value'
                                                        AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
