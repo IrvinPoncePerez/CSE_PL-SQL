@@ -55,7 +55,8 @@ IS
                    SUM(VACACIONES)           AS VACACIONES,        
                    SUM(PRIMA_VACACIONAL)     AS PRIMA_VACACIONAL,   
                    SUM(PRIMA_VACACIONAL_EXE) AS PRIMA_VACACIONAL_EXE,
-                   SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA,  
+                   SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA, 
+                   SUM(AYUDA_ALIMENTOS)      AS AYUDA_ALIMENTOS, 
                    SUM(PREMIO_ASISTENCIA_EXE) AS PREMIO_ASISTENCIA_EXE,
                    SUM(COMISIONES)           AS COMISIONES,          
                    SUM(SUBSIDIO_INCAPACIDAD) AS SUBSIDIO_INCAPACIDAD,
@@ -99,6 +100,7 @@ IS
                        SUM(VACACIONES)           +
                        SUM(PRIMA_VACACIONAL)     +
                        SUM(PREMIO_ASISTENCIA)    +
+                       SUM(AYUDA_ALIMENTOS)      +
                        SUM(COMISIONES)           +
                        SUM(SUBSIDIO_INCAPACIDAD) +
                        SUM(AGUINALDO)            +
@@ -196,6 +198,7 @@ IS
                        SUM(VACACIONES)           +
                        SUM(PRIMA_VACACIONAL)     +
                        SUM(PREMIO_ASISTENCIA)    +
+                       SUM(AYUDA_ALIMENTOS)      +
                        SUM(COMISIONES)           +
                        SUM(SUBSIDIO_INCAPACIDAD) +
                        SUM(AGUINALDO)            +
@@ -264,6 +267,7 @@ IS
                       SUM(VACACIONES)           +
                       SUM(PRIMA_VACACIONAL)     +
                       SUM(PREMIO_ASISTENCIA)    +
+                      SUM(AYUDA_ALIMENTOS)      +
                       SUM(COMISIONES)           +
                       SUM(SUBSIDIO_INCAPACIDAD) +
                       SUM(AGUINALDO)            +
@@ -294,6 +298,7 @@ IS
                         SUM(VACACIONES)           +
                         SUM(PRIMA_VACACIONAL)     +
                         SUM(PREMIO_ASISTENCIA)    +
+                        SUM(AYUDA_ALIMENTOS)      +
                         SUM(COMISIONES)           +
                         SUM(SUBSIDIO_INCAPACIDAD) +
                         SUM(AGUINALDO)            +
@@ -376,6 +381,7 @@ IS
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P006_PRIMA VACACIONAL',    'ISR Exempt'),  '0')    AS  PRIMA_VACACIONAL_EXE,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P007_PREMIO ASISTENCIA',   'Pay Value'),   '0')    AS  PREMIO_ASISTENCIA,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EXEMPT_VALUE(PAA.ASSIGNMENT_ACTION_ID,     'P007_PREMIO ASISTENCIA',   'Pay Value',    'Tope'), '0')   AS  PREMIO_ASISTENCIA_EXE,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P010 AYUDA DE ALIMENTOS',  'Pay Value'),   '0')    AS  AYUDA_ALIMENTOS,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P009_COMISIONES',          'Pay Value'),   '0')    AS  COMISIONES,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P012_SUBSIDIO INCAPACIDAD','Pay Value'),   '0')    AS  SUBSIDIO_INCAPACIDAD,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P011_AGUINALDO',           'Pay Value'),   '0')    AS  AGUINALDO,
@@ -597,6 +603,7 @@ IS
                        11;       --Numero de Nomina
 
 
+
                          
                    
     TYPE    DETAILS IS TABLE OF DETAIL_LIST%ROWTYPE INDEX BY PLS_INTEGER;
@@ -707,6 +714,7 @@ BEGIN
                     'PRIMA VACACIONAL EXCENTA ISR,' ||
                     'PREMIO ASISTENCIA,'        ||
                     'PREMIO ASISTENCIA EXCENTA IMSS,' ||
+                    'AYUDA DE ALIMENTOS,'       ||
                     'COMISIONES,'               ||
                     'SUBSIDIO INCAPACIDAD,'     ||
                     'AGUINALDO,'                ||
@@ -852,6 +860,7 @@ BEGIN
                                DETAIL(rowIndex).PRIMA_VACACIONAL_EXE    || ',' ||
                                DETAIL(rowIndex).PREMIO_ASISTENCIA       || ',' ||
                                DETAIL(rowIndex).PREMIO_ASISTENCIA_EXE   || ',' ||
+                               DETAIL(rowIndex).AYUDA_ALIMENTOS         || ',' ||
                                DETAIL(rowIndex).COMISIONES              || ',' ||
                                DETAIL(rowIndex).SUBSIDIO_INCAPACIDAD    || ',' ||
                                DETAIL(rowIndex).AGUINALDO               || ',' ||

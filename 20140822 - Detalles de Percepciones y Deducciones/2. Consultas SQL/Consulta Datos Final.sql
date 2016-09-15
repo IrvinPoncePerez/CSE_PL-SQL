@@ -33,7 +33,8 @@
                    SUM(VACACIONES)           AS VACACIONES,        
                    SUM(PRIMA_VACACIONAL)     AS PRIMA_VACACIONAL,   
                    SUM(PRIMA_VACACIONAL_EXE) AS PRIMA_VACACIONAL_EXE,
-                   SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA,  
+                   SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA, 
+                   SUM(AYUDA_ALIMENTOS)      AS AYUDA_ALIMENTOS, 
                    SUM(PREMIO_ASISTENCIA_EXE) AS PREMIO_ASISTENCIA_EXE,
                    SUM(COMISIONES)           AS COMISIONES,          
                    SUM(SUBSIDIO_INCAPACIDAD) AS SUBSIDIO_INCAPACIDAD,
@@ -77,6 +78,7 @@
                        SUM(VACACIONES)           +
                        SUM(PRIMA_VACACIONAL)     +
                        SUM(PREMIO_ASISTENCIA)    +
+                       SUM(AYUDA_ALIMENTOS)      +
                        SUM(COMISIONES)           +
                        SUM(SUBSIDIO_INCAPACIDAD) +
                        SUM(AGUINALDO)            +
@@ -174,6 +176,7 @@
                        SUM(VACACIONES)           +
                        SUM(PRIMA_VACACIONAL)     +
                        SUM(PREMIO_ASISTENCIA)    +
+                       SUM(AYUDA_ALIMENTOS)      +
                        SUM(COMISIONES)           +
                        SUM(SUBSIDIO_INCAPACIDAD) +
                        SUM(AGUINALDO)            +
@@ -242,6 +245,7 @@
                       SUM(VACACIONES)           +
                       SUM(PRIMA_VACACIONAL)     +
                       SUM(PREMIO_ASISTENCIA)    +
+                      SUM(AYUDA_ALIMENTOS)      +
                       SUM(COMISIONES)           +
                       SUM(SUBSIDIO_INCAPACIDAD) +
                       SUM(AGUINALDO)            +
@@ -272,6 +276,7 @@
                         SUM(VACACIONES)           +
                         SUM(PRIMA_VACACIONAL)     +
                         SUM(PREMIO_ASISTENCIA)    +
+                        SUM(AYUDA_ALIMENTOS)      +
                         SUM(COMISIONES)           +
                         SUM(SUBSIDIO_INCAPACIDAD) +
                         SUM(AGUINALDO)            +
@@ -354,6 +359,7 @@
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P006_PRIMA VACACIONAL',    'ISR Exempt'),  '0')    AS  PRIMA_VACACIONAL_EXE,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P007_PREMIO ASISTENCIA',   'Pay Value'),   '0')    AS  PREMIO_ASISTENCIA,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EXEMPT_VALUE(PAA.ASSIGNMENT_ACTION_ID,     'P007_PREMIO ASISTENCIA',   'Pay Value',    'Tope'), '0')   AS  PREMIO_ASISTENCIA_EXE,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P010 AYUDA DE ALIMENTOS',  'Pay Value'),   '0')    AS  AYUDA_ALIMENTOS,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P009_COMISIONES',          'Pay Value'),   '0')    AS  COMISIONES,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P012_SUBSIDIO INCAPACIDAD','Pay Value'),   '0')    AS  SUBSIDIO_INCAPACIDAD,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P011_AGUINALDO',           'Pay Value'),   '0')    AS  AGUINALDO,
@@ -379,7 +385,10 @@
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P037_VACACIONES P',        'Pay Value'),   '0')    AS  VACACIONES_PAGADAS,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P038_BONO EXTRAORD',       'Pay Value'),   '0')    AS  BONO_EXTRAORDINARIO,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P039_DESPENSA',            'Pay Value'),   '0')    AS  DESPENSA,
-                           NVL(PAC_RESULT_VALUES_PKG.GET_DESPENSA_EXEMPT(PAA.ASSIGNMENT_ACTION_ID, PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID, 'P039_DESPENSA', 'Pay Value'), PPA.EFFECTIVE_DATE, PPF.PERIOD_TYPE), '0')    AS  DESPENSA_EXE,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_DESPENSA_EXEMPT(PAA.ASSIGNMENT_ACTION_ID, 
+                                                                         PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID, 
+                                                                                                                 'P039_DESPENSA',            
+                                                                                                                 'Pay Value'), PPA.EFFECTIVE_DATE, PPF.PERIOD_TYPE),   '0')    AS  DESPENSA_EXE,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P043_FONDO AHORRO EMP',    'Pay Value'),   '0')    AS  FONDO_AHO_EMP,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P045_PERMISO X PATERNIDAD','Pay Value'),   '0')    AS  PERMISO_PATERNIDAD,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P046_BONO CUATRIMESTRAL',  'Pay Value'),   '0')    AS  BONO_CUATRIMESTRAL,
@@ -539,7 +548,7 @@
                AND PAAF.ASSIGNMENT_ID = DETAIL.ASSIGNMENT_ID
                AND PAAF.PAYROLL_ID = DETAIL.PAYROLL_ID
                AND DETAIL.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
-               AND PAAF.PERSON_ID = NVL(:P_PERSON_ID, PAAF.PERSON_ID) 
+--               AND PAAF.PERSON_ID = NVL(P_PERSON_ID, PAAF.PERSON_ID) 
              GROUP BY  PAAF.ASS_ATTRIBUTE15,
                        DETAIL.ASSIGNMENT_ID,
                        CLAVE_NOMINA,
