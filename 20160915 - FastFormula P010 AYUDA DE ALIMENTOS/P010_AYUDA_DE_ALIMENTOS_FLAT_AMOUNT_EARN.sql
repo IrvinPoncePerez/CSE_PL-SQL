@@ -34,12 +34,14 @@ DEFAULT FOR ASG_HOURS IS 40
 DEFAULT FOR PAY_PROC_PERIOD_START_DATE IS '0001/01/01 00:00:00' (DATE)
 DEFAULT FOR PAY_PROC_PERIOD_END_DATE IS '0001/01/02 00:00:00' (DATE)
 DEFAULT FOR ASG_FREQ_CODE IS 'W'
+DEFAULT FOR Finiquito IS 0
 /* Assume that an employee works for 8 hours per day, 5 days a week.*/
 DEFAULT FOR Work_Schedule IS '1 Schedule: 8-8-8-8-8-0-0'
 
 /* Inputs  */
 
-INPUTS ARE        Amount
+INPUTS ARE        Amount,
+                  Finiquito
 
 /* =====Local variables =====  */
 local_tax_type = 'ISR'
@@ -50,32 +52,18 @@ local_daily_salary = 0
 local_gross_earnings = GROSS_EARNINGS_ASG_RUN
 local_ytd_gross_earnings = GROSS_EARNINGS_ASG_YTD
 
-flat_amount = Amount
+IF Finiquito WAS NOT DEFAULTED THEN
+(
+flat_amount = Finiquito
+)
+Else
+  (
+  IF Finiquito WAS DEFAULTED THEN
+    (
+    flat_amount = Amount
+    )
+  ) 
 
-/* Compute daily salary */
-/*
-IF ASG_SALARY WAS DEFAULTED THEN
-(
-  local_daily_salary = FIXED_EARNINGS_ASG_GRE_RUN / Days_in_Pay_Period()
-)
-ELSE IF ASG_SALARY_BASIS = 'DAILY' THEN
-(
-  local_daily_salary = ASG_SALARY
-)
-ELSE
-(
-  local_daily_salary = Convert_Period_Type(
-                       Work_Schedule,
-                       ASG_HOURS,
-                       ASG_SALARY,
-                       ASG_SALARY_BASIS,
-                       'DAILY',
-                       PAY_PROC_PERIOD_START_DATE,
-                       PAY_PROC_PERIOD_END_DATE,
-                       ASG_FREQ_CODE)
-)
-*/
-flat_amount = Amount
 
 /* ======ISR Subject calculation begins ======= */
     isr_subject = get_subject_earnings_ann
