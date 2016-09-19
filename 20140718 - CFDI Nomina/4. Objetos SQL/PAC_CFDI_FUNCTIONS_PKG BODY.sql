@@ -1,5 +1,6 @@
 CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
 
+    PP_CONSOLIDATION_ID     NUMBER  := 0;
     /*
     Suma de todas las percepciones suma de gravado mas excento
     */
@@ -30,6 +31,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                       FROM FND_LOOKUP_VALUES 
                                                      WHERE LOOKUP_TYPE = 'XX_PERCEPCIONES_INFORMATIVAS'
                                                        AND LANGUAGE = USERENV('LANG')))
+                   AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                                    WHEN PP_CONSOLIDATION_ID = 65 THEN 'P091_FONDO AHORRO E ACUM'
+                                                    ELSE 'TODOS'
+                                                 END)
                    AND PIVF.UOM = 'M'
                    AND (PIVF.NAME = 'ISR Subject' OR PIVF.NAME = 'ISR Exempt')
                    AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
@@ -52,6 +57,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P032_SUBSIDIO_PARA_EMPLEO',
                                               'P047_ISPT ANUAL A FAVOR',
                                               'P010 AYUDA DE ALIMENTOS')
+                   AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                                    WHEN PP_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
+                                                    ELSE 'TODOS'
+                                                 END)
                    AND PIVF.UOM = 'M'
                    AND PIVF.NAME = 'Pay Value'
                    AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
@@ -228,6 +237,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                             'P032_SUBSIDIO_PARA_EMPLEO',
                                             'P047_ISPT ANUAL A FAVOR',
                                             'P010 AYUDA DE ALIMENTOS'))
+           AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                            WHEN PP_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
+                                            ELSE 'TODOS'
+                                         END)
            AND (PIVF.NAME = 'ISR Subject')
            AND PIVF.UOM = 'M'
            AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
@@ -268,6 +281,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                       FROM FND_LOOKUP_VALUES 
                                                      WHERE LOOKUP_TYPE = 'XX_PERCEPCIONES_INFORMATIVAS'
                                                        AND LANGUAGE = USERENV('LANG'))))
+                   AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                                    WHEN PP_CONSOLIDATION_ID = 65 THEN 'P091_FONDO AHORRO E ACUM'
+                                                    ELSE 'TODOS'
+                                                 END)
                    AND PIVF.UOM = 'M'
                    AND PIVF.NAME = 'ISR Exempt'
                    AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
@@ -290,6 +307,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P032_SUBSIDIO_PARA_EMPLEO',
                                               'P047_ISPT ANUAL A FAVOR',
                                               'P010 AYUDA DE ALIMENTOS')
+                   AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                            WHEN PP_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
+                                            ELSE 'TODOS'
+                                         END)
                    AND PIVF.UOM = 'M'
                    AND PIVF.NAME = 'Pay Value'
                    AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
@@ -611,6 +632,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
               FROM PAYBV_CONSOLIDATION_SET PCS
              WHERE PCS.CONSOLIDATION_SET_ID = P_CONSOLIDATION_ID;
              
+            PP_CONSOLIDATION_ID := P_CONSOLIDATION_ID;
         
             var_file_name := 'CFDI_NOMINA_';
             
