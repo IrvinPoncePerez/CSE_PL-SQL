@@ -55,8 +55,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P080_FONDO AHORRO TR ACUM',
                                               'P017_PRIMA DE ANTIGUEDAD',
                                               'P032_SUBSIDIO_PARA_EMPLEO',
-                                              'P047_ISPT ANUAL A FAVOR',
-                                              'P010 AYUDA DE ALIMENTOS')
+                                              'P047_ISPT ANUAL A FAVOR')
                    AND PETF.ELEMENT_NAME NOT IN (CASE 
                                                     WHEN PP_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
                                                     ELSE 'TODOS'
@@ -235,8 +234,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                             'P080_FONDO AHORRO TR ACUM',
                                             'P017_PRIMA DE ANTIGUEDAD',
                                             'P032_SUBSIDIO_PARA_EMPLEO',
-                                            'P047_ISPT ANUAL A FAVOR',
-                                            'P010 AYUDA DE ALIMENTOS'))
+                                            'P047_ISPT ANUAL A FAVOR'))
            AND PETF.ELEMENT_NAME NOT IN (CASE 
                                             WHEN PP_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
                                             ELSE 'TODOS'
@@ -305,8 +303,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P080_FONDO AHORRO TR ACUM',
                                               'P017_PRIMA DE ANTIGUEDAD',
                                               'P032_SUBSIDIO_PARA_EMPLEO',
-                                              'P047_ISPT ANUAL A FAVOR',
-                                              'P010 AYUDA DE ALIMENTOS')
+                                              'P047_ISPT ANUAL A FAVOR')
                    AND PETF.ELEMENT_NAME NOT IN (CASE 
                                             WHEN PP_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
                                             ELSE 'TODOS'
@@ -960,8 +957,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                                                   'P080_FONDO AHORRO TR ACUM',
                                                                                   'P017_PRIMA DE ANTIGUEDAD',
                                                                                   'P032_SUBSIDIO_PARA_EMPLEO',
-                                                                                  'P047_ISPT ANUAL A FAVOR',
-                                                                                  'P010 AYUDA DE ALIMENTOS')
+                                                                                  'P047_ISPT ANUAL A FAVOR')
                                                        AND PETF.ELEMENT_NAME NOT IN (CASE 
                                                                                         WHEN P_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
                                                                                         ELSE 'TODOS'
