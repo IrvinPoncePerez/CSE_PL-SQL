@@ -638,7 +638,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
          WHERE 1 = 1
            AND CFDI.FILE_NAME = var_file_name;
         
-        IF var_validate = 0 THEN
+        IF var_validate = 0 OR var_consolidation_name <> 'FONDO_DE_AHORRO' THEN
         
             INSERT
               INTO PAC_CFDI_NOMINA_TB (USER_ID,
@@ -820,7 +820,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         AND PAA.PAYROLL_ACTION_ID = P_PAYROLL_ACTION_ID; 
                         
                             CURSOR  DETAIL_PERCEPCION (P_ASSIGNMENT_ACTION_ID   NUMBER) IS
-                                                                  SELECT NOM_PER_TIP,
+                                     SELECT NOM_PER_TIP,
                                             NOM_PER_CVE,
                                             NOM_PER_DESCRI,
                                             NOM_PER_IMPGRA,
@@ -884,6 +884,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                                                           FROM FND_LOOKUP_VALUES 
                                                                                          WHERE LOOKUP_TYPE = 'XX_PERCEPCIONES_INFORMATIVAS'
                                                                                            AND LANGUAGE = USERENV('LANG')))
+                                                       AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                                                                        WHEN P_CONSOLIDATION_ID = 65 THEN 'P091_FONDO AHORRO E ACUM'
+                                                                                        ELSE 'TODOS'
+                                                                                     END)
                                                        AND PIVF.UOM = 'M'
                                                        AND (PIVF.NAME = 'ISR Subject' OR PIVF.NAME = 'ISR Exempt')
                                                        AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
@@ -936,6 +940,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                                                   'P032_SUBSIDIO_PARA_EMPLEO',
                                                                                   'P047_ISPT ANUAL A FAVOR',
                                                                                   'P010 AYUDA DE ALIMENTOS')
+                                                       AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                                                                        WHEN P_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
+                                                                                        ELSE 'TODOS'
+                                                                                     END)
                                                        AND PIVF.UOM = 'M'
                                                        AND PIVF.NAME = 'Pay Value'
                                                        AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
