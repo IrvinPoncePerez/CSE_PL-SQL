@@ -69,7 +69,7 @@ Else
     isr_subject = get_subject_earnings_ann
                     (local_tax_type,
                     flat_amount,
-                    P010_AYUDA_DE_ALIMENTOS_ASG_YTD +
+                    P010_AYUDA_DE_ALIMENTOS_ASG_GRE_YTD +
                     flat_amount,
                     local_gross_earnings +
                     flat_amount,
@@ -79,6 +79,11 @@ Else
                     local_dummy_class_name)
     isr_exempt = flat_amount - isr_subject
 /* ======ISR Subject calculation ends ======= */
+
+mesg = 'P010 AYUDA DE ALIMENTOS : ' +
+       ' Pay Value ' + to_char(flat_amount) + 
+       ' isr_subject ' + to_char(isr_subject) +
+       ' isr_exempt ' + to_char(isr_exempt)
 
 soe_ytd = P010_AYUDA_DE_ALIMENTOS_ASG_GRE_YTD
 
