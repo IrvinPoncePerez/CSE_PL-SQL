@@ -79,5 +79,13 @@ CREATE OR REPLACE PACKAGE APPS.PAC_CFDI_FUNCTIONS_PKG AS
         P_MONTH                 NUMBER,
         P_PERIOD_NAME           VARCHAR2);
 
+    PROCEDURE REPORT_CFDI_NOMINA(
+        P_COMPANY_ID            VARCHAR2,
+        P_PERIOD_TYPE           VARCHAR2,
+        P_PAYROLL_ID            NUMBER,
+        P_CONSOLIDATION_ID      NUMBER,
+        P_YEAR                  NUMBER,
+        P_MONTH                 NUMBER,
+        P_PERIOD_NAME           VARCHAR2);
 
 END PAC_CFDI_FUNCTIONS_PKG;
