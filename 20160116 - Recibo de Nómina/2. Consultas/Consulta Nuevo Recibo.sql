@@ -1,5 +1,5 @@
 
---ALTER SESSION SET NLS_LANGUAGE = 'LATIN AMERICAN SPANISH';
+ALTER SESSION SET NLS_LANGUAGE = 'LATIN AMERICAN SPANISH';
 SELECT DISTINCT
        D.COMPANY_NAME,
        D.COMPANY_RFC,
@@ -8,6 +8,7 @@ SELECT DISTINCT
        D.PAYMENT_TYPE_NAME,
        D.EMPLOYEE_NUMBER,
        D.EMPLOYEE_NAME,
+       D.UUID,
        D.EMPLOYEE_RFC,
        D.EMPLOYEE_NSS,
        D.EMPLOYER_REGISTRATION,
@@ -38,8 +39,7 @@ SELECT DISTINCT
        D.PAYMENT_METHOD_GROCERIES,
        D.ORGANIZATION_ID,
        D.PAYROLL_ACTION_ID, 
-       D.ASSIGNMENT_ID,
-       D.ASSIGNMENT_ACTION_ID
+       D.ASSIGNMENT_ID
   FROM ( SELECT DISTINCT
                 UPPER(PAC_HR_PAY_PKG.GET_LOOKUP_MEANING('NOMINAS POR EMPLEADOR LEGAL', 
                                                         :P_COMPANY_ID))                                     AS  COMPANY_NAME,
@@ -57,6 +57,7 @@ SELECT DISTINCT
                       PAPF.PER_INFORMATION1 || ' ' || 
                       PAPF.FIRST_NAME       || ' ' || 
                       PAPF.MIDDLE_NAMES)                                                                    AS  EMPLOYEE_NAME,
+                UUID.UUID                                                                                   AS  UUID,
                 REPLACE(PAPF.PER_INFORMATION2, '-', '')                                                     AS  EMPLOYEE_RFC,
                 TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000')             AS  EMPLOYEE_NSS,   
                 PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)                                AS  EMPLOYER_REGISTRATION,
@@ -115,8 +116,7 @@ SELECT DISTINCT
                    HOUV.ORGANIZATION_ID,
                    ---------------------
                    PAA.PAYROLL_ACTION_ID                                                                    AS  PAYROLL_ACTION_ID, 
-                   PAA.ASSIGNMENT_ID                                                                        AS  ASSIGNMENT_ID,
-                   PAA.ASSIGNMENT_ACTION_ID
+                   PAA.ASSIGNMENT_ID                                                                        AS  ASSIGNMENT_ID
               FROM FND_LOOKUP_VALUES                FLV1,
                    HR_ALL_ORGANIZATION_UNITS        AOU,
                    HR_ORGANIZATION_INFORMATION      OI,
@@ -133,7 +133,8 @@ SELECT DISTINCT
                    PAY_PERSONAL_PAYMENT_METHODS_F   PPPM,
                    PAY_ORG_PAYMENT_METHODS_F        POPM,
                    PAY_PAYMENT_TYPES_TL             PPTV,
-                   HR_SOFT_CODING_KEYFLEX           HSCK
+                   HR_SOFT_CODING_KEYFLEX           HSCK,
+                   XXCALV_UUID_NOM                  UUID
              WHERE 1 = 1
                AND FLV1.LOOKUP_TYPE = 'NOMINAS POR EMPLEADOR LEGAL'
                AND FLV1.LOOKUP_CODE = :P_COMPANY_ID
@@ -174,18 +175,17 @@ SELECT DISTINCT
                AND POPM.ORG_PAYMENT_METHOD_NAME NOT LIKE '%PENSIONES%')
                AND PPTV.LANGUAGE = 'ESA'
                AND HSCK.SOFT_CODING_KEYFLEX_ID = PAAF.SOFT_CODING_KEYFLEX_ID
-               --AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
                AND PTP.END_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
-               AND PTP.END_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE 
---               AND (   PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID) <> 0
---                    OR PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID) <> 0
---                    OR PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID) <> 0)
+               AND PTP.END_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
+               AND UUID.NUMEMPLOYEE = PAPF.EMPLOYEE_NUMBER
+               AND REPLACE(UUID.PERIOD, ' ', '') = (PTP.START_DATE || PTP.END_DATE)
              GROUP BY OI.ORG_INFORMATION2,
                       PTP.PERIOD_TYPE,
                       PTP.PERIOD_NUM, 
                       PPTV.PAYMENT_TYPE_NAME,
                       PAPF.EMPLOYEE_NUMBER,
                       PAPF.LAST_NAME, 
+                      UUID.UUID,
                       PAPF.PER_INFORMATION1, 
                       PAPF.FIRST_NAME, 
                       PAPF.MIDDLE_NAMES,
@@ -211,5 +211,4 @@ SELECT DISTINCT
              ORDER BY HOUV.NAME,
                       TO_NUMBER(PAPF.EMPLOYEE_NUMBER)) D
  WHERE 1 = 1
-   AND D.EMPLOYEE_NAME LIKE '%ELIDIA%'
- ORDER BY ROWNUM
+ ORDER BY ROWNUM;
