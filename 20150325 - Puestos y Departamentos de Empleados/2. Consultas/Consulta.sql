@@ -8,8 +8,10 @@ SELECT DTL.PERIOD_TYPE,
        DTL.EMPLOYEE_CURP,
        DTL.POSITION_NUMBER,
        DTL.POSITION_NAME,
-       DTL.REG_PATRONAL AS  "BREAK",
-       DTL.REG_PATRONAL,
+       PAC_RESULT_VALUES_PKG.GET_EMPLOYEER_REGISTRATION(DTL.EFFECTIVE_START_DATE,
+                                                        DTL.ASSIGNMENT_ID)  AS  "BREAK",
+       PAC_RESULT_VALUES_PKG.GET_EMPLOYEER_REGISTRATION(DTL.EFFECTIVE_START_DATE,
+                                                        DTL.ASSIGNMENT_ID)  AS  "REG_PATRONAL",
        DTL.EFFECTIVE_START_DATE,
        DTL.EFFECTIVE_END_DATE,
        (CASE
@@ -33,10 +35,11 @@ SELECT DTL.PERIOD_TYPE,
                PAPF.NATIONAL_IDENTIFIER                 AS  "EMPLOYEE_CURP",
                PPD.SEGMENT2                             AS  "POSITION_NUMBER",
                PPD.SEGMENT1                             AS  "POSITION_NAME",
-               apps.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)  AS  "REG_PATRONAL",
-               NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE)            AS  "EFFECTIVE_START_DATE",
+               NVL(PPOS.ADJUSTED_SVC_DATE, 
+                   PAPF.ORIGINAL_DATE_OF_HIRE)          AS  "EFFECTIVE_START_DATE",
                PAPF.EFFECTIVE_END_DATE                  AS  "EFFECTIVE_END_DATE",
-               PAPF.PERSON_ID
+               PAPF.PERSON_ID,
+               PAAF.ASSIGNMENT_ID
           FROM PAY_PAYROLLS_F           PPF,
                PER_ALL_ASSIGNMENTS_F    PAAF,
                PER_ALL_PEOPLE_F         PAPF,
@@ -68,8 +71,7 @@ SELECT DTL.PERIOD_TYPE,
            AND PAPF.EMPLOYEE_NUMBER = NVL(:P_EMPLOYEE_NUMBER, PAPF.EMPLOYEE_NUMBER)
            AND PPT.USER_PERSON_TYPE IN ('Employee', 'Empleado')
            AND PAPF.EFFECTIVE_END_DATE >= :CP_START_DATE 
-           AND PAPF.EFFECTIVE_START_DATE <= :CP_END_DATE
-         ORDER BY REG_PATRONAL) DTL
+           AND PAPF.EFFECTIVE_START_DATE <= :CP_END_DATE) DTL
   LEFT JOIN (SELECT PPTU.PERSON_ID                   AS "PERSON_ID",
                     'A'                              AS "TYPE_MOVEMENT",
                     PPTU.EFFECTIVE_START_DATE        AS "EFFECTIVE_DATE"
