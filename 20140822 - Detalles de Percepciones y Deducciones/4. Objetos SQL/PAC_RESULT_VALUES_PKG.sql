@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE PAC_RESULT_VALUES_PKG AS
+CREATE OR REPLACE PACKAGE APPS.PAC_RESULT_VALUES_PKG AS
 
    
     FUNCTION GET_EARNING_VALUE (
@@ -81,6 +81,10 @@ CREATE OR REPLACE PACKAGE PAC_RESULT_VALUES_PKG AS
                                           P_PAYROLL_ID           NUMBER,
                                           P_YEAR                 NUMBER)
       RETURN NUMBER;
+      
+    FUNCTION GET_EMPLOYEER_REGISTRATION(P_EFFECTIVE_DATE        DATE,
+                                        P_ASSIGNMENT_ID         NUMBER)
+      RETURN VARCHAR2;
 
 
 END PAC_RESULT_VALUES_PKG;
