@@ -26,8 +26,8 @@ IS
                PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
                PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PAAF.PERSON_ID)                         AS  RFC,
                PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PAAF.PERSON_ID)                   AS  EFFECTIVE_START_DATE,    
-               PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(DETAIL.ASSIGNMENT_ID)                   AS  REG_PATRONAL,
-               PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, P_END_MONTH, P_YEAR)     AS TYPE_MOVEMENT,
+               REG_PATRONAL                                                                     AS  REG_PATRONAL,
+               PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, P_END_MONTH, P_YEAR)   AS  TYPE_MOVEMENT,
                MAX(SUELDO_DIARIO)        AS SUELDO_DIARIO,
                MAX(SALARIO_DIARIO_INTEGRADO) AS SALARIO_DIARIO_INTEGRADO,            
                SUM(SUELDO_NORMAL)        AS SUELDO_NORMAL,      
@@ -109,6 +109,8 @@ IS
                        EXTRACT(YEAR FROM PTP.END_DATE)                                          AS  ANIO,
                        EXTRACT(MONTH FROM PTP.END_DATE)                                         AS  MES,
                        PTP.PERIOD_NUM                                                           AS  NUM_NOMINA,
+                       PAC_RESULT_VALUES_PKG.GET_EMPLOYEER_REGISTRATION(PPA.DATE_EARNED,
+                                                                        PAA.ASSIGNMENT_ID)      AS  REG_PATRONAL,
                        -----------------------------------------------------------------------------------------
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'I001_SALARIO_DIARIO',      'Pay Value'), '0')    AS  SUELDO_DIARIO,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'Integrated Daily Wage',    'Pay Value'), '0')    AS  SALARIO_DIARIO_INTEGRADO,
@@ -336,7 +338,8 @@ IS
            AND PAAF.PERSON_ID = NVL(P_PERSON_ID, PAAF.PERSON_ID)
          GROUP BY DETAIL.CLAVE_NOMINA,
                   PAAF.PERSON_ID,
-                  DETAIL.ASSIGNMENT_ID
+                  DETAIL.ASSIGNMENT_ID,
+                  DETAIL.REG_PATRONAL
 --                  DETAIL.DATE_EARNED,
 --                  DETAIL.ASSIGNMENT_ACTION_ID,
 --                  DETAIL.CONSOLIDATION_SET_ID,
