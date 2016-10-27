@@ -19,7 +19,8 @@ IS
     var_consolidation_set_name      VARCHAR2(250);
     var_data                        VARCHAR2(30000);
     
-    CURSOR DETAIL_LIST IS
+    CURSOR DETAIL_LIST IS 
+
             SELECT PAAF.ASS_ATTRIBUTE15                                                             AS  EMPRESA,
                    CLAVE_NOMINA,
                    (SELECT HOUV.NAME
@@ -65,7 +66,8 @@ IS
                    SUM(SALARIOS_PENDIENTES)  AS SALARIOS_PENDIENTES, 
                    SUM(RETROACTIVO)          AS RETROACTIVO,         
                    SUM(PREMIO_ANTIGUEDAD)    AS PREMIO_ANTIGUEDAD,   
-                   SUM(DIAS_ESPECIALES)      AS DIAS_ESPECIALES,    
+                   SUM(DIAS_ESPECIALES)      AS DIAS_ESPECIALES,  
+                   SUM(PRESTAMO_NOMINA)      AS PRESTAMO_NOMINA,  
                    SUM(PRIMA_ANTIGUEDAD)     AS PRIMA_ANTIGUEDAD, 
                    SUM(PTU)                  AS PTU,                 
                    SUM(PTU_EXE)              AS PTU_EXE,             
@@ -108,6 +110,7 @@ IS
                        SUM(RETROACTIVO)          +
                        SUM(PREMIO_ANTIGUEDAD)    +
                        SUM(DIAS_ESPECIALES)      +
+                       SUM(PRESTAMO_NOMINA)      +
                        SUM(PRIMA_ANTIGUEDAD)     +
                        SUM(PTU)                  +
                        SUM(PASAJES)              +
@@ -206,6 +209,7 @@ IS
                        SUM(RETROACTIVO)          +
                        SUM(PREMIO_ANTIGUEDAD)    +
                        SUM(DIAS_ESPECIALES)      +
+                       SUM(PRESTAMO_NOMINA)      +
                        SUM(PRIMA_ANTIGUEDAD)     +
                        SUM(PTU)                  +
                        SUM(PASAJES)              +
@@ -392,6 +396,7 @@ IS
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P044_RETROACTIVO',         'Pay Value'),   '0')    AS  RETROACTIVO,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P014_PREMIO ANTIGÜEDAD',   'Pay Value'),   '0')    AS  PREMIO_ANTIGUEDAD,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P015_DIAS ESPECIALES',     'Pay Value'),   '0')    AS  DIAS_ESPECIALES,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P016_Prestamo de Nomina',  'Pay Value'),   '0')    AS  PRESTAMO_NOMINA,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P017_PRIMA DE ANTIGUEDAD', 'Pay Value'),   '0')    AS  PRIMA_ANTIGUEDAD,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'Profit Sharing',           'Pay Value'),   '0')    AS  PTU,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'Profit Sharing',           'ISR Exempt'),  '0')    AS  PTU_EXE,
@@ -726,6 +731,7 @@ BEGIN
                     'RETROACTIVO,'              ||
                     'PREMIO DE ANTIGUEDAD,'     ||
                     'DIAS ESPECIALES,'          ||
+                    'PRESTAMO DE NOMINA,'       ||
                     'PRIMA DE ANTIGUEDAD,'      ||
                     'P.T.U.,'                   ||
                     'P.T.U. EXCENTO ISR,'       ||
@@ -872,6 +878,7 @@ BEGIN
                                DETAIL(rowIndex).RETROACTIVO             || ',' ||
                                DETAIL(rowIndex).PREMIO_ANTIGUEDAD       || ',' ||
                                DETAIL(rowIndex).DIAS_ESPECIALES         || ',' ||
+                               DETAIL(rowIndex).PRESTAMO_NOMINA         || ',' ||
                                DETAIL(rowIndex).PRIMA_ANTIGUEDAD        || ',' ||
                                DETAIL(rowIndex).PTU                     || ',' ||
                                DETAIL(rowIndex).PTU_EXE                 || ',' ||
