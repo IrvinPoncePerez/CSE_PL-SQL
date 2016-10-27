@@ -1,51 +1,51 @@
-CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
+CREATE OR REPLACE PACKAGE APPS.ATET_SAVINGS_BANK_PKG IS
 
 
     FUNCTION    GET_SAVING_BANK_ID
-                  RETURN    NUMBER;
+                  RETURN    ATET_SAVINGS_BANK.SAVING_BANK_ID%TYPE;
       
     FUNCTION    GET_SAVING_BANK_YEAR
-                  RETURN    NUMBER;
+                  RETURN    ATET_SAVINGS_BANK.YEAR%TYPE;
     
     FUNCTION    GET_AVAILABLE_PERIODS(
-                    P_MEMBER_ID                 NUMBER
+                    P_MEMBER_ID                 ATET_SB_MEMBERS.MEMBER_ID%TYPE
                 ) RETURN    NUMBER;
     
     FUNCTION    GET_PERIOD_TYPE(
-                    P_PERSON_ID                 NUMBER
-                ) RETURN    VARCHAR2;
+                    P_PERSON_ID                 ATET_SB_MEMBERS.PERSON_ID%TYPE
+                ) RETURN    PAY_PAYROLLS_F.PERIOD_TYPE%TYPE;
       
     FUNCTION    GET_REGISTRATION_DATE
-                  RETURN    DATE;
+                  RETURN    ATET_SAVINGS_BANK.REGISTRATION_DATE%TYPE;
       
     FUNCTION    GET_PARAMETER_VALUE(
-                    P_SAVING_BANK_ID            NUMBER,
-                    P_PARAMETER_CODE            VARCHAR2
-                ) RETURN    VARCHAR2;
+                    P_SAVING_BANK_ID            ATET_SAVINGS_BANK.SAVING_BANK_ID%TYPE,
+                    P_PARAMETER_CODE            ATET_SB_PARAMETERS.PARAMETER_CODE%TYPE
+                ) RETURN    ATET_SB_PARAMETERS.PARAMETER_VALUE%TYPE;
       
     FUNCTION    IF_MEMBER_EXIST(
-                    P_EMPLOYEE_NUMBER           NUMBER
+                    P_EMPLOYEE_NUMBER           ATET_SB_MEMBERS.EMPLOYEE_NUMBER%TYPE
                 ) RETURN    NUMBER;
       
     FUNCTION    GET_MAX_ASSIGNMENT_ACTION_ID(
-                    P_ASSIGNMENT_ID             NUMBER,
-                    P_PAYROLL_ID                NUMBER
-                ) RETURN    NUMBER;
+                    P_ASSIGNMENT_ID             PAY_ASSIGNMENT_ACTIONS.ASSIGNMENT_ID%TYPE,
+                    P_PAYROLL_ID                PAY_PAYROLL_ACTIONS.PAYROLL_ID%TYPE
+                ) RETURN    PAY_ASSIGNMENT_ACTIONS.ASSIGNMENT_ACTION_ID%TYPE;
         
     FUNCTION    GET_SUBTBR(
-                    P_ASSIGNMENT_ACTION_ID      NUMBER
-                ) RETURN    NUMBER;
+                    P_ASSIGNMENT_ACTION_ID      PAY_RUN_RESULTS.ASSIGNMENT_ACTION_ID%TYPE
+                ) RETURN    PAY_RUN_RESULT_VALUES.RESULT_VALUE%TYPE;
       
     FUNCTION    GET_ISRRET(
-                    P_ASSIGNMENT_ACTION_ID      NUMBER
-                ) RETURN    NUMBER;
+                    P_ASSIGNMENT_ACTION_ID      PAY_RUN_RESULTS.ASSIGNMENT_ACTION_ID%TYPE
+                ) RETURN    PAY_RUN_RESULT_VALUES.RESULT_VALUE%TYPE;
       
     FUNCTION    GET_MONDET(
-                    P_ASSIGNMENT_ACTION_ID      NUMBER
-                ) RETURN    NUMBER;
+                    P_ASSIGNMENT_ACTION_ID      PAY_RUN_RESULTS.ASSIGNMENT_ACTION_ID%TYPE
+                ) RETURN    PAY_RUN_RESULT_VALUES.RESULT_VALUE%TYPE;
       
     FUNCTION    GET_PERSON_TERMINATION_DATE(
-                    P_PERSON_ID                 NUMBER
+                    P_PERSON_ID                 PER_ASSIGNMENTS_F.PERSON_ID%TYPE
                 ) RETURN    VARCHAR2;
       
     FUNCTION    GET_MEMBER_TERMINATION_DATE(
@@ -256,7 +256,6 @@ CREATE OR REPLACE PACKAGE ATET_SAVINGS_BANK_PKG IS
                     P_ERRBUF         OUT NOCOPY VARCHAR2,
                     P_RETCODE        OUT NOCOPY VARCHAR2,
                     P_MEMBER_ID                 NUMBER,
-                    P_AMOUNT_SAVED              NUMBER,
                     P_PERCENTAGE_RETIREMENT     NUMBER,
                     P_SAVING_RETIREMENT         NUMBER,
                     P_DESCRIPTION               VARCHAR2,
