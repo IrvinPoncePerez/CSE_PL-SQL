@@ -25,6 +25,7 @@ CREATE OR REPLACE PROCEDURE APPS.XXCALV_TEF_PAY_P (  errbuf                     
  1.0       26/05/2014 JJUAREZ         1. Created this package.
  2.0       23/11/2015 IPONCE          2. Modificación por método de pago HSBC.
  3.0       25/01/2016 IPONCE          3. Incluir y excluir CEDIS.
+ 4.0       25/10/2016 IPONCE          4. Despensa SI VALE
 ******************************************************************************************/
    l_fname_bbva                         VARCHAR2(100);
    l_fname_banorte                      VARCHAR2(100);
@@ -118,7 +119,7 @@ CREATE OR REPLACE PROCEDURE APPS.XXCALV_TEF_PAY_P (  errbuf                     
    CURSOR c_pago(p_assignment_id NUMBER, p_date DATE) IS
         select opm.org_payment_method_name banco, pea.segment3 cuenta, pea_org.segment3 cuenta_org,
                ppm.payee_id, ppm.payee_type, rpad(nvl(replace(per.per_information2,'-',''),' '),16,' ') rfc, rpad(nvl(per.full_name,' '),40,' ')  full_name,
-               decode(pea.segment4,'CHECK','01','DEBIT','02','MASTER','03') tipo_cuenta
+               decode(pea.segment4,'CHECK','01','DEBIT','02','MASTER','03') tipo_cuenta, ppm.attribute1 tarjeta
         from pay_org_payment_methods_f_tl opmtl
                ,pay_org_payment_methods_f opm
                ,pay_personal_payment_methods_f ppm
@@ -365,23 +366,53 @@ BEGIN
                 FETCH c_lookup INTO l_RAZON_SOCIAL; 
                 CLOSE c_lookup;                               
                 
-                print_out('<PARAMETROS>');
-                   print_out(g_xml('l001_CALV',l_001_CALV));
-                   print_out(g_xml('NUMERO_SUCURSAL',l_NUM_SUC));
-                   print_out(g_xml('l002_CALV',l_002_CALV));
-                   print_out(g_xml('NUMERO_GRUPO',l_NUM_GRUPO));
-                   print_out(g_xml('NUMERO_CLIENTE',l_NUM_CLIENTE));
-                   print_out(g_xml('RAZON_SOCIAL',l_RAZON_SOCIAL));
-                   print_out(g_xml('TOTAL_EMPLEADOS',l_emp.empleados));
-                   print_out(g_xml('IMPORTE_TOTAL',l_emp.importe_total));
-                   print_out(g_xml('FECHA_DISPERSION',to_char(l_emp.default_dd_date,'YYYYMMDD')));
-                print_out('</PARAMETROS>');
+                IF l_pago.banco like '%EDENRED%' THEN
+                    print_out('<PARAMETROS>');
+                       print_out(g_xml('l001_CALV',l_001_CALV));
+                       print_out(g_xml('NUMERO_SUCURSAL',l_NUM_SUC));
+                       print_out(g_xml('l002_CALV',l_002_CALV));
+                       print_out(g_xml('NUMERO_GRUPO',l_NUM_GRUPO));
+                       print_out(g_xml('NUMERO_CLIENTE',l_NUM_CLIENTE));
+                       print_out(g_xml('RAZON_SOCIAL',l_RAZON_SOCIAL));
+                       print_out(g_xml('TOTAL_EMPLEADOS',l_emp.empleados));
+                       print_out(g_xml('IMPORTE_TOTAL',l_emp.importe_total));
+                       print_out(g_xml('FECHA_DISPERSION',to_char(l_emp.default_dd_date,'YYYYMMDD')));
+                    print_out('</PARAMETROS>');
+                ELSIF l_pago.banco like '%SI VALE%' THEN
+                    print_out('<PARAMETROS>');
+                       print_out(g_xml('l001_CALV','NOMBRE'));
+                       print_out(g_xml('NUMERO_SUCURSAL','NUMERO DE TARJETA'));
+                       print_out(g_xml('l002_CALV','MONTO'));
+                    print_out('</PARAMETROS>');
+                END IF;
             END IF;
            
            print_out('<EMPLEADO>');
-           print_out(g_xml('NUMERO_EMPLEADO',l_emp.employee_number));
-           print_out(g_xml('NUMERO_CUENTA',l_pago.cuenta));
-           print_out(g_xml('IMPORTE',l_emp.importe));
+           IF l_pago.banco like '%SI VALE%' THEN
+           
+            print_out(g_xml('NUMERO_EMPLEADO',TRIM(SUBSTR(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(l_emp.full_name,'Ú','U')
+                                                                                            ,'Ó'
+                                                                                            ,'O')
+                                                                                    ,'Í'
+                                                                                    ,'I')
+                                                                            ,'É'
+                                                                            ,'E')
+                                                                    ,'Á'
+                                                                    ,'A')
+                                                            ,'Ñ'
+                                                            ,'N')
+                                                    ,0
+                                                    ,24))));
+            print_out(g_xml('NUMERO_CUENTA',l_pago.tarjeta));
+            print_out(g_xml('IMPORTE',TO_CHAR(l_emp.importe,'999.99')));
+           
+           ELSIF l_pago.banco like '%EDENRED%' THEN
+            
+            print_out(g_xml('NUMERO_EMPLEADO',l_emp.employee_number));
+            print_out(g_xml('NUMERO_CUENTA',l_pago.cuenta));
+            print_out(g_xml('IMPORTE',l_emp.importe));
+             
+           END IF;
            print_out('</EMPLEADO>') ;
            
         ELSIF l_pago.banco like '%HSBC%' THEN
