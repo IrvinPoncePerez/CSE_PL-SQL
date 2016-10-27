@@ -1,4 +1,7 @@
-
+/**************************************************/
+/*                  ALTER SESION                  */
+/**************************************************/
+ALTER SESSION SET CURRENT_SCHEMA=APPS; 
 ALTER SESSION SET NLS_LANGUAGE = 'LATIN AMERICAN SPANISH';
 SELECT DISTINCT
        D.COMPANY_NAME,
@@ -178,7 +181,24 @@ SELECT DISTINCT
                AND PTP.END_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
                AND PTP.END_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
                AND UUID.NUMEMPLOYEE = PAPF.EMPLOYEE_NUMBER
-               AND REPLACE(UUID.PERIOD, ' ', '') = (PTP.START_DATE || PTP.END_DATE)
+               AND REPLACE(UUID.PERIOD, ' ', '') = (CASE 
+                                                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
+                                                             PTP.START_DATE || PTP.END_DATE
+                                                        ELSE 
+                                                             REPLACE(UUID.PERIOD, ' ', '')
+                                                    END)
+               AND UUID.JUEGO_CONSOLIDACION = (CASE
+                                                    WHEN PCS.CONSOLIDATION_SET_NAME LIKE 'GRATIFICACION_MAYO' OR PCS.CONSOLIDATION_SET_NAME LIKE 'GRATIFICACIÓN' THEN
+                                                         'GRATIFICACION MARZO'
+                                                    WHEN PCS.CONSOLIDATION_SET_NAME LIKE 'GRATIFICACION_MAYO_PTU' THEN
+                                                         'GRATIFICACION MAYO PTU'
+                                                    WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%AHORRO%' THEN 
+                                                         'FONDO DE AHORRO'
+                                                    WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%ORDINARIA%' THEN 
+                                                         'PAGO DE NOMINA'
+                                                    ELSE
+                                                         UPPER(REPLACE(PCS.CONSOLIDATION_SET_NAME, '_', ' '))
+                                                 END)
              GROUP BY OI.ORG_INFORMATION2,
                       PTP.PERIOD_TYPE,
                       PTP.PERIOD_NUM, 
