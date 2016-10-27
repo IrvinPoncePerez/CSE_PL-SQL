@@ -1,23 +1,71 @@
-CREATE OR REPLACE VIEW ATET_SB_CALENDAR_SEMI_MONTH
+/* Formatted on 2016/10/11 15:57 (Formatter Plus v4.8.8) */
+CREATE OR REPLACE FORCE VIEW apps.atet_sb_calendar_semi_month (period_num,
+                                                               period_name,
+                                                               start_date,
+                                                               end_date,
+                                                               exported_flag,
+                                                               imported_flag,
+                                                               processed_flag,
+                                                               accounted_flag
+                                                              )
 AS
-SELECT DISTINCT
-       D.PERIOD_NUM                     AS  "PERIOD_NUM",
-       D.PERIOD_NAME                    AS  "PERIOD_NAME",
-       SUBSTR(ASPR.ATTRIBUTE6,1,1)      AS  "EXPORTED_FLAG",
-       SUBSTR(ASST.TRANSACTION_CODE,1,1)AS  "PROCESSED_FLAG",
-       SUBSTR(ASST.ACCOUNTED_FLAG,1,1)  AS  "ACCOUNTED_FLAG"
-  FROM (SELECT DISTINCT
-               PTP.PERIOD_NUM,
-               PTP.PERIOD_NAME
-          FROM PER_TIME_PERIODS             PTP,
-               ATET_SAVINGS_BANK            ASB
-         WHERE 1 = 1
-           AND ASB.SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
-           AND EXTRACT(YEAR FROM PTP.END_DATE) = ASB.YEAR
-           AND PTP.PERIOD_TYPE IN ('Quincena', 'Semi-Month')
-           AND PTP.END_DATE BETWEEN ASB.OPENING_DATE AND ASB.TERMINATION_DATE) D
-  LEFT JOIN ATET_SB_PAYROLL_RESULTS         ASPR  
-    ON D.PERIOD_NAME = ASPR.PERIOD_NAME
-  LEFT JOIN ATET_SB_SAVINGS_TRANSACTIONS    ASST
-    ON D.PERIOD_NAME = ASST.PERIOD_NAME
- ORDER BY D.PERIOD_NUM;
+   SELECT   dd.period_num, dd.period_name, dd.start_date, dd.end_date,
+            dd.exported_flag, dd.imported_flag, dd.processed_flag,
+            dd.accounted_flag
+       FROM (SELECT DISTINCT d.period_num AS "PERIOD_NUM",
+                             d.period_name AS "PERIOD_NAME",
+                             d.start_date AS "START_DATE",
+                             d.end_date AS "END_DATE",
+                             DECODE
+                                (asps.status_flag,
+                                 'SKIP', 'E',
+                                 'EXPORTED', 'E',
+                                 'PARTIAL', 'E',
+                                 'REFINANCED', 'E',
+                                 'PAYED', 'E',
+                                 SUBSTR (asps.status_flag, 1, 1)
+                                ) AS "EXPORTED_FLAG",
+                             SUBSTR (aspr.attribute6, 1,
+                                     1) AS "IMPORTED_FLAG",
+                             SUBSTR
+                                  (asst.transaction_code,
+                                   1,
+                                   1
+                                  ) AS "PROCESSED_FLAG",
+                             SUBSTR (asst.accounted_flag,
+                                     1,
+                                     1
+                                    ) AS "ACCOUNTED_FLAG"
+                        FROM (SELECT DISTINCT ptp.period_num, ptp.period_name,
+                                              ptp.start_date, ptp.end_date,
+                                              ptp.time_period_id
+                                         FROM per_time_periods ptp,
+                                              atet_savings_bank asb
+                                        WHERE 1 = 1
+                                          AND asb.saving_bank_id =
+                                                 atet_savings_bank_pkg.get_saving_bank_id
+                                          AND EXTRACT (YEAR FROM ptp.end_date) =
+                                                                      asb.YEAR
+                                          AND ptp.period_type IN
+                                                   ('Quincena', 'Semi-Month')
+                                          AND ptp.end_date
+                                                 BETWEEN asb.opening_date
+                                                     AND asb.termination_date) d
+                             LEFT JOIN
+                             atet_sb_payments_schedule asps
+                             ON d.period_name = asps.period_name
+                           AND asps.time_period_id = d.time_period_id
+                             LEFT JOIN atet_sb_payroll_results aspr
+                             ON d.period_name = aspr.period_name
+                           AND aspr.time_period_id = d.time_period_id
+                             LEFT JOIN atet_sb_savings_transactions asst
+                             ON d.period_name = asst.period_name
+                           AND asst.time_period_id = d.time_period_id
+                    ORDER BY TO_NUMBER (d.period_num)) dd
+      WHERE (   dd.exported_flag IS NOT NULL
+             OR dd.imported_flag IS NOT NULL
+             OR dd.processed_flag IS NOT NULL
+             OR dd.accounted_flag IS NOT NULL
+            )
+   ORDER BY TO_NUMBER (dd.period_num);
+
