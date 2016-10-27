@@ -1,3 +1,9 @@
+/**************************************************/
+/*                  ALTER SESION                  */
+/**************************************************/
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+
+
 DECLARE
     
     CURSOR PARTIAL_REFINANCE_DETAIL    IS
@@ -8,7 +14,8 @@ DECLARE
           FROM ATET_TMP_REFINANCE  ATR
          WHERE 1 = 1
            AND ATR.P_REQUEST_ID IS NULL
-         ORDER BY ATR.P_INDEX;
+           AND P_ACTUAL_LOAN_ID IS NOT NULL
+         ORDER BY P_PREVIOUS_LOAN_ID;
       
     var_import_request_id       NUMBER;
     var_waiting                 BOOLEAN;

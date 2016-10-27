@@ -1,12 +1,18 @@
+/**************************************************/
+/*                  ALTER SESION                  */
+/**************************************************/
+ALTER SESSION SET CURRENT_SCHEMA=APPS; 
+
+
 /**********************************************************/
 /*              ACTUALIZACIÓN DE PRESTAMOS                */
 /**********************************************************/
 
-UPDATE ATET_SB_LOANS    ASL
+UPDATE APPS.ATET_SB_LOANS    ASL
    SET ASL.LOAN_INTEREST_RATE = ASL.LOAN_INTEREST_RATE * ASL.NORMAL_INTEREST_RATE
  WHERE ASL.LOAN_STATUS_FLAG = 'ENTERED';
 
-UPDATE ATET_SB_LOANS    ASL 
+UPDATE APPS.ATET_SB_LOANS    ASL 
    SET ASL.CREATION_DATE = SYSDATE,
        ASL.CREATED_BY = -1,
        ASL.LAST_UPDATE_DATE = SYSDATE,
@@ -41,7 +47,7 @@ SELECT *
 /*          ACTUALIZACION DE TABLA DE MIEMBROS            */
 /**********************************************************/
 
-UPDATE ATET_SB_MEMBERS  ASM
+UPDATE APPS.ATET_SB_MEMBERS  ASM
    SET ASM.IS_BORROWER = 'N',
        ASM.IS_ENDORSEMENT = 'N';
        
@@ -91,8 +97,8 @@ FROM ATET_SB_ENDORSEMENTS;
 SELECT ASM.PERSON_ID,
                   ASM.MEMBER_ID,
                   ASL.LOAN_ID
-             FROM ATET_SB_MEMBERS   ASM,
-                  ATET_SB_LOANS     ASL
+             FROM APPS.ATET_SB_MEMBERS   ASM,
+                  APPS.ATET_SB_LOANS     ASL
             WHERE 1 = 1
               AND ASM.MEMBER_ID = ASL.MEMBER_ID
               AND ASL.LOAN_STATUS_FLAG = 'APPROVED' ;
@@ -255,14 +261,16 @@ BEGIN
 END;
 
 SELECT *
-FROM ATET_SB_LOANS;
+FROM apps.ATET_SB_LOANS;
 
 SELECT *
-FROM ATET_SB_MEMBERS_ACCOUNTS;
+FROM apps.ATET_SB_MEMBERS_ACCOUNTS;
 
 SELECT *
-FROM ATET_SB_LOANS_TRANSACTIONS;
+FROM apps.ATET_SB_LOANS_TRANSACTIONS;
 
+SELECT *
+  FROM apps.ATET_SB_PARAMETERS;
 
 --COMMIT;
 
@@ -287,19 +295,27 @@ BEGIN
 
     FOR C_LOAN IN LOANS_DETAILS LOOP
     
-        DBMS_OUTPUT.PUT_LINE('LOAN_ID = ' || C_LOAN.LOAN_ID);
+        BEGIN
     
-        VAR_PAYMENT_DEADLINE := '';
-
-        ATET_SB_BACK_OFFICE_PKG.CREATE_PAYMENTS_SCHEDULE(C_LOAN.LOAN_ID, VAR_PAYMENT_DEADLINE);
+            DBMS_OUTPUT.PUT_LINE('LOAN_ID = ' || C_LOAN.LOAN_ID);
         
-        UPDATE ATET_SB_LOANS    ASL
-           SET ASL.PAYMENT_DEADLINE = VAR_PAYMENT_DEADLINE
-         WHERE 1 = 1
-           AND ASL.LOAN_ID = C_LOAN.LOAN_ID;
+            VAR_PAYMENT_DEADLINE := '';
+
+            ATET_SB_BACK_OFFICE_PKG.CREATE_PAYMENTS_SCHEDULE(C_LOAN.LOAN_ID, VAR_PAYMENT_DEADLINE);
+            
+            UPDATE ATET_SB_LOANS    ASL
+               SET ASL.PAYMENT_DEADLINE = VAR_PAYMENT_DEADLINE
+             WHERE 1 = 1
+               AND ASL.LOAN_ID = C_LOAN.LOAN_ID;
+
+        EXCEPTION WHEN OTHERS THEN
+            ROLLBACK;
+        END;    
+        
+        COMMIT;
     
     END LOOP;
-
+    
 END;
 
 --ROLLBACK;
@@ -314,8 +330,7 @@ SELECT *
 --COMMIT;
 
 
-/****
-54******************************************************/
+/**********************************************************/
 /*              ACTUALIZACIÓN DE PRESTAMOS                */
 /**********************************************************/
 
@@ -338,27 +353,33 @@ SELECT ASL.LOAN_ID,
        ASL.LOAN_TOTAL_AMOUNT,
        ASM.PERSON_ID,
        ASM.MEMBER_ID,
+       ASL.ATTRIBUTE3,
        ASL.ATTRIBUTE5
   FROM ATET_SB_LOANS    ASL,
        ATET_SB_MEMBERS  ASM
  WHERE 1 = 1
    AND ASL.MEMBER_ID = ASM.MEMBER_ID
    AND ASL.LOAN_STATUS_FLAG NOT IN ('CANCELLED')
-   AND ASL.ATTRIBUTE5 IS NULL; 
+   AND ASL.ATTRIBUTE5 IS NULL
+   AND ASL.ATTRIBUTE3 BETWEEN 30000 AND 40000
+ ORDER BY ATTRIBUTE3 ASC; 
 
 DECLARE
     CURSOR  LOANS_DETAILS   IS
-            SELECT ASL.LOAN_ID,
-                   ASL.LOAN_TOTAL_AMOUNT,
-                   ASM.PERSON_ID,
-                   ASM.MEMBER_ID,
-                   ASL.ATTRIBUTE5
-              FROM ATET_SB_LOANS    ASL,
-                   ATET_SB_MEMBERS  ASM
-             WHERE 1 = 1
-               AND ASL.MEMBER_ID = ASM.MEMBER_ID
-               AND ASL.LOAN_STATUS_FLAG NOT IN ('CANCELLED')
-               AND ASL.ATTRIBUTE5 IS NULL;
+        SELECT ASL.LOAN_ID,
+               ASL.LOAN_TOTAL_AMOUNT,
+               ASM.PERSON_ID,
+               ASM.MEMBER_ID,
+               ASL.ATTRIBUTE3,
+               ASL.ATTRIBUTE5
+          FROM ATET_SB_LOANS    ASL,
+               ATET_SB_MEMBERS  ASM
+         WHERE 1 = 1
+           AND ASL.MEMBER_ID = ASM.MEMBER_ID
+           AND ASL.LOAN_STATUS_FLAG NOT IN ('CANCELLED')
+           AND ASL.ATTRIBUTE5 IS NULL
+           AND ASL.ATTRIBUTE3 BETWEEN 30000 AND 40000
+         ORDER BY ATTRIBUTE3 ASC;
                
     VAR_CHECK_ID    NUMBER;
 
@@ -393,3 +414,17 @@ SELECT *
 
 
 
+/***********************************************************/
+/**     Creación de Cheque por LOAN_ID                  ****/
+/***********************************************************/
+DECLARE
+               
+    VAR_CHECK_ID    NUMBER;
+
+BEGIN
+
+        ATET_SB_BACK_OFFICE_PKG.CREATE_LOAN_CHECK(:P_LOAN_ID, VAR_CHECK_ID);
+        
+END;
+
+commit;

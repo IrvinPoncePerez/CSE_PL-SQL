@@ -1,17 +1,28 @@
-DECLARE
-    
-    CURSOR PARTIAL_PREPAYMENT_DETAIL    IS
-        SELECT ATP.P_PARTIAL_MEMBER_ID,
-               ATP.P_PARTIAL_LOAN_ID,
-               ATP.P_PARTIAL_PAYMENT_AMOUNT,
-               ATP.P_PARTIAL_TIME_PERIOD_ID
-          FROM ATET_TMP_PREPAYMENT  ATP
+/**************************************************/
+/*                  ALTER SESION                  */
+/**************************************************/
+ALTER SESSION SET CURRENT_SCHEMA=APPS; 
+
+
+
+
+
+/**************************************************************/
+/*            LIBERACION DE RETIRO DE AHORRO                  */
+/**************************************************************/
+SELECT *
+          FROM ATET_SB_TRANSACTIONS_HOLDS ASTH
          WHERE 1 = 1
-           AND ATP.P_REQUEST_ID IS NULL
-           AND ATP.P_PARTIAL_MEMBER_ID IS NOT NULL
-           AND ATP.P_PARTIAL_LOAN_ID IS NOT NULL
-           AND ATP.P_PARTIAL_PAYMENT_AMOUNT IS NOT NULL
-           AND ATP.P_PARTIAL_TIME_PERIOD_ID IS NOT NULL;
+           AND ASTH.RELEASED_FLAG = 'P'
+           AND ASTH.HOLD_RELEASE_ID IS NULL;
+
+DECLARE
+    CURSOR RELEASE_DETAILS IS
+        SELECT ASTH.TRANSACTION_HOLD_ID
+          FROM ATET_SB_TRANSACTIONS_HOLDS ASTH
+         WHERE 1 = 1
+           AND ASTH.RELEASED_FLAG = 'P'
+           AND ASTH.HOLD_RELEASE_ID IS NULL;   
       
     var_import_request_id       NUMBER;
     var_waiting                 BOOLEAN;
@@ -30,20 +41,19 @@ BEGIN
     mo_global.set_policy_context ('S', 1329);
 
     
-    FOR DETAIL IN PARTIAL_PREPAYMENT_DETAIL LOOP
+    FOR DETAIL IN RELEASE_DETAILS LOOP
         
         
         var_import_request_id :=
             FND_REQUEST.SUBMIT_REQUEST (
                APPLICATION => 'PER',
-               PROGRAM => 'ATET_PARCIAL_PREPAYMENT',
+               PROGRAM => 'ATET_RELEASE_SAVING_RETIREMENT',
                DESCRIPTION => '',
                START_TIME => '',
                SUB_REQUEST => FALSE,
-               ARGUMENT1 => TO_CHAR(DETAIL.P_PARTIAL_MEMBER_ID),
-               ARGUMENT2 => TO_CHAR(DETAIL.P_PARTIAL_LOAN_ID),
-               ARGUMENT3 => TO_CHAR(DETAIL.P_PARTIAL_PAYMENT_AMOUNT),
-               ARGUMENT4 => TO_CHAR(DETAIL.P_PARTIAL_TIME_PERIOD_ID)
+               ARGUMENT1 => TO_CHAR(DETAIL.TRANSACTION_HOLD_ID),
+               ARGUMENT2 => TO_CHAR('LIBERADO'),
+               ARGUMENT3 => TO_CHAR('Y')
                                        );
             
         STANDARD.COMMIT;
@@ -60,17 +70,7 @@ BEGIN
                 MESSAGE => var_message
                                         );
     
-            
-        UPDATE ATET_TMP_PREPAYMENT ACT
-           SET ACT.P_REQUEST_ID = var_import_request_id
-         WHERE 1 = 1
-           AND ACT.P_PARTIAL_MEMBER_ID = DETAIL.P_PARTIAL_MEMBER_ID
-           AND ACT.P_PARTIAL_LOAN_ID = DETAIL.P_PARTIAL_LOAN_ID
-           AND ACT.P_PARTIAL_PAYMENT_AMOUNT = DETAIL.P_PARTIAL_PAYMENT_AMOUNT
-           AND ACT.P_PARTIAL_TIME_PERIOD_ID = DETAIL.P_PARTIAL_TIME_PERIOD_ID;
-    
     END LOOP;
 
-    COMMIT;
 
 END;
