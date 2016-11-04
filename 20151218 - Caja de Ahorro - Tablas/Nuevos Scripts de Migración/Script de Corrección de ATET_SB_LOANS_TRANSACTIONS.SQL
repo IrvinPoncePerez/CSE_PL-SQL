@@ -4,6 +4,8 @@
 ALTER SESSION SET CURRENT_SCHEMA=APPS;
 
 
+ATET_SB_PAYMENTS_SCHEDULE
+ATET_SB_LOANS
 /**********************************************************/
 /*          Insert ATET_SB_LOANS_TRANSACTIONS
             de apertura.                                  */

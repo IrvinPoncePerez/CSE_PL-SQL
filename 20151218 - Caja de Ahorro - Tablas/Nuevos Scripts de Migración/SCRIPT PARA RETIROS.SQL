@@ -3,7 +3,8 @@
 /**************************************************/
 ALTER SESSION SET CURRENT_SCHEMA=APPS; 
 
-DELETE FROM ATET_TMP_RETIREMENTS;
+UPDATE ATET_TMP_RETIREMENTS
+   SET REQUEST_ID = NULL;
 COMMIT;
 
 /**************************************************************/
@@ -28,8 +29,6 @@ DECLARE
     var_dev_status              VARCHAR2 (80 BYTE);
     var_message                 VARCHAR2 (4000 BYTE);
     
-    
-    VAR_AMOUNT_SAVED        NUMBER;
               
 BEGIN
 
@@ -41,15 +40,7 @@ BEGIN
 
     
     FOR DETAIL IN RETIREMENTS_DETAILS LOOP
-        
-    
-        SELECT FINAL_BALANCE
-          INTO VAR_AMOUNT_SAVED
-          FROM ATET_SB_MEMBERS_ACCOUNTS
-         WHERE MEMBER_ID = DETAIL.P_MEMBER_ID
-           AND LOAN_ID IS NULL 
-           AND ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO';
-        
+                
         var_import_request_id :=
             FND_REQUEST.SUBMIT_REQUEST (
                APPLICATION => 'PER',
@@ -58,11 +49,10 @@ BEGIN
                START_TIME => '',
                SUB_REQUEST => FALSE,
                ARGUMENT1 => TO_CHAR(DETAIL.P_MEMBER_ID),
-               ARGUMENT2 => TO_CHAR(VAR_AMOUNT_SAVED),
-               ARGUMENT3 => TO_CHAR(DETAIL.P_PERCENTAGE_RETIREMENT),
-               ARGUMENT4 => TO_CHAR(DETAIL.P_SAVING_RETIREMENT),
-               ARGUMENT5 => TO_CHAR('RETIRO PARCIAL DE CAJA DE AHORRO'),
-               ARGUMENT6 => TO_CHAR(DETAIL.P_IS_MEMBER_END)
+               ARGUMENT2 => TO_CHAR(DETAIL.P_PERCENTAGE_RETIREMENT),
+               ARGUMENT3 => TO_CHAR(DETAIL.P_SAVING_RETIREMENT),
+               ARGUMENT4 => TO_CHAR('RETIRO PARCIAL DE CAJA DE AHORRO'),
+               ARGUMENT5 => TO_CHAR(DETAIL.P_IS_MEMBER_END)
                                        );
             
         STANDARD.COMMIT;
