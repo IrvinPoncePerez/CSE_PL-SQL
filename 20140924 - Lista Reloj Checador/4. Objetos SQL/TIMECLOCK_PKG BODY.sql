@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY TIMECLOCK_PKG IS
+CREATE OR REPLACE PACKAGE BODY APPS.TIMECLOCK_PKG IS
 
 
     PROCEDURE TIMECLOCK_ADD_DAYS_PRC(
@@ -7,14 +7,15 @@ CREATE OR REPLACE PACKAGE BODY TIMECLOCK_PKG IS
     IS
         var_start_date  DATE := TRUNC(TO_DATE(P_START_DATE,'RRRR/MM/DD HH24:MI:SS'));
         var_end_date    DATE := TRUNC(TO_DATE(P_END_DATE,'RRRR/MM/DD HH24:MI:SS'));
-        var_days        NUMBER;	
+        var_days        NUMBER;    
         var_date        DATE;
-        var_day_week    VARCHAR2(2);
+        var_day_week    VARCHAR2(25);
         var_day         VARCHAR2(20);
         
     BEGIN
     
         EXECUTE IMMEDIATE 'TRUNCATE TABLE TIMECLOCK_DATES_TB';
+        COMMIT;
 
         var_days := var_end_date - var_start_date;    
         
@@ -30,14 +31,14 @@ CREATE OR REPLACE PACKAGE BODY TIMECLOCK_PKG IS
             END IF;
         
             
-            var_day_week := TO_CHAR(var_date, 'D');
-            IF    var_day_week = '1' THEN var_day := 'DOMINGO';
-            ELSIF var_day_week = '2' THEN var_day := 'LUNES';
-            ELSIF var_day_week = '3' THEN var_day := 'MARTES';
-            ELSIF var_day_week = '4' THEN var_day := 'MIERCOLES';
-            ELSIF var_day_week = '5' THEN var_day := 'JUEVES';
-            ELSIF var_day_week = '6' THEN var_day := 'VIERNES';
-            ELSIF var_day_week = '7' THEN var_day := 'SABADO';
+            var_day_week := TRIM(TO_CHAR(var_date, 'DAY'));
+            IF    var_day_week = 'SUNDAY' THEN var_day := 'DOMINGO';
+            ELSIF var_day_week = 'MONDAY' THEN var_day := 'LUNES';
+            ELSIF var_day_week = 'TUESDAY' THEN var_day := 'MARTES';
+            ELSIF var_day_week = 'WEDNESDAY' THEN var_day := 'MIERCOLES';
+            ELSIF var_day_week = 'THURSDAY' THEN var_day := 'JUEVES';
+            ELSIF var_day_week = 'FRIDAY' THEN var_day := 'VIERNES';
+            ELSIF var_day_week = 'SATURDAY' THEN var_day := 'SABADO';
             END IF; 
             
             
@@ -99,21 +100,24 @@ CREATE OR REPLACE PACKAGE BODY TIMECLOCK_PKG IS
     RETURN VARCHAR2
     IS
         var_result      VARCHAR2(100) := '';
+        
     BEGIN
         
         SELECT NVL(PAAV.C_TYPE_DESC, '') || ' ' || 
-               (CASE WHEN (PAAV.ABSENCE_DAYS / (PAAV.DATE_END - (PAAV.DATE_START -1))) < 1 THEN
+               (CASE WHEN PAAV.ABSENCE_DAYS / (PAAV.DATE_END - (PAAV.DATE_START -1)) < 1 THEN
                         '1/' || (1 / (PAAV.ABSENCE_DAYS / (PAAV.DATE_END - (PAAV.DATE_START -1))))
                      ELSE
                         TO_CHAR(PAAV.ABSENCE_DAYS / (PAAV.DATE_END - (PAAV.DATE_START -1)))
-                END) || ' DÃA' 
+                END) || ' DÍA' 
           INTO var_result
           FROM PER_ABSENCE_ATTENDANCES_V    PAAV
          WHERE PAAV.PERSON_ID = P_PERSON_ID
-           AND P_CHECK_DATE BETWEEN PAAV.DATE_START AND PAAV.DATE_END;
+           AND P_CHECK_DATE BETWEEN PAAV.DATE_START AND PAAV.DATE_END
+           AND ROWNUM = 1;
     
         RETURN UPPER(var_result);
         
     END; 
     
-END TIMECLOCK_PKG;    
+END TIMECLOCK_PKG;
+/
