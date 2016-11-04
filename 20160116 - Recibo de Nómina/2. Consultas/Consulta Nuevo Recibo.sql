@@ -1,8 +1,5 @@
-/**************************************************/
-/*                  ALTER SESION                  */
-/**************************************************/
 ALTER SESSION SET CURRENT_SCHEMA=APPS; 
-ALTER SESSION SET NLS_LANGUAGE = 'LATIN AMERICAN SPANISH';
+
 SELECT DISTINCT
        D.COMPANY_NAME,
        D.COMPANY_RFC,
@@ -60,7 +57,10 @@ SELECT DISTINCT
                       PAPF.PER_INFORMATION1 || ' ' || 
                       PAPF.FIRST_NAME       || ' ' || 
                       PAPF.MIDDLE_NAMES)                                                                    AS  EMPLOYEE_NAME,
-                UUID.UUID                                                                                   AS  UUID,
+                (CASE WHEN PPF.ATTRIBUTE1 IN ('GRQE', 'GRBE')
+                      THEN 'SIN TIMBRAR'
+                      ELSE UUID.UUID
+                  END)                                                                                      AS  UUID,
                 REPLACE(PAPF.PER_INFORMATION2, '-', '')                                                     AS  EMPLOYEE_RFC,
                 TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000')             AS  EMPLOYEE_NSS,   
                 PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)                                AS  EMPLOYER_REGISTRATION,
@@ -180,7 +180,10 @@ SELECT DISTINCT
                AND HSCK.SOFT_CODING_KEYFLEX_ID = PAAF.SOFT_CODING_KEYFLEX_ID
                AND PTP.END_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
                AND PTP.END_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
-               AND UUID.NUMEMPLOYEE = PAPF.EMPLOYEE_NUMBER
+               AND PAPF.EMPLOYEE_NUMBER = (CASE WHEN PPF.ATTRIBUTE1 IN ('GRQE', 'GRBE')
+                                                THEN PAPF.EMPLOYEE_NUMBER
+                                                ELSE UUID.NUMEMPLOYEE
+                                            END)
                AND REPLACE(UUID.PERIOD, ' ', '') = (CASE 
                                                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
                                                              PTP.START_DATE || PTP.END_DATE
@@ -200,6 +203,7 @@ SELECT DISTINCT
                                                          UPPER(REPLACE(PCS.CONSOLIDATION_SET_NAME, '_', ' '))
                                                  END)
              GROUP BY OI.ORG_INFORMATION2,
+                      PPF.ATTRIBUTE1,
                       PTP.PERIOD_TYPE,
                       PTP.PERIOD_NUM, 
                       PPTV.PAYMENT_TYPE_NAME,
