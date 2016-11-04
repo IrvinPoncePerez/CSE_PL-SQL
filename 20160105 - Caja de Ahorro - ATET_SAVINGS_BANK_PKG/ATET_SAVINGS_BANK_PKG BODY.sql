@@ -4692,7 +4692,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXCEUTE : PROCESS_SAVING_RETIREMENT');
             
             PROCESS_SAVING_RETIREMENT(P_MEMBER_ID             => P_MEMBER_ID,
-                                      P_AMOUNT_SAVED          => P_AMOUNT_SAVED,
                                       P_PERCENTAGE_RETIREMENT => P_PERCENTAGE_RETIREMENT,
                                       P_SAVING_RETIREMENT     => P_SAVING_RETIREMENT,
                                       P_DESCRIPTION           => P_DESCRIPTION,
@@ -4719,7 +4718,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_hold_release_id         NUMBER;
         
         var_member_id               VARCHAR2(100);
-        var_amount_saved            VARCHAR2(100);
         var_percentage_retirement   VARCHAR2(100);
         var_saving_retirement       VARCHAR2(100);
         var_description             VARCHAR2(100);
@@ -4775,13 +4773,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'UPDATE : ATET_SB_TRANSACTIONS_HOLDS');
                
             SELECT REPLACE(ASTH.ATTRIBUTE6, 'P_MEMBER_ID=>', ''),
-                   REPLACE(ASTH.ATTRIBUTE7, 'P_AMOUNT_SAVED=>', ''),
                    REPLACE(ASTH.ATTRIBUTE8, 'P_PERCENTAGE_RETIREMENT=>', ''),
                    REPLACE(ASTH.ATTRIBUTE9, 'P_SAVING_RETIREMENT=>', ''),
                    REPLACE(ASTH.ATTRIBUTE10, 'P_IS_MEMBER_END=>', ''),
                    REPLACE(ASTH.ATTRIBUTE11, 'P_DESCRIPTION=>', '')
               INTO var_member_id,
-                   var_amount_saved,
                    var_percentage_retirement,
                    var_saving_retirement,
                    var_is_member_end,
@@ -4794,7 +4790,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                
             PROCESS_SAVING_RETIREMENT(
                           P_MEMBER_ID => var_member_id,
-                          P_AMOUNT_SAVED => var_amount_saved,
                           P_PERCENTAGE_RETIREMENT => var_percentage_retirement, 
                           P_SAVING_RETIREMENT => var_saving_retirement,
                           P_DESCRIPTION => var_description,
@@ -4824,7 +4819,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
     
     PROCEDURE   PROCESS_SAVING_RETIREMENT(
                     P_MEMBER_ID               NUMBER,
-                    P_AMOUNT_SAVED            NUMBER,
                     P_PERCENTAGE_RETIREMENT   NUMBER,
                     P_SAVING_RETIREMENT       NUMBER,
                     P_DESCRIPTION             VARCHAR2,
@@ -4876,7 +4870,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
     BEGIN
     
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'PROCESS_SAVING_RETIREMENT(P_MEMBER_ID => ' || P_MEMBER_ID ||
-                                                                 ',P_AMOUNT_SAVED => ' || P_AMOUNT_SAVED ||
                                                                  ',P_PERCENTAGE_RETIREMENT => ' || P_PERCENTAGE_RETIREMENT ||
                                                                  ',P_SAVING_RETIREMENT => ' || P_SAVING_RETIREMENT ||
                                                                  ',P_DESCRIPTION => ' || P_DESCRIPTION ||
@@ -4908,7 +4901,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         
             IF P_PERCENTAGE_RETIREMENT IS NOT NULL AND P_SAVING_RETIREMENT IS NULL THEN
                     
-                var_saving_retirement := TRUNC((P_AMOUNT_SAVED * (P_PERCENTAGE_RETIREMENT / 100)), 2);
+                var_saving_retirement := TRUNC((var_amount_saved * (P_PERCENTAGE_RETIREMENT / 100)), 2);
                     
             ELSIF P_SAVING_RETIREMENT IS NOT NULL AND P_PERCENTAGE_RETIREMENT IS NULL THEN
                     
@@ -4982,7 +4975,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                AND MEMBER_ACCOUNT_ID = var_member_account_id;
 
                 
-            IF P_IS_MEMBER_END = 'Y' AND P_AMOUNT_SAVED = var_saving_retirement THEN
+            IF P_IS_MEMBER_END = 'Y' AND var_amount_saved = var_saving_retirement THEN
                     
                 UPDATE ATET_SB_MEMBERS  ASM
                    SET ASM.IS_SAVER = 'N',

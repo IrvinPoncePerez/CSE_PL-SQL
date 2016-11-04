@@ -270,7 +270,6 @@ CREATE OR REPLACE PACKAGE APPS.ATET_SAVINGS_BANK_PKG IS
                                   
     PROCEDURE   PROCESS_SAVING_RETIREMENT(
                     P_MEMBER_ID                 NUMBER,
-                    P_AMOUNT_SAVED              NUMBER,
                     P_PERCENTAGE_RETIREMENT     NUMBER,
                     P_SAVING_RETIREMENT         NUMBER,
                     P_DESCRIPTION               VARCHAR2,
