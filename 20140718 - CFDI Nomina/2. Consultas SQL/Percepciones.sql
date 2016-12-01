@@ -1,3 +1,5 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;  
+
 SELECT NOM_PER_TIP,
                                             NOM_PER_CVE,
                                             NOM_PER_DESCRI,
@@ -117,7 +119,8 @@ SELECT NOM_PER_TIP,
                                                                                   'P017_PRIMA DE ANTIGUEDAD',
                                                                                   'P032_SUBSIDIO_PARA_EMPLEO',
                                                                                   'P047_ISPT ANUAL A FAVOR',
-                                                                                  'P010 AYUDA DE ALIMENTOS')
+                                                                                  'P010 AYUDA DE ALIMENTOS',
+                                                                                  'P026_INDEMNIZACION')
                                                        AND PETF.ELEMENT_NAME NOT IN (CASE 
                                                                                         WHEN :P_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
                                                                                         ELSE 'TODOS'

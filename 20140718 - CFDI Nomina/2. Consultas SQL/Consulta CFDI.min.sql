@@ -1,4 +1,7 @@
-             SELECT DISTINCT 
+ALTER SESSION SET CURRENT_SCHEMA=APPS;            
+
+
+ SELECT DISTINCT 
                     PPF.PAYROLL_NAME,
                     (CASE
                         WHEN FLV1.LOOKUP_CODE = '02' THEN 'CS'
