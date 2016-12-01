@@ -6,7 +6,7 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
 delete atet_sb_payroll_results
  where period_name like '%Semana%'
    and element_name = 'D072_PRESTAMO CAJA DE AHORRO'
-   and period_name = '44 2016 Semana'
+   and period_name = '48 2016 Semana'
    and entry_name = 'Folio';
    
 commit;
@@ -135,6 +135,14 @@ END;
 /**     Bloque para insertar en 
             ATET_SB_PAYROLL_RESULTS                     ***/
 /**********************************************************/
+select asl.*
+  from atet_Sb_loans    asl,
+       atet_sb_members  asm
+ where 1 = 1
+   and asl.MEMBER_ID = asm.MEMBER_ID
+   and asm.person_id = :p_person_id
+   and asl.LOAN_STATUS_FLAG = 'ACTIVE';
+
 
 
 BEGIN

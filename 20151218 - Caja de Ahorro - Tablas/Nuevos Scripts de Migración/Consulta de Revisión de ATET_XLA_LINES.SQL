@@ -33,7 +33,7 @@ SELECT HEADER_ID,
    
 atet_sb_payments_schedule
 atet_sb_loans
-
+atet_sb_members_accounts
    
    
    
