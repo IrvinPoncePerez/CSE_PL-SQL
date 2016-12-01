@@ -20,7 +20,6 @@ IS
     var_data                        VARCHAR2(30000);
     
     CURSOR DETAIL_LIST IS 
-
             SELECT PAAF.ASS_ATTRIBUTE15                                                             AS  EMPRESA,
                    CLAVE_NOMINA,
                    (SELECT HOUV.NAME
@@ -34,6 +33,8 @@ IS
                    ANIO,
                    MES,
                    NUM_NOMINA,
+                   PAYMENT_PAYROLL,
+                   PAYMENT_GROCERIES,
 --                   (ACTION_TYPE || ' - ' || RUN_TYPE_NAME)                                          AS  TIPO_EJECUCION,
                    REG_PATRONAL                                                                     AS  REG_PATRONAL,
                    PCS.CONSOLIDATION_SET_NAME                                                       AS  JUEGO_CONSOLIDACION,
@@ -76,7 +77,8 @@ IS
                    SUM(PREMIO_PUNTUALIDAD_EXE) AS PREMIO_PUNTUALIDAD_EXE,
                    SUM(BONO_PRODUCTIVIDAD)   AS BONO_PRODUCTIVIDAD,  
                    SUM(GRATIFICACION)        AS GRATIFICACION,
-                   SUM(AYUDA_ESCOLAR)        AS AYUDA_ESCOLAR,       
+                   SUM(AYUDA_ESCOLAR)        AS AYUDA_ESCOLAR,      
+                   SUM(INDEMNIZACION)        AS INDEMNIZACION, 
                    SUM(GRATIFICACION_ESPECIAL) AS GRATIFICACION_ESPECIAL,
                    SUM(SUBSIDIO_EMPLEO)      AS SUBSIDIO_EMPLEO,     
                    SUM(COMPENSACION)         AS COMPENSACION,        
@@ -118,6 +120,7 @@ IS
                        SUM(BONO_PRODUCTIVIDAD)   +
                        SUM(GRATIFICACION)        +
                        SUM(AYUDA_ESCOLAR)        +
+                       SUM(INDEMNIZACION)        +
                        SUM(GRATIFICACION_ESPECIAL) +
                        SUM(SUBSIDIO_EMPLEO)      +
                        SUM(COMPENSACION)         +
@@ -217,6 +220,7 @@ IS
                        SUM(BONO_PRODUCTIVIDAD)   +
                        SUM(GRATIFICACION)        +
                        SUM(AYUDA_ESCOLAR)        +
+                       SUM(INDEMNIZACION)        +
                        SUM(GRATIFICACION_ESPECIAL) +
                        SUM(SUBSIDIO_EMPLEO)      +
                        SUM(COMPENSACION)         +
@@ -285,6 +289,7 @@ IS
                       SUM(BONO_PRODUCTIVIDAD)   +
                       SUM(GRATIFICACION)        +
                       SUM(AYUDA_ESCOLAR)        +
+                      SUM(INDEMNIZACION)        +
                       SUM(GRATIFICACION_ESPECIAL) +
                       SUM(COMPENSACION)         +
                       SUM(BECA_EDUCACIONAL)     +
@@ -316,6 +321,7 @@ IS
                         SUM(BONO_PRODUCTIVIDAD)   +
                         SUM(GRATIFICACION)        +
                         SUM(AYUDA_ESCOLAR)        +
+                        SUM(INDEMNIZACION)        +
                         SUM(GRATIFICACION_ESPECIAL) +
                         SUM(COMPENSACION)         +
                         SUM(BECA_EDUCACIONAL)     +
@@ -335,13 +341,14 @@ IS
                            SUM(AJUSTE_SUBSIDIO_EMPLEO)      AS AJUSTE_SUBSIDIO_EMPLEO,
                            SUM(AJUSTE_ISR_SEGUN_TABLA)      AS AJUSTE_ISR_SEGUN_TABLA,
                            SUM(AJUSTE_SUBSIDIO_SEGUN_TABLA) AS AJUSTE_SUBSIDIO_SEGUN_TABLA
-              FROM (SELECT DISTINCT
+              FROM (                    SELECT DISTINCT
                            PPA.PAYROLL_ACTION_ID,
                            PAA.ASSIGNMENT_ID,
                            PAA.ASSIGNMENT_ACTION_ID,
                            PPF.PAYROLL_ID,
                            PPA.CONSOLIDATION_SET_ID,
                            PPA.EFFECTIVE_DATE,
+                           PPA.DATE_EARNED,
                            PTP.START_DATE,
                            PTP.END_DATE,
 --                           PTF.RUN_TYPE_NAME,
@@ -353,6 +360,12 @@ IS
                            EXTRACT(YEAR FROM PTP.END_DATE)                                          AS  ANIO,
                            EXTRACT(MONTH FROM PTP.END_DATE)                                         AS  MES,
                            PTP.PERIOD_NUM                                                           AS  NUM_NOMINA,
+                           PAC_RESULT_VALUES_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ACTION_ID, 
+                                                                    PPA.DATE_EARNED,
+                                                                    'NOMINA')                       AS  PAYMENT_PAYROLL,
+                           PAC_RESULT_VALUES_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ACTION_ID, 
+                                                                    PPA.DATE_EARNED,
+                                                                    'DESPENSA')                     AS  PAYMENT_GROCERIES,                                         
                            PAC_RESULT_VALUES_PKG.GET_EMPLOYEER_REGISTRATION(PPA.DATE_EARNED, 
                                                                             PAA.ASSIGNMENT_ID)      AS  REG_PATRONAL,
                            -----------------------------------------------------------------------------------------
@@ -406,6 +419,7 @@ IS
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P023_BONO_PRODUCTIVIDAD',  'Pay Value'),   '0')    AS  BONO_PRODUCTIVIDAD,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P024_GRATIFICACION',       'Pay Value'),   '0')    AS  GRATIFICACION,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P025_AYUDA_ESCOLAR',       'Pay Value'),   '0')    AS  AYUDA_ESCOLAR,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P026_INDEMNIZACION',       'Pay Value'),   '0')    AS  INDEMNIZACION,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P027_GRATIFIC_ESP',        'Pay Value'),   '0')    AS  GRATIFICACION_ESPECIAL, --P027_GRATIFICACION_ESP
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P032_SUBSIDIO_PARA_EMPLEO','Pay Value'),   '0')    AS  SUBSIDIO_EMPLEO,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P035_COMPENSACION',        'Pay Value'),   '0')    AS  COMPENSACION, 
@@ -584,6 +598,8 @@ IS
                        ANIO,
                        MES,
                        NUM_NOMINA,
+                       PAYMENT_PAYROLL,
+                       PAYMENT_GROCERIES,
                        REG_PATRONAL,
 --                       SUELDO_DIARIO,
 --                       SALARIO_DIARIO_INTEGRADO,
@@ -609,6 +625,7 @@ IS
                        END_DATE
              ORDER BY  6,        --Nombre
                        11;       --Numero de Nomina
+
 
 
 
@@ -699,6 +716,8 @@ BEGIN
                     'AÑO,'                      ||
                     'MES,'                      ||
                     'NUM NOM,'                  ||
+                    'METODO DE PAGO - NOMINA,'  ||
+                    'METODO DE PAGO - DESPENSA,'||
                     'REG IMSS,'                 ||
                     'JUEGO CONSOLIDACION,'      ||
                     'FECHA DE INGRESO,'         ||
@@ -741,10 +760,11 @@ BEGIN
                     'BONO PRODUCTIVIDAD,'       ||
                     'GRATIFICACION,'            ||
                     'AYUDA ESCOLAR,'            ||
+                    'INDEMNIZACION,'            ||
                     'GRATIFICACION ESPECIAL,'   ||
                     'SUBSIDIO PARA EL EMPLEO,'  ||
                     'COMPENSACION,'             ||
-                    'BECA EDUCACIONAL,' ||
+                    'BECA EDUCACIONAL,'         ||
                     'AYUDA DE DEFUNCION,'       ||
                     'VACACIONES PAGADAS,'       ||
                     'BONO EXTRAORDINARIO,'      ||
@@ -846,6 +866,8 @@ BEGIN
                                DETAIL(rowIndex).ANIO                    || ',' ||
                                DETAIL(rowIndex).MES                     || ',' ||
                                DETAIL(rowIndex).NUM_NOMINA              || ',' ||
+                               DETAIL(rowIndex).PAYMENT_PAYROLL         || ',' ||
+                               DETAIL(rowIndex).PAYMENT_GROCERIES       || ',' ||
                                DETAIL(rowIndex).REG_PATRONAL            || ',' ||
                                DETAIL(rowIndex).JUEGO_CONSOLIDACION     || ',' ||
                                DETAIL(rowIndex).EFFECTIVE_START_DATE    || ',' ||
@@ -888,6 +910,7 @@ BEGIN
                                DETAIL(rowIndex).BONO_PRODUCTIVIDAD      || ',' ||
                                DETAIL(rowIndex).GRATIFICACION           || ',' ||
                                DETAIL(rowIndex).AYUDA_ESCOLAR           || ',' ||
+                               DETAIL(rowIndex).INDEMNIZACION           || ',' ||
                                DETAIL(rowIndex).GRATIFICACION_ESPECIAL  || ',' ||
                                DETAIL(rowIndex).SUBSIDIO_EMPLEO         || ',' ||
                                DETAIL(rowIndex).COMPENSACION            || ',' ||

@@ -610,6 +610,41 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_RESULT_VALUES_PKG AS
           WHEN OTHERS THEN
              RETURN 'ERROR';      
       END GET_EMPLOYEER_REGISTRATION;
+      
+      
+      FUNCTION GET_PAYMENT_METHOD(P_ASSIGNMENT_ACTION_ID          PAY_ASSIGNMENT_ACTIONS.ASSIGNMENT_ACTION_ID%TYPE,
+                                P_DATE_EARNED                   PAY_PAYROLL_ACTIONS.DATE_EARNED%TYPE,
+                                P_METHOD                        VARCHAR2)
+      RETURN PAY_ORG_PAYMENT_METHODS_F.ORG_PAYMENT_METHOD_NAME%TYPE
+      IS
+        var_payment_method_name PAY_ORG_PAYMENT_METHODS_F.ORG_PAYMENT_METHOD_NAME%TYPE;
+      BEGIN
+        
+        SELECT POPM.ORG_PAYMENT_METHOD_NAME
+          INTO var_payment_method_name
+          FROM PAY_ACTION_INTERLOCKS        PAI,
+               PAY_ASSIGNMENT_ACTIONS       PAA,
+               PAY_PRE_PAYMENTS             PPP,
+               PAY_ORG_PAYMENT_METHODS_F    POPM 
+         WHERE 1 = 1
+           AND PAI.LOCKED_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+           AND PAI.LOCKING_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID
+           AND PPP.ASSIGNMENT_ACTION_ID = PAA.ASSIGNMENT_ACTION_ID
+           AND PPP.ORG_PAYMENT_METHOD_ID = POPM.ORG_PAYMENT_METHOD_ID
+           AND P_DATE_EARNED BETWEEN POPM.EFFECTIVE_START_DATE 
+                                 AND POPM.EFFECTIVE_END_DATE 
+           AND (   POPM.ORG_PAYMENT_METHOD_NAME LIKE (CASE 
+                                                        WHEN P_METHOD = 'DESPENSA' THEN '%DESPENSA%' 
+                                                       END)
+                OR POPM.ORG_PAYMENT_METHOD_NAME NOT LIKE (CASE 
+                                                            WHEN P_METHOD = 'NOMINA' THEN '%DESPENSA%' 
+                                                           END));
+                                                           
+        RETURN var_payment_method_name; 
+      
+      EXCEPTION WHEN OTHERS THEN
+        RETURN ' ';
+      END GET_PAYMENT_METHOD;
     
         
 END PAC_RESULT_VALUES_PKG;
