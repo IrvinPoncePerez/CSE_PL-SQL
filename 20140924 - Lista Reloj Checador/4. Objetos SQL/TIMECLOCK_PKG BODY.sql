@@ -32,13 +32,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.TIMECLOCK_PKG IS
         
             
             var_day_week := TRIM(TO_CHAR(var_date, 'DAY'));
-            IF    var_day_week = 'SUNDAY' THEN var_day := 'DOMINGO';
-            ELSIF var_day_week = 'MONDAY' THEN var_day := 'LUNES';
-            ELSIF var_day_week = 'TUESDAY' THEN var_day := 'MARTES';
-            ELSIF var_day_week = 'WEDNESDAY' THEN var_day := 'MIERCOLES';
-            ELSIF var_day_week = 'THURSDAY' THEN var_day := 'JUEVES';
-            ELSIF var_day_week = 'FRIDAY' THEN var_day := 'VIERNES';
-            ELSIF var_day_week = 'SATURDAY' THEN var_day := 'SABADO';
+            IF    var_day_week IN ('SUNDAY','DOMINGO') THEN var_day := 'DOMINGO';
+            ELSIF var_day_week IN ('MONDAY', 'LUNES') THEN var_day := 'LUNES';
+            ELSIF var_day_week IN ('TUESDAY', 'MARTES') THEN var_day := 'MARTES';
+            ELSIF var_day_week IN ('WEDNESDAY', 'MIÉRCOLES') THEN var_day := 'MIERCOLES';
+            ELSIF var_day_week IN ('THURSDAY', 'JUEVES') THEN var_day := 'JUEVES';
+            ELSIF var_day_week IN ('FRIDAY', 'VIERNES') THEN var_day := 'VIERNES';
+            ELSIF var_day_week IN ('SATURDAY', 'SÁBADO') THEN var_day := 'SABADO';
             END IF; 
             
             
