@@ -1,0 +1,20 @@
+#! /bin/sh
+#
+# %W% %E%
+#
+
+unset JAVA_HOME
+JAVA_HOME=/u01/DEV/AP_DEV/apps/tech_st/10.1.2/jdk/jre/
+export JAVA_HOME
+
+JRECLASSPATH=/u01/DEV/AP_DEV/apps/tech_st/10.1.2/jdk/jre//lib/rt.jar:/u01/DEV/AP_DEV/apps/tech_st/10.1.2/jdk/jre//lib/i18n.jar:/u01/DEV/AP_DEV/apps/tech_st/10.1.2/jlib/javax-ssl-1_1.jar:/u01/DEV/AP_DEV/apps/tech_st/10.1.2/jlib/jssl-1_1.jar:$ORACLE_HOME/jdbc/lib/classes12.jar:$ORACLE_HOME/javavm/lib/aurora.zip
+export JRECLASSPATH
+
+THREADS_FLAG=native
+export THREADS_FLAG
+
+LD_LIBRARY_PATH=$ORACLE_HOME/lib:$JAVA_HOME/lib
+export LD_LIBRARY_PATH
+
+exec $JAVA_HOME/bin/java -classpath $JRECLASSPATH oracle.aurora.util.Wrapper $JAVA_HOME/bin/java -classpath $JRECLASSPATH oracle.aurora.server.tools.loadjava.LoadJavaMain "$@"
+
