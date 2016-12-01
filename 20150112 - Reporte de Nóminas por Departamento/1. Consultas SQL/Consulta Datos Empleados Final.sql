@@ -1,5 +1,4 @@
-        SELECT 
-               DETAIL.ORGANIZATION_ID       AS ORGANIZATION_ID,
+        SELECT DETAIL.ORGANIZATION_ID       AS ORGANIZATION_ID,
                HOUV.ATTRIBUTE7              AS  NUM_DEPARTAMENTO,            
                HOUV.NAME                    AS  DEPARTAMENTO,       
                SUM(SUELDO_NORMAL)           AS SUELDO_NORMAL,      
@@ -8,7 +7,8 @@
                SUM(PRIMA_DOMINICAL)         AS PRIMA_DOMINICAL,    
                SUM(VACACIONES)              AS VACACIONES,        
                SUM(PRIMA_VACACIONAL)        AS PRIMA_VACACIONAL,   
-               SUM(PREMIO_ASISTENCIA)       AS PREMIO_ASISTENCIA,  
+               SUM(PREMIO_ASISTENCIA)       AS PREMIO_ASISTENCIA, 
+               SUM(AYUDA_ALIMENTOS)         AS AYUDA_ALIMENTOS, 
                SUM(AYUDA_DEFUNCION)         AS AYUDA_DEFUNCION,
                SUM(COMISIONES)              AS COMISIONES,
                SUM(AGUINALDO)               AS AGUINALDO,            
@@ -42,6 +42,7 @@
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P005_VACACIONES',          'Pay Value'),   '0')    AS  VACACIONES,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P006_PRIMA VACACIONAL',    'Pay Value'),   '0')    AS  PRIMA_VACACIONAL,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P007_PREMIO ASISTENCIA',   'Pay Value'),   '0')    AS  PREMIO_ASISTENCIA,
+                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P010 AYUDA DE ALIMENTOS',  'Pay Value'),   '0')    AS  AYUDA_ALIMENTOS,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P008_AYUDA DE DEFUNCION',  'Pay Value'),   '0')    AS  AYUDA_DEFUNCION,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P009_COMISIONES',          'Pay Value'),   '0')    AS  COMISIONES,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P011_AGUINALDO',           'Pay Value'),   '0')    AS  AGUINALDO,
@@ -101,4 +102,4 @@
                    HOUV.ATTRIBUTE7,   
                    HOUV.NAME
          ORDER BY  NUM_DEPARTAMENTO,       
-                   DEPARTAMENTO;       
+                   DEPARTAMENTO;
