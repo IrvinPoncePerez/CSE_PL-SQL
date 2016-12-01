@@ -59,6 +59,8 @@ SELECT DISTINCT
                       PAPF.MIDDLE_NAMES)                                                                    AS  EMPLOYEE_NAME,
                 (CASE WHEN PPF.ATTRIBUTE1 IN ('GRQE', 'GRBE')
                       THEN 'SIN TIMBRAR'
+                      WHEN PAPF.EMPLOYEE_NUMBER IN (4225)
+                      THEN 'SIN TIMBRAR'
                       ELSE UUID.UUID
                   END)                                                                                      AS  UUID,
                 REPLACE(PAPF.PER_INFORMATION2, '-', '')                                                     AS  EMPLOYEE_RFC,
@@ -181,6 +183,8 @@ SELECT DISTINCT
                AND PTP.END_DATE BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
                AND PTP.END_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
                AND PAPF.EMPLOYEE_NUMBER = (CASE WHEN PPF.ATTRIBUTE1 IN ('GRQE', 'GRBE')
+                                                THEN PAPF.EMPLOYEE_NUMBER
+                                                WHEN PAPF.EMPLOYEE_NUMBER IN (4225)
                                                 THEN PAPF.EMPLOYEE_NUMBER
                                                 ELSE UUID.NUMEMPLOYEE
                                             END)
