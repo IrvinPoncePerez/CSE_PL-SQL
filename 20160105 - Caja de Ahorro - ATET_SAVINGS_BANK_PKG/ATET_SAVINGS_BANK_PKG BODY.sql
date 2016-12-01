@@ -2039,6 +2039,22 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
              ORDER BY TO_NUMBER(ASPS.TIME_PERIOD_ID) DESC;
         
     BEGIN
+    
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'INSERT_LOAN_TRANSACTION(' ||
+                    ',P_EXPORT_REQUEST_ID => ' || P_EXPORT_REQUEST_ID || 
+                    ',P_PAYROLL_RESULT_ID => ' || P_PAYROLL_RESULT_ID ||
+                    ',P_PERSON_ID => ' || P_PERSON_ID ||
+                    ',P_RUN_RESULT_ID => ' || P_RUN_RESULT_ID ||
+                    ',P_EARNED_DATE => ' || P_EARNED_DATE ||
+                    ',P_TIME_PERIOD_ID => ' || P_TIME_PERIOD_ID ||
+                    ',P_PERIOD_NAME => ' || P_PERIOD_NAME ||
+                    ',P_ELEMENT_NAME => ' || P_ELEMENT_NAME ||
+                    ',P_ENTRY_NAME => ' || P_ENTRY_NAME ||
+                    ',P_ENTRY_UNITS => ' || P_ENTRY_UNITS ||
+                    ',P_ENTRY_VALUE => ' || P_ENTRY_VALUE ||
+                    ',P_DEBIT_AMOUNT => ' || P_DEBIT_AMOUNT ||
+                    ',P_CREDIT_AMOUNT => ' || P_CREDIT_AMOUNT ||
+                    ',P_PAYMENT_SCHEDULE_ID => ' || P_PAYMENT_SCHEDULE_ID || ')');
         
         var_entry_value := P_ENTRY_VALUE;
         var_member_id := GET_MEMBER_ID(P_PERSON_ID);
@@ -2067,6 +2083,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
     
         
         FOR payment IN PAYMENT_DETAILS LOOP
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'PAYMENT_DETAILS');
         
             var_payment_schedule_id := payment.PAYMENT_SCHEDULE_ID;
             var_payment_number := payment.PAYMENT_NUMBER;
@@ -2138,6 +2156,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         IF var_entry_value > 0 THEN 
         
             FOR partial IN PAYMENT_PARTIAL_DETAILS LOOP
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'PAYMENT_PARTIAL_DETAILS');
             
                 var_payment_schedule_id := partial.PAYMENT_SCHEDULE_ID;
                 var_payment_number := partial.PAYMENT_NUMBER;
@@ -2215,6 +2235,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    AND ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id;
                    
                 IF var_validate_partial > 0 THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG ,'REFINANCE_PAYMENT_SCHEDULE');
+                
                     REFINANCE_PAYMENT_SCHEDULE(var_payment_schedule_id, P_EARNED_DATE);
                 END IF;
 
@@ -2229,6 +2251,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         IF var_entry_value > 0 THEN 
         
             FOR prepaid IN PAYMENT_PREPAID_DETAILS LOOP
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'PAYMENT_PREPAID_DETAILS');
             
                 var_payment_schedule_id := prepaid.PAYMENT_SCHEDULE_ID;
                 var_payment_number := prepaid.PAYMENT_NUMBER;
@@ -2306,6 +2330,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    AND ASPS.PAYMENT_SCHEDULE_ID = var_payment_schedule_id;
                    
                 IF var_validate_partial > 0 THEN
+                
+                    FND_FILE.PUT_LINE(FND_FILE.LOG ,'REFINANCE_PAYMENT_SCHEDULE');
+                    
                     REFINANCE_PAYMENT_SCHEDULE(var_payment_schedule_id, P_EARNED_DATE);
                 END IF;
 
@@ -2394,9 +2421,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     
                 var_late_interest_rate := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LATE_INT');
                             
-                SELECT NVL(SUM(ASPS.OWED_CAPITAL), 0)       AS  PAYMENT_CAPITAL,
-                       NVL(SUM(ASPS.OWED_INTEREST), 0)      AS  PAYMENT_INTEREST,
-                       NVL(SUM(ASPS.OWED_INTEREST_LATE), 0) AS  PAYMENT_INTEREST_LATE
+                SELECT NVL(SUM(NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL)), 0)       AS  PAYMENT_CAPITAL,
+                       NVL(SUM(NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST)), 0)      AS  PAYMENT_INTEREST,
+                       NVL(SUM(NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE)), 0) AS  PAYMENT_INTEREST_LATE
                   INTO var_nd_payment_capital,
                        var_nd_payment_interest,
                        var_nd_payment_interest_late
@@ -2406,9 +2433,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL')
                    AND ASPS.ATTRIBUTE6 IS NULL;
                                
-                SELECT NVL(SUM(ASPS.OWED_CAPITAL), 0)        AS  PAYMENT_CAPITAL,
-                       NVL(SUM(ASPS.OWED_INTEREST), 0)       AS  PAYMENT_INTEREST,
-                       NVL(SUM(ASPS.OWED_INTEREST_LATE), 0)  AS  PAYMENT_INTEREST_LATE
+                SELECT NVL(SUM(NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL)), 0)        AS  PAYMENT_CAPITAL,
+                       NVL(SUM(NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST)), 0)       AS  PAYMENT_INTEREST,
+                       NVL(SUM(NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE)), 0)  AS  PAYMENT_INTEREST_LATE
                   INTO var_wd_payment_capital,
                        var_wd_payment_interest,
                        var_wd_payment_interest_late
@@ -2654,7 +2681,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
            AND ASL.LOAN_ID = P_LOAN_ID;
                
                        
-        IF P_PAYMENT_AMOUNT > 0 AND TRUNC(P_PAYMENT_AMOUNT, 0) >= TRUNC(P_EXPECTED_PAYMENT_AMOUNT, 0)  THEN
+        IF P_PAYMENT_AMOUNT > 0 AND P_PAYMENT_AMOUNT >= P_EXPECTED_PAYMENT_AMOUNT  THEN
                     
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
                SET ASPS.STATUS_FLAG         = 'PAYED',
@@ -2673,7 +2700,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
              WHERE ASPS.PAYMENT_SCHEDULE_ID = P_PAYMENT_SCHEDULE_ID
                AND ASPS.LOAN_ID = P_LOAN_ID;
                     
-        ELSIF P_PAYMENT_AMOUNT > 0 AND TRUNC(P_PAYMENT_AMOUNT, 0) < TRUNC(P_EXPECTED_PAYMENT_AMOUNT, 0) THEN
+        ELSIF P_PAYMENT_AMOUNT > 0 AND P_PAYMENT_AMOUNT < P_EXPECTED_PAYMENT_AMOUNT THEN
                     
             UPDATE ATET_SB_PAYMENTS_SCHEDULE ASPS
                SET ASPS.STATUS_FLAG         = 'PARTIAL',
@@ -5399,7 +5426,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     P_LOAN_ID                       NUMBER,
                     P_BONUS_PERCENTAGE              NUMBER,
                     P_BONUS_AMOUNT                  NUMBER,
-                    P_IS_SAVING_RETIREMENT          VARCHAR2)
+                    P_IS_SAVING_RETIREMENT          VARCHAR2,
+                    P_IS_SAVER                      VARCHAR2)
     IS
         QRY_LOAN_BALANCE                EXCEPTION;
         QRY_ASPS_PAYMENT_BALANCE        EXCEPTION;
@@ -5499,6 +5527,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_sav_account_id              NUMBER := 0;
         var_saving_transaction_id       NUMBER := 0;
         var_condoned_interest_id        NUMBER;
+        var_amount_saved                NUMBER;
         
     BEGIN
     
@@ -6111,6 +6140,36 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             RAISE HAS_EXPORTED_PAYMENTS_SCHEDULE;
         END IF;
         
+        
+        IF P_IS_SAVER = 'Y' THEN
+        
+            BEGIN
+                SELECT ASMA.FINAL_BALANCE
+                  INTO var_amount_saved
+                  FROM ATET_SB_MEMBERS          ASM,
+                       ATET_SB_MEMBERS_ACCOUNTS ASMA
+                 WHERE ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID
+                   AND ASM.MEMBER_ID = P_MEMBER_ID
+                   AND ASM.MEMBER_ID = ASMA.MEMBER_ID
+                   AND ASMA.LOAN_ID IS NULL
+                   AND ASMA.ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO';
+            EXCEPTION WHEN OTHERS THEN
+                NULL;
+            END;            
+        
+            IF P_IS_SAVER = 'Y' AND var_amount_saved = 0 THEN 
+                UPDATE ATET_SB_MEMBERS  ASM
+                   SET ASM.IS_SAVER = 'N',
+                       ASM.MEMBER_END_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                       ASM.AMOUNT_TO_SAVE = NULL,
+                       ASM.LAST_UPDATE_DATE = SYSDATE,
+                       ASM.LAST_UPDATED_BY = var_user_id
+                 WHERE 1 = 1
+                   AND ASM.MEMBER_ID = P_MEMBER_ID;
+            END IF;
+        END IF;
+        
+        
         COMMIT;
         ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
         
@@ -6336,7 +6395,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
              WHERE 1 = 1
                AND ASPS.LOAN_ID = ASL.LOAN_ID
                AND ASPS.LOAN_ID = P_LOAN_ID
-               AND ASPS.TIME_PERIOD_ID = P_TIME_PERIOD_ID;
+               AND ASPS.TIME_PERIOD_ID = P_TIME_PERIOD_ID
+               AND ASPS.STATUS_FLAG NOT IN ('PAYED', 'REFINANCED');
         EXCEPTION WHEN OTHERS THEN
             RAISE PAYMENTS_SCHEDULE_EX;
         END;
@@ -7603,6 +7663,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                          PAYMENT_CAPITAL,
                                          PAYMENT_INTEREST,
                                          PAYMENT_INTEREST_LATE,
+                                         PAYED_AMOUNT,
+                                         PAYED_CAPITAL,
+                                         PAYED_INTEREST,
+                                         PAYED_INTEREST_LATE,
+                                         OWED_AMOUNT,
+                                         OWED_CAPITAL,
+                                         OWED_INTEREST,
+                                         OWED_INTEREST_LATE,
                                          FINAL_BALANCE,
                                          ACCRUAL_PAYMENT_AMOUNT,
                                          STATUS_FLAG,
@@ -7624,6 +7692,30 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                          OWED_CAPITAL,
                                          OWED_INTEREST,
                                          OWED_INTEREST_LATE,
+                                         (CASE WHEN PAYMENT_DATE > P_PAYMENT_DATE THEN NULL
+                                               ELSE 0
+                                           END),
+                                         (CASE WHEN PAYMENT_DATE > P_PAYMENT_DATE THEN NULL
+                                               ELSE 0
+                                           END),
+                                         (CASE WHEN PAYMENT_DATE > P_PAYMENT_DATE THEN NULL
+                                               ELSE 0
+                                           END),
+                                         (CASE WHEN PAYMENT_DATE > P_PAYMENT_DATE THEN NULL
+                                               ELSE 0
+                                           END),
+                                         (CASE WHEN PAYMENT_DATE > P_PAYMENT_DATE THEN NULL
+                                               ELSE (OWED_CAPITAL + OWED_INTEREST + OWED_INTEREST_LATE)
+                                           END),
+                                         (CASE WHEN PAYMENT_DATE > P_PAYMENT_DATE THEN NULL
+                                               ELSE OWED_CAPITAL
+                                           END),
+                                         (CASE WHEN PAYMENT_DATE > P_PAYMENT_DATE THEN NULL
+                                               ELSE OWED_INTEREST
+                                           END),
+                                         (CASE WHEN PAYMENT_DATE > P_PAYMENT_DATE THEN NULL
+                                               ELSE OWED_INTEREST_LATE
+                                           END),
                                          OPENING_BALANCE - (OWED_CAPITAL + OWED_INTEREST + OWED_INTEREST_LATE),
                                          ACCRUAL_PAYMENT_AMOUNT,
                                          (CASE
