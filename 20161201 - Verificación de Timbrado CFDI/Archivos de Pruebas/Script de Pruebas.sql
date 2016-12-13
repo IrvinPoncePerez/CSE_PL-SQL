@@ -16,7 +16,6 @@ SELECT *
  ****************************************************/
 CREATE OR REPLACE TYPE DIRECTORIES_LIST AS TABLE OF VARCHAR2(500);
 
-
  
 /*****************************************************
  *      Creación de FUNCTION y PROCEDURE
