@@ -1887,10 +1887,4 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         
     END REPORT_CFDI_NOMINA;
     
-    FUNCTION CFDI_VERIFICATION_TEST(
-        P_DIRECTORY             VARCHAR2)
-      RETURN VARCHAR2
-    AS
-      LANGUAGE JAVA NAME 'CFDI_Verification.test_Connection(java.lang.String) return java.lang.String';
-
 END PAC_CFDI_FUNCTIONS_PKG;
