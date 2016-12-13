@@ -87,5 +87,35 @@ CREATE OR REPLACE PACKAGE APPS.PAC_CFDI_FUNCTIONS_PKG AS
         P_YEAR                  NUMBER,
         P_MONTH                 NUMBER,
         P_PERIOD_NAME           VARCHAR2);
+        
+    FUNCTION  TEST_CONNECTION(
+        P_DIRECTORY             VARCHAR2)
+      RETURN VARCHAR2;  
+      
+    FUNCTION  FIND_FILE(
+        P_DIRECTORY             VARCHAR2, 
+        P_SUB_DIRECTORY         VARCHAR2, 
+        P_FILE_NAME             VARCHAR2)
+      RETURN BOOLEAN;   
+      
+    FUNCTION  IS_WORKING(
+        P_DIRECTORY             VARCHAR2)
+      RETURN BOOLEAN;
+      
+    FUNCTION GET_OUTPUT_FILES(
+        P_DIRECTORY             VARCHAR2,
+        P_SUB_DIRECTORY         VARCHAR2)
+      RETURN PAC_CFDI_OUTPUT_FILES;
+      
+    FUNCTION GET_ERROR_FILES(
+        P_DIRECTORY             VARCHAR2,
+        P_SUB_DIRECTORY         VARCHAR2)
+      RETURN PAC_CFDI_ERROR_FILES;       
+      
+    PROCEDURE VERIFY_CFDI_NOMINA(   
+        P_ERRBUF    OUT NOCOPY  VARCHAR2,
+        P_RETCODE   OUT NOCOPY  VARCHAR2,
+        P_FILE_NAME             VARCHAR2,
+        P_DIRECTORY_NAME        VARCHAR2);
 
 END PAC_CFDI_FUNCTIONS_PKG;

@@ -1887,4 +1887,77 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         
     END REPORT_CFDI_NOMINA;
     
+    FUNCTION  TEST_CONNECTION(
+        P_DIRECTORY             VARCHAR2)
+      RETURN VARCHAR2
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.test_connection(java.lang.String) return java.lang.String'; 
+    
+    FUNCTION  FIND_FILE(
+        P_DIRECTORY             VARCHAR2, 
+        P_SUB_DIRECTORY         VARCHAR2, 
+        P_FILE_NAME             VARCHAR2)
+      RETURN BOOLEAN
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.find_file(java.lang.String, java.lang.String, java.lang.String) return java.lang.Boolean'; 
+    
+    FUNCTION  IS_WORKING(
+        P_DIRECTORY             VARCHAR2)
+      RETURN BOOLEAN
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.is_working(java.lang.String) return java.lang.Boolean';
+    
+    FUNCTION GET_OUTPUT_FILES(
+        P_DIRECTORY             VARCHAR2,
+        P_SUB_DIRECTORY         VARCHAR2)
+      RETURN PAC_CFDI_OUTPUT_FILES
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.get_output_files(java.lang.String, java.lang.String) return oracle.sql.ARRAY';
+      
+    FUNCTION GET_ERROR_FILES(
+        P_DIRECTORY             VARCHAR2,
+        P_SUB_DIRECTORY         VARCHAR2)
+      RETURN PAC_CFDI_ERROR_FILES
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.get_error_files(java.lang.String, java.lang.String) return oracle.sql.ARRAY';
+    
+    PROCEDURE VERIFY_CFDI_NOMINA(   
+        P_ERRBUF    OUT NOCOPY  VARCHAR2,
+        P_RETCODE   OUT NOCOPY  VARCHAR2,
+        P_FILE_NAME             VARCHAR2,
+        P_DIRECTORY_NAME        VARCHAR2)
+    AS
+        var_test_connection     VARCHAR2(100);
+        var_file_name           VARCHAR2(200) := REPLACE(P_FILE_NAME, '.txt', '');
+        var_sub_directory_name  VARCHAR2(100) := TO_CHAR(TO_DATE('09/12/2016', 'DD/MM/RRRR'), 'RRRRMMDD');
+        
+        output_files            PAC_CFDI_OUTPUT_FILES;
+        error_files             PAC_CFDI_ERROR_FILES;
+    BEGIN
+        
+        SELECT TEST_CONNECTION(P_DIRECTORY_NAME)
+          INTO var_test_connection
+          FROM DUAL;
+          
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_test_connection);
+        
+        LOOP
+            EXIT WHEN FIND_FILE(P_DIRECTORY_NAME, var_sub_directory_name, var_file_name || '.txt') = TRUE;
+        END LOOP;
+        
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || '.txt Found!.');
+        
+        LOOP 
+            EXIT WHEN FIND_FILE(P_DIRECTORY_NAME, var_sub_directory_name, var_file_name || '.xml') = TRUE;
+        END LOOP;
+        
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || '.xml Found!.');
+        
+        LOOP
+            EXIT WHEN IS_WORKING(P_DIRECTORY_NAME) = FALSE;
+        END LOOP;
+        
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Recuperando archivos del servidor...');
+        
+        
+        
+    
+    END VERIFY_CFDI_NOMINA;  
+    
+    
 END PAC_CFDI_FUNCTIONS_PKG;
