@@ -1,10 +1,31 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-package CFDI_Verification;
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
 
+/*****************************************************************
+ *      Sentencia para eliminar un objeto JAVA SOURCE
+ *****************************************************************/
+DROP JAVA SOURCE "CFDI_Verification";
+
+
+/*****************************************************************
+ *      Sentencia para la creación de sinonimos publicos
+ *****************************************************************/
+CREATE PUBLIC SYNONYM "oracle/sql/ARRAY" FOR SYS."oracle/sql/ARRAY";
+CREATE PUBLIC SYNONYM "oracle/sql/ArrayDescriptor" FOR SYS."oracle/sql/ArrayDescriptor";
+CREATE PUBLIC SYNONYM "oracle/jdbc/OracleDriver" FOR SYS."oracle/jdbc/OracleDriver";
+CREATE PUBLIC SYNONYM "oracle/sql/DatumWithConnection" FOR SYS."oracle/sql/DatumWithConnection";
+CREATE PUBLIC SYNONYM "oracle/sql/SQLName" FOR SYS."oracle/sql/SQLName";
+CREATE PUBLIC SYNONYM "oracle/jdbc/oracore/OracleTypeCOLLECTION" FOR SYS."oracle/jdbc/oracore/OracleTypeCOLLECTION";
+CREATE PUBLIC SYNONYM "oracle/sql/TypeDescriptor" FOR SYS."oracle/sql/TypeDescriptor";
+CREATE PUBLIC SYNONYM "oracle/sql/Datum" FOR SYS."oracle/sql/Datum";
+
+COMMIT;
+
+
+
+/*****************************************************************
+ *      Creación del objeto JAVA SOURCE CFDI_Verification.
+ *****************************************************************/
+CREATE OR REPLACE AND COMPILE JAVA SOURCE NAMED "CFDI_Verification" AS
 import java.io.IOException;
 import org.apache.commons.net.ftp.FTPClient;
 import java.sql.SQLException;
@@ -14,7 +35,7 @@ import oracle.sql.ArrayDescriptor;
 import oracle.jdbc.OracleDriver;
 
 /**
- * @author : Irvin Ponce PÃ©rez
+ * @author : Irvin Ponce Pérez
  * @since : 09 - Diciembre - 2016
  */
 
@@ -43,13 +64,14 @@ public class CFDI_Verification {
             ftpClient.disconnect();
             
         } catch (IOException ex){
-            System.out.println("Ooops! Error en conexiÃ³n."+ ex.getMessage());
+            System.out.println("Ooops! Error en conexión."+ ex.getMessage());
         } finally {
             return result;
         }
     }
     
     public static void list_directories(String directory){
+        
         String server = "192.1.1.64";
         String user = "ftpuser";
         String pass = "Oracle123";
@@ -75,7 +97,7 @@ public class CFDI_Verification {
             ftpClient.disconnect();
             
         } catch (IOException ex){
-            System.out.println("Ooops! Error en conexiÃ³n."+ ex.getMessage());
+            System.out.println("Ooops! Error en conexión."+ ex.getMessage());
         }
     }
     
@@ -104,8 +126,8 @@ public class CFDI_Verification {
          
             return directories_list;
         } catch (IOException ex){
-            System.out.println("Ooops! Error en conexiÃ³n."+ ex.getMessage());
+            System.out.println("Ooops! Error en conexión."+ ex.getMessage());
         }
         return null;
     }
-}
+};

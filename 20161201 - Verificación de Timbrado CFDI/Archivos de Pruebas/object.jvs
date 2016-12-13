@@ -1,11 +1,12 @@
 CREATE OR REPLACE AND COMPILE JAVA SOURCE NAMED "CFDI_Verification" AS
 import java.io.IOException;
 import org.apache.commons.net.ftp.FTPClient;
-import java.sql.*;
+
 /**
- *
- * @author McLOVIN
+ * @author : Irvin Ponce Pérez
+ * @since : 09 - Diciembre - 2016
  */
+
 public class CFDI_Verification {
     
     public static String test_Connection(String  directory){
@@ -37,7 +38,7 @@ public class CFDI_Verification {
         }
     }
     
-    public static void list_directories(String directory) throws SQLException{
+    public static void list_directories(String directory){
         String server = "192.1.1.64";
         String user = "ftpuser";
         String pass = "Oracle123";
@@ -65,6 +66,10 @@ public class CFDI_Verification {
         } catch (IOException ex){
             System.out.println("Ooops! Error en conexión."+ ex.getMessage());
         }
+    }
+    
+    public static oracle.sql.ARRAY getDirectories(){
+        return null;
     }
     
 };
