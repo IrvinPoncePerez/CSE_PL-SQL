@@ -1924,7 +1924,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     AS
         var_test_connection     VARCHAR2(100);
         var_file_name           VARCHAR2(200) := REPLACE(P_FILE_NAME, '.txt', '');
-        var_sub_directory_name  VARCHAR2(100) := TO_CHAR(TO_DATE('09/12/2016', 'DD/MM/RRRR'), 'RRRRMMDD');
+        var_sub_directory_name  VARCHAR2(100) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
         
         output_files            PAC_CFDI_OUTPUT_FILES;
         error_files             PAC_CFDI_ERROR_FILES;
