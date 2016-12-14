@@ -1924,10 +1924,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     AS
         var_test_connection     VARCHAR2(100);
         var_file_name           VARCHAR2(200) := REPLACE(P_FILE_NAME, '.txt', '');
-        var_sub_directory_name  VARCHAR2(100) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
+        var_sub_directory_name  VARCHAR2(100) := TO_CHAR(TO_DATE('13/08/2016', 'DD/MM/RRRR'), 'RRRRMMDD');
+        var_errors              NUMBER;
         
-        output_files            PAC_CFDI_OUTPUT_FILES;
-        error_files             PAC_CFDI_ERROR_FILES;
+        OUTPUT_FILES            PAC_CFDI_OUTPUT_FILES;
+        ERROR_FILES             PAC_CFDI_ERROR_FILES;
     BEGIN
         
         SELECT TEST_CONNECTION(P_DIRECTORY_NAME)
@@ -1953,9 +1954,91 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         END LOOP;
         
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Recuperando archivos del servidor...');
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
         
+        OUTPUT_FILES := GET_OUTPUT_FILES(P_DIRECTORY_NAME, var_sub_directory_name);
+        ERROR_FILES := GET_ERROR_FILES(P_DIRECTORY_NAME, var_sub_directory_name);
         
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, OUTPUT_FILES.COUNT-2 || ' Archivos finalizados satisfactoriamente.');
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
         
+        FOR var_index IN 1..OUTPUT_FILES.COUNT LOOP
+            DECLARE
+                var_employee_number     VARCHAR2(10) := '';
+                var_file_name           VARCHAR2(100) := '';
+                var_employee_name       VARCHAR2(500) := '';
+            BEGIN
+                var_file_name := OUTPUT_FILES(var_index);
+                var_employee_number := SUBSTR(var_file_name,0,INSTR(var_file_name, '_')-1);
+                
+                BEGIN
+                    SELECT DISTINCT
+                           PPF.FULL_NAME
+                      INTO var_employee_name
+                      FROM PER_PEOPLE_F     PPF
+                     WHERE 1 = 1
+                       AND PPF.EMPLOYEE_NUMBER = var_employee_number
+                       AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
+                EXCEPTION 
+                    WHEN OTHERS THEN NULL;
+                END;
+                
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || ' ' || var_employee_name);
+                                   
+            END;
+        END LOOP;
+        
+        var_errors := ERROR_FILES.COUNT;
+        
+        FOR var_index IN 1..ERROR_FILES.COUNT LOOP
+            DECLARE
+                var_file_name           VARCHAR2(100) := '';
+            BEGIN
+                var_file_name := ERROR_FILES(var_index);
+                
+                IF var_file_name IN ('Productos_Avicolas', 'Calvario_Servicios', 'aspnet_client', 'Adriana_Pocovi') THEN
+                    var_errors := var_errors - 1;                
+                END IF;
+            END;
+        END LOOP;
+        
+        IF    var_errors > 0 THEN
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_errors || ' Archivos finalizados con error.');
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+            
+            FOR var_index IN 1..ERROR_FILES.COUNT LOOP
+                DECLARE
+                    var_employee_number     VARCHAR2(10) := '';
+                    var_file_name           VARCHAR2(100) := '';
+                    var_employee_name       VARCHAR2(500) := '';
+                BEGIN
+                    var_file_name := ERROR_FILES(var_index);
+                    
+                    IF var_file_name NOT IN ('Productos_Avicolas', 'Calvario_Servicios', 'aspnet_client', 'Adriana_Pocovi') THEN
+                        var_employee_number := SUBSTR(var_file_name,0,INSTR(var_file_name, '_')-1);
+                    
+                        BEGIN
+                            SELECT DISTINCT
+                                   PPF.FULL_NAME
+                              INTO var_employee_name
+                              FROM PER_PEOPLE_F     PPF
+                             WHERE 1 = 1
+                               AND PPF.EMPLOYEE_NUMBER = var_employee_number
+                               AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
+                        EXCEPTION 
+                            WHEN OTHERS THEN NULL;
+                        END;
+                        
+                        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || ' ' || var_employee_name);
+                    END IF;
+                END;
+            END LOOP;
+            
+            P_RETCODE := 1;
+        ELSIF var_errors = 0 THEN
+            P_RETCODE := 0;
+        END IF;
     
     END VERIFY_CFDI_NOMINA;  
     
