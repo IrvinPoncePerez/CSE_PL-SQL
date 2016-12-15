@@ -15,7 +15,7 @@ CREATE OR REPLACE TYPE PAC_CFDI_OUTPUT_FILES AS TABLE OF VARCHAR2(500);
 CREATE OR REPLACE TYPE PAC_CFDI_ERROR_FILES AS TABLE OF VARCHAR2(500);
 
 
-CREATE OR REPLACE AND COMPILE JAVA SOURCE NAMED PAC_CFDI_JAVA AS
+CREATE OR REPLACE AND COMPILE JAVA SOURCE NAMED PAC_CFDI_TIMBRADO AS
 /*
  * Import section.
  */
@@ -31,7 +31,7 @@ import oracle.jdbc.OracleDriver;
  * @created_date : 13 / 12 / 2016
  * @updated_date : 13 / 12 / 2016
  */
-public class PAC_CFDI_JAVA {
+public class PAC_CFDI_TIMBRADO {
     
     static String server = "192.1.1.64";
     static String user = "ftpuser";
