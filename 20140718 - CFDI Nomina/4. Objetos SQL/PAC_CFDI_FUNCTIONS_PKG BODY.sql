@@ -1890,31 +1890,31 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     FUNCTION  TEST_CONNECTION(
         P_DIRECTORY             VARCHAR2)
       RETURN VARCHAR2
-    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.test_connection(java.lang.String) return java.lang.String'; 
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_TIMBRADO.test_connection(java.lang.String) return java.lang.String'; 
     
     FUNCTION  FIND_FILE(
         P_DIRECTORY             VARCHAR2, 
         P_SUB_DIRECTORY         VARCHAR2, 
         P_FILE_NAME             VARCHAR2)
       RETURN BOOLEAN
-    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.find_file(java.lang.String, java.lang.String, java.lang.String) return java.lang.Boolean'; 
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_TIMBRADO.find_file(java.lang.String, java.lang.String, java.lang.String) return java.lang.Boolean'; 
     
     FUNCTION  IS_WORKING(
         P_DIRECTORY             VARCHAR2)
       RETURN BOOLEAN
-    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.is_working(java.lang.String) return java.lang.Boolean';
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_TIMBRADO.is_working(java.lang.String) return java.lang.Boolean';
     
     FUNCTION GET_OUTPUT_FILES(
         P_DIRECTORY             VARCHAR2,
         P_SUB_DIRECTORY         VARCHAR2)
       RETURN PAC_CFDI_OUTPUT_FILES
-    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.get_output_files(java.lang.String, java.lang.String) return oracle.sql.ARRAY';
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_TIMBRADO.get_output_files(java.lang.String, java.lang.String) return oracle.sql.ARRAY';
       
     FUNCTION GET_ERROR_FILES(
         P_DIRECTORY             VARCHAR2,
         P_SUB_DIRECTORY         VARCHAR2)
       RETURN PAC_CFDI_ERROR_FILES
-    AS LANGUAGE JAVA NAME 'PAC_CFDI_JAVA.get_error_files(java.lang.String, java.lang.String) return oracle.sql.ARRAY';
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_TIMBRADO.get_error_files(java.lang.String, java.lang.String) return oracle.sql.ARRAY';
     
     PROCEDURE VERIFY_CFDI_NOMINA(   
         P_ERRBUF    OUT NOCOPY  VARCHAR2,
@@ -1924,7 +1924,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     AS
         var_test_connection     VARCHAR2(100);
         var_file_name           VARCHAR2(200) := REPLACE(P_FILE_NAME, '.txt', '');
-        var_sub_directory_name  VARCHAR2(100) := TO_CHAR(TO_DATE('13/08/2016', 'DD/MM/RRRR'), 'RRRRMMDD');
+        var_sub_directory_name  VARCHAR2(100) := TO_CHAR(TO_DATE('15/12/2016', 'DD/MM/RRRR'), 'RRRRMMDD');
         var_errors              NUMBER;
         
         OUTPUT_FILES            PAC_CFDI_OUTPUT_FILES;
