@@ -307,75 +307,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
     
         RETURN 0;
     END GET_SUBTBR;
-
-
-    FUNCTION GET_ISRRET(
-                P_ASSIGNMENT_ACTION_ID      PAY_RUN_RESULTS.ASSIGNMENT_ACTION_ID%TYPE)
-      RETURN PAY_RUN_RESULT_VALUES.RESULT_VALUE%TYPE
-    IS 
-        var_result_value    PAY_RUN_RESULT_VALUES.RESULT_VALUE%TYPE;
-    BEGIN
-        
-         SELECT ROUND(PRRV.RESULT_VALUE, 2)
-           INTO var_result_value
-           FROM PAY_RUN_RESULTS          PRR,
-                PAY_ELEMENT_TYPES_F      PETF,
-                PAY_RUN_RESULT_VALUES    PRRV,
-                PAY_INPUT_VALUES_F       PIVF
-          WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-            AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
-            AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
-            AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
-            AND PETF.ELEMENT_NAME = 'D055_ISPT'
-            AND PIVF.NAME = 'Pay Value';
     
-        RETURN var_result_value;
-    EXCEPTION WHEN NO_DATA_FOUND THEN    
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_ISRRET(P_ASSIGNMENT_ACTION_ID => ' || P_ASSIGNMENT_ACTION_ID || 
-                                                  ') RETURN 0');
-    
-        RETURN 0;
-    END GET_ISRRET;
-    
-    
-    FUNCTION GET_MONDET(
-                P_ASSIGNMENT_ACTION_ID      PAY_RUN_RESULTS.ASSIGNMENT_ACTION_ID%TYPE)
-      RETURN PAY_RUN_RESULT_VALUES.RESULT_VALUE%TYPE
-    IS 
-        var_result_value    PAY_RUN_RESULT_VALUES.RESULT_VALUE%TYPE;
-    BEGIN
-        
-        SELECT SUM(PRRV.RESULT_VALUE)
-          INTO var_result_value
-          FROM PAY_RUN_RESULTS              PRR,
-               PAY_ELEMENT_TYPES_F          PETF,
-               PAY_RUN_RESULT_VALUES        PRRV,
-               PAY_INPUT_VALUES_F           PIVF,
-               PAY_ELEMENT_CLASSIFICATIONS  PEC
-         WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
-           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
-           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
-           AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
-           AND (PEC.CLASSIFICATION_NAME IN ('Voluntary Deductions', 
-                                            'Involuntary Deductions') 
-                   OR PETF.ELEMENT_NAME IN (SELECT MEANING
-                                              FROM FND_LOOKUP_VALUES 
-                                             WHERE LOOKUP_TYPE = 'XX_DEDUCCIONES_INFORMATIVAS'
-                                               AND LANGUAGE = USERENV('LANG')))
-           AND PETF.ELEMENT_NAME <> 'D055_ISPT'
-           AND PIVF.UOM = 'M'
-           AND PIVF.NAME = 'Pay Value';
-    
-        RETURN var_result_value;
-    EXCEPTION WHEN NO_DATA_FOUND THEN    
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_MONDET(P_ASSIGNMENT_ACTION_ID => ' || P_ASSIGNMENT_ACTION_ID ||
-                                                   ') RETURN ' || var_result_value);
-    
-        RETURN 0;
-    END GET_MONDET;
-    
-    
+       
     FUNCTION    GET_PERSON_TERMINATION_DATE(
                     P_PERSON_ID     PER_ASSIGNMENTS_F.PERSON_ID%TYPE)
       RETURN    VARCHAR2
@@ -2948,9 +2881,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
          var_max_sav_amt_wk             NUMBER;
          var_posibility_saving          NUMBER;
          var_real_posibility_saving     NUMBER;
-         var_isrret                     NUMBER;
          var_subtbr                     NUMBER;
-         var_mondet                     NUMBER;
          var_validate                   VARCHAR2(1) := 'N';
          var_min_sav_amt_sm             NUMBER;
          var_min_sav_amt_wk             NUMBER;
@@ -3019,16 +2950,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 var_period_type := ATET_SAVINGS_BANK_PKG.GET_PERIOD_TYPE(var_person_id);
                 var_max_assignment_action_id := ATET_SAVINGS_BANK_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(var_assignment_id, var_payroll_id);
                 var_subtbr := ATET_SAVINGS_BANK_PKG.GET_SUBTBR(var_max_assignment_action_id);
-                var_isrret := ATET_SAVINGS_BANK_PKG.GET_ISRRET(var_max_assignment_action_id);
-                var_mondet := ATET_SAVINGS_BANK_PKG.GET_MONDET(var_max_assignment_action_id);
-                            
+                          
             
                 var_max_per_sav := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_PER_SAV');
                 var_max_sav_amt_sm := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_SM');
                 var_max_sav_amt_wk := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_WK');
                 var_min_sav_amt_sm := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MIN_SAV_AMT_SM');
                 var_min_sav_amt_wk := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MIN_SAV_AMT_WK');
-                var_posibility_saving := (var_subtbr - (var_isrret + var_mondet)) * (var_max_per_sav / 100);
+                var_posibility_saving := (var_subtbr) * (var_max_per_sav / 100);
             
                 IF    var_period_type IN ('Week', 'Semana') THEN
                 
@@ -3168,9 +3097,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
          var_max_assignment_action_id   NUMBER;
          var_max_per_sav                NUMBER;
          var_posibility_saving          NUMBER;
-         var_isrret                     NUMBER;
          var_subtbr                     NUMBER;
-         var_mondet                     NUMBER;
          var_saving_bank_id             NUMBER := ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID;
          var_max_sav_amt_sm             NUMBER;
          var_max_sav_amt_wk             NUMBER;
@@ -3189,8 +3116,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_period_type := ATET_SAVINGS_BANK_PKG.GET_PERIOD_TYPE(P_PERSON_ID);   
         var_max_assignment_action_id := ATET_SAVINGS_BANK_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(var_assignment_id, var_payroll_id);
         var_subtbr := ATET_SAVINGS_BANK_PKG.GET_SUBTBR(var_max_assignment_action_id);
-        var_isrret := ATET_SAVINGS_BANK_PKG.GET_ISRRET(var_max_assignment_action_id);
-        var_mondet := ATET_SAVINGS_BANK_PKG.GET_MONDET(var_max_assignment_action_id);
         var_max_per_sav := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_PER_SAV');
         var_posibility_saving := (var_subtbr) * (var_max_per_sav / 100);
         var_max_sav_amt_sm := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_SM');
