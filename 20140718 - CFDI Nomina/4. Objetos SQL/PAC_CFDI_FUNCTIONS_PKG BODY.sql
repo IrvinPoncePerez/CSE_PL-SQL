@@ -1166,6 +1166,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     
     BEGIN
         
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Crea CFDI de Nómina');
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+        
         
         BEGIN
             
@@ -1198,7 +1202,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     DEV_STATUS => DEV_STATUS,
                     MESSAGE => V_MESSAGE
                                             );
-            
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);   
             
         EXCEPTION WHEN OTHERS THEN
             dbms_output.put_line('**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
@@ -1211,7 +1217,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
          WHERE 1 = 1
            AND CFDI.REQUEST_ID = V_REQUEST_ID; 
            
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'REQUEST_ID : ' || V_REQUEST_ID);
+--        FND_FILE.PUT_LINE(FND_FILE.LOG, 'REQUEST_ID : ' || V_REQUEST_ID);
         
         IF P_COMPANY_ID = '02' THEN 
             var_directory_name := 'Calvario_Servicios';
@@ -1221,6 +1227,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
             var_directory_name := 'Productos_Avicolas';
         END IF;
     
+        
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Mueve CFDI de Nómina');
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+        
     
         BEGIN
             
@@ -1249,10 +1260,52 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     MESSAGE => V_MESSAGE
                                             );
             
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS); 
             
         EXCEPTION WHEN OTHERS THEN
             dbms_output.put_line('**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
+        END;
+        
+        
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Timbrado CFDI de Nómina');
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+        
+        
+        BEGIN
+        
+            V_REQUEST_ID :=
+                FND_REQUEST.SUBMIT_REQUEST (
+                   APPLICATION => 'PER',
+                   PROGRAM => 'PAC_TIMBRADO_CFDI_NOMINA',
+                   DESCRIPTION => '',
+                   START_TIME => '',
+                   SUB_REQUEST => FALSE,
+                   ARGUMENT1 => TO_CHAR(var_file_name),
+                   ARGUMENT2 => TO_CHAR(var_directory_name)
+                                           );
+            STANDARD.COMMIT;                  
+                         
+            WAITING :=
+                FND_CONCURRENT.WAIT_FOR_REQUEST (
+                    REQUEST_ID => V_REQUEST_ID,
+                    INTERVAL => 1,
+                    MAX_WAIT => 0,
+                    PHASE => PHASE,
+                    STATUS => STATUS,
+                    DEV_PHASE => DEV_PHASE,
+                    DEV_STATUS => DEV_STATUS,
+                    MESSAGE => V_MESSAGE
+                                            );
+            
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+        
+        EXCEPTION WHEN OTHERS THEN
+            dbms_output.put_line('**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
         END;
     
     EXCEPTION WHEN NO_DIRECTORY THEN
@@ -1924,7 +1977,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     AS
         var_test_connection     VARCHAR2(100);
         var_file_name           VARCHAR2(200) := REPLACE(P_FILE_NAME, '.txt', '');
-        var_sub_directory_name  VARCHAR2(100) := TO_CHAR(TO_DATE('15/12/2016', 'DD/MM/RRRR'), 'RRRRMMDD');
+        var_sub_directory_name  VARCHAR2(100) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
         var_errors              NUMBER;
         
         OUTPUT_FILES            PAC_CFDI_OUTPUT_FILES;
