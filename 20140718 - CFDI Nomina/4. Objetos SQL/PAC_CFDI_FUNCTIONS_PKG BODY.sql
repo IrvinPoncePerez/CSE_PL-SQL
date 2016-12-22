@@ -1120,6 +1120,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
             --Eliminación de la secuencia
             BEGIN
             
+                UPDATE PAC_CFDI_NOMINA_TB 
+                   SET RECORDS = var_reg_seq
+                 WHERE 1 = 1
+                   AND USER_ID = var_user_id
+                   AND REQUEST_ID = var_request_id
+                   AND FILE_NAME = var_file_name
+                   AND SEQUENCE_NAME = var_sequence_name;
+            
                 EXECUTE IMMEDIATE 'DROP SEQUENCE ' || var_sequence_name;
                               
             EXCEPTION WHEN OTHERS THEN
@@ -1160,6 +1168,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         V_MESSAGE               VARCHAR2 (4000 BYTE);
         
         var_file_name           VARCHAR2 (1000);
+        var_file_records        NUMBER;
         var_directory_name      VARCHAR2 (1000);
         
         NO_DIRECTORY            EXCEPTION;
@@ -1211,8 +1220,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
         END;
         
-        SELECT FILE_NAME
-          INTO var_file_name
+        SELECT FILE_NAME,
+               RECORDS
+          INTO var_file_name,
+               var_file_records
           FROM PAC_CFDI_NOMINA_TB CFDI
          WHERE 1 = 1
            AND CFDI.REQUEST_ID = V_REQUEST_ID; 
@@ -1310,8 +1321,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
                 END;
                 
-                DBMS_LOCK.SLEEP(120);
-                
                 FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
                 FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Descarga CFDI de Nómina');
                 FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
@@ -1325,34 +1334,39 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         var_day_directory       VARCHAR2(150) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
                         var_new_directory       VARCHAR2(150) := var_day_directory || '_' || REPLACE(var_file_name, '.txt', '');
                     BEGIN
+                    
+                          
+                        LOOP
+                            EXIT WHEN IS_DOWNLOADING(var_remote_directory,(var_file_records * 2)) = FALSE;
+                        END LOOP;
                                             
                     
-                        V_REQUEST_ID :=
-                            FND_REQUEST.SUBMIT_REQUEST (
-                               APPLICATION => 'PER',
-                               PROGRAM => 'DESCARGA_CFDI_NOMINA',
-                               DESCRIPTION => '',
-                               START_TIME => '',
-                               SUB_REQUEST => FALSE,
-                               ARGUMENT1 => TO_CHAR(var_remote_directory),
-                               ARGUMENT2 => TO_CHAR(var_local_directory),
-                               ARGUMENT3 => TO_CHAR(var_company_directory),
-                               ARGUMENT4 => TO_CHAR(var_day_directory),
-                               ARGUMENT5 => TO_CHAR(var_new_directory)
-                                                       );
-                        STANDARD.COMMIT;                  
-                                     
-                        WAITING :=
-                            FND_CONCURRENT.WAIT_FOR_REQUEST (
-                                REQUEST_ID => V_REQUEST_ID,
-                                INTERVAL => 1,
-                                MAX_WAIT => 0,
-                                PHASE => PHASE,
-                                STATUS => STATUS,
-                                DEV_PHASE => DEV_PHASE,
-                                DEV_STATUS => DEV_STATUS,
-                                MESSAGE => V_MESSAGE
-                                                        );
+--                        V_REQUEST_ID :=
+--                            FND_REQUEST.SUBMIT_REQUEST (
+--                               APPLICATION => 'PER',
+--                               PROGRAM => 'DESCARGA_CFDI_NOMINA',
+--                               DESCRIPTION => '',
+--                               START_TIME => '',
+--                               SUB_REQUEST => FALSE,
+--                               ARGUMENT1 => TO_CHAR(var_remote_directory),
+--                               ARGUMENT2 => TO_CHAR(var_local_directory),
+--                               ARGUMENT3 => TO_CHAR(var_company_directory),
+--                               ARGUMENT4 => TO_CHAR(var_day_directory),
+--                               ARGUMENT5 => TO_CHAR(var_new_directory)
+--                                                       );
+--                        STANDARD.COMMIT;                  
+--                                     
+--                        WAITING :=
+--                            FND_CONCURRENT.WAIT_FOR_REQUEST (
+--                                REQUEST_ID => V_REQUEST_ID,
+--                                INTERVAL => 1,
+--                                MAX_WAIT => 0,
+--                                PHASE => PHASE,
+--                                STATUS => STATUS,
+--                                DEV_PHASE => DEV_PHASE,
+--                                DEV_STATUS => DEV_STATUS,
+--                                MESSAGE => V_MESSAGE
+--                                                        );
                         
                         FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
                         FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
@@ -2033,6 +2047,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         P_SUB_DIRECTORY         VARCHAR2)
       RETURN PAC_CFDI_ERROR_FILES
     AS LANGUAGE JAVA NAME 'PAC_CFDI_TIMBRADO.get_error_files(java.lang.String, java.lang.String) return oracle.sql.ARRAY';
+    
+    FUNCTION IS_DOWNLOADING(
+        P_DIRECTORY             VARCHAR2,
+        P_RECORDS               NUMBER)
+      RETURN BOOLEAN
+    AS LANGUAGE JAVA NAME 'PAC_CFDI_TIMBRADO.is_downloading(java.lang.String, java.lang.Integer) return java.lang.Boolean';
     
     PROCEDURE TIMBRADO_CFDI_NOMINA(   
         P_ERRBUF    OUT NOCOPY  VARCHAR2,
