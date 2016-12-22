@@ -101,7 +101,7 @@ public class PAC_CFDI_TIMBRADO {
     }
     
     public static boolean is_working(String directory){
-        Boolean result = false;
+        Boolean result = true;
         FTPClient objFTPClient = new FTPClient();
         String path = directory + "/In/";
         
@@ -125,7 +125,7 @@ public class PAC_CFDI_TIMBRADO {
             objFTPClient.disconnect();
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
-            result  = false;
+            result  = true;
         }
                 
         return result;
@@ -187,6 +187,46 @@ public class PAC_CFDI_TIMBRADO {
         }
         
         return null;
+    }
+    
+    public static boolean is_downloading(String directory, Integer records){
+        Boolean result = true;
+        FTPClient objFTPClient = new FTPClient();
+        int count = 0;
+        
+        try {
+            objFTPClient.connect(server);
+            objFTPClient.login(user, pass);
+            objFTPClient.enterLocalPassiveMode();
+            objFTPClient.changeWorkingDirectory(directory);
+            
+            if (objFTPClient.isConnected() == true){
+                
+                String[] files = objFTPClient.listNames();
+                
+                for (int i=0; i<files.length; i++){
+                    if (files[i].endsWith(".xmo") == true || files[i].endsWith("pdf") == true ){
+                        count = count + 1;
+                    }
+                }
+                
+                System.out.println("count : " + count + " records : " + records);
+                
+                if (count == records){
+                    result = false;
+                } else {
+                    result = true;
+                }
+            }
+            
+            objFTPClient.logout();
+            objFTPClient.disconnect();
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+            result  = true;
+        }
+        
+        return result;
     }
     
 }

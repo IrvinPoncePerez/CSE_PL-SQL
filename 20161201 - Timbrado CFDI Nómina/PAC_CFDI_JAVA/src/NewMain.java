@@ -17,6 +17,7 @@ public class NewMain {
         System.out.println(PAC_CFDI_JAVA.test_connection("Calvario_Servicios"));
         System.out.println(PAC_CFDI_JAVA.find_file("Calvario_Servicios", "20161209", "CFDI_NOMINA_CS_23_2016_Quincena_AGUINALDO.xml"));
         System.out.println(PAC_CFDI_JAVA.is_working("Calvario_Servicios"));
+        System.out.println(PAC_CFDI_JAVA.is_downloading("/Calvario_Servicios/Descarga/2016/12", 3896));
     }
     
 }
