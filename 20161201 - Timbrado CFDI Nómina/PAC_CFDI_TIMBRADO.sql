@@ -205,7 +205,7 @@ public class PAC_CFDI_TIMBRADO {
                 String[] files = objFTPClient.listNames();
                 
                 for (int i=0; i<files.length; i++){
-                    if (files[i].endsWith(".xmo") == true || files[i].endsWith("pdf") == true ){
+                    if (files[i].endsWith(".xml") == true || files[i].endsWith("pdf") == true ){
                         count = count + 1;
                     }
                 }
