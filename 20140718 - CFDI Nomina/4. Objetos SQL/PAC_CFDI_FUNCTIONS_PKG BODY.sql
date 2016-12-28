@@ -1129,6 +1129,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND SEQUENCE_NAME = var_sequence_name;
             
                 EXECUTE IMMEDIATE 'DROP SEQUENCE ' || var_sequence_name;
+                
+                IF NVL(var_reg_seq, 0) = 0 THEN
+                    P_RETCODE := 1;
+                    P_ERRBUF := 'EL ARCHIVO SE ENCUENTRA VACIO, NOMINA NO EJECUTADA.';
+                END IF;
                               
             EXCEPTION WHEN OTHERS THEN
                 dbms_output.put_line('**Error al Borrar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
@@ -1339,34 +1344,36 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         LOOP
                             EXIT WHEN IS_DOWNLOADING(var_remote_directory,(var_file_records * 2)) = FALSE;
                         END LOOP;
+                        
+                        DBMS_LOCK.SLEEP(30);
                                             
                     
---                        V_REQUEST_ID :=
---                            FND_REQUEST.SUBMIT_REQUEST (
---                               APPLICATION => 'PER',
---                               PROGRAM => 'DESCARGA_CFDI_NOMINA',
---                               DESCRIPTION => '',
---                               START_TIME => '',
---                               SUB_REQUEST => FALSE,
---                               ARGUMENT1 => TO_CHAR(var_remote_directory),
---                               ARGUMENT2 => TO_CHAR(var_local_directory),
---                               ARGUMENT3 => TO_CHAR(var_company_directory),
---                               ARGUMENT4 => TO_CHAR(var_day_directory),
---                               ARGUMENT5 => TO_CHAR(var_new_directory)
---                                                       );
---                        STANDARD.COMMIT;                  
---                                     
---                        WAITING :=
---                            FND_CONCURRENT.WAIT_FOR_REQUEST (
---                                REQUEST_ID => V_REQUEST_ID,
---                                INTERVAL => 1,
---                                MAX_WAIT => 0,
---                                PHASE => PHASE,
---                                STATUS => STATUS,
---                                DEV_PHASE => DEV_PHASE,
---                                DEV_STATUS => DEV_STATUS,
---                                MESSAGE => V_MESSAGE
---                                                        );
+                        V_REQUEST_ID :=
+                            FND_REQUEST.SUBMIT_REQUEST (
+                               APPLICATION => 'PER',
+                               PROGRAM => 'DESCARGA_CFDI_NOMINA',
+                               DESCRIPTION => '',
+                               START_TIME => '',
+                               SUB_REQUEST => FALSE,
+                               ARGUMENT1 => TO_CHAR(var_remote_directory),
+                               ARGUMENT2 => TO_CHAR(var_local_directory),
+                               ARGUMENT3 => TO_CHAR(var_company_directory),
+                               ARGUMENT4 => TO_CHAR(var_day_directory),
+                               ARGUMENT5 => TO_CHAR(var_new_directory)
+                                                       );
+                        STANDARD.COMMIT;                  
+                                     
+                        WAITING :=
+                            FND_CONCURRENT.WAIT_FOR_REQUEST (
+                                REQUEST_ID => V_REQUEST_ID,
+                                INTERVAL => 1,
+                                MAX_WAIT => 0,
+                                PHASE => PHASE,
+                                STATUS => STATUS,
+                                DEV_PHASE => DEV_PHASE,
+                                DEV_STATUS => DEV_STATUS,
+                                MESSAGE => V_MESSAGE
+                                                        );
                         
                         FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
                         FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
