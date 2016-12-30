@@ -1,3 +1,5 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+        
         SELECT DETAIL.ORGANIZATION_ID       AS ORGANIZATION_ID,
                HOUV.ATTRIBUTE7              AS  NUM_DEPARTAMENTO,            
                HOUV.NAME                    AS  DEPARTAMENTO,       
