@@ -368,5 +368,9 @@ CREATE OR REPLACE PACKAGE APPS.ATET_SAVINGS_BANK_PKG IS
                     P_MEMBER_NAME               VARCHAR2,
                     P_PAYMENT_METHOD_ID         NUMBER);
     
+    FUNCTION    GET_PERSON_TYPE(
+                    P_MEMBER_ID                 NUMBER
+                ) RETURN VARCHAR2;
+                
 
 END ATET_SAVINGS_BANK_PKG;

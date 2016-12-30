@@ -1536,6 +1536,24 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
           || 'NOCACHE '
           || 'NOCYCLE';
           
+        EXECUTE IMMEDIATE 'DROP SEQUENCE ATET_SB_RECEIPT_NUMBER_SEQ';  
+          
+        EXECUTE IMMEDIATE
+             'CREATE SEQUENCE ATET_SB_RECEIPT_NUMBER_SEQ '
+          || 'START WITH 1 '
+          || 'INCREMENT BY 1 '
+          || 'NOCACHE '
+          || 'NOCYCLE';  
+          
+        EXECUTE IMMEDIATE 'DROP SEQUENCE ATET_SB_PREPAID_SEQ';  
+          
+        EXECUTE IMMEDIATE
+             'CREATE SEQUENCE ATET_SB_PREPAID_SEQ '
+          || 'START WITH 1 '
+          || 'INCREMENT BY 1 '
+          || 'NOCACHE '
+          || 'NOCYCLE'; 
+          
         COMMIT;  
                   
     EXCEPTION WHEN OTHERS THEN
@@ -8962,7 +8980,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                       FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
                      WHERE 1 = 1
                        AND ASPS.LOAN_ID = detail.LOAN_ID
-                       AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED', 'SKIP')
+                       AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED', 'SKIP', 'PARTIAL')
                        AND ROWNUM = 1;
                 EXCEPTION WHEN OTHERS THEN
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : LOAN_ID = ' || detail.LOAN_ID);
@@ -11297,5 +11315,28 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         WHEN INT_SAVING_RETIREMENT_EX THEN
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'INT_SAVING_RETIREMENT_EX');
     END RETIREMENT_DISPERSION;   
+    
+    FUNCTION    GET_PERSON_TYPE(
+                    P_MEMBER_ID                 NUMBER
+                ) RETURN VARCHAR2
+    IS
+        var_person_type     VARCHAR2(500);
+    BEGIN
+    
+        SELECT PPTT.USER_PERSON_TYPE
+          INTO var_person_type
+          FROM ATET_SB_MEMBERS      ASM,
+               PER_PEOPLE_F         PPF,
+               PER_PERSON_TYPES_TL  PPTT
+         WHERE 1 = 1
+           AND ASM.MEMBER_ID = P_MEMBER_ID
+           AND ASM.PERSON_ID = PPF.PERSON_ID
+           AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE 
+                           AND PPF.EFFECTIVE_END_DATE
+           AND PPF.PERSON_TYPE_ID = PPTT.PERSON_TYPE_ID
+           AND PPTT.LANGUAGE = 'ESA'; 
+        
+        RETURN var_person_type;
+    END GET_PERSON_TYPE;
 
 END ATET_SAVINGS_BANK_PKG;
