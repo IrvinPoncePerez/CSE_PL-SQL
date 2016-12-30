@@ -1,7 +1,6 @@
-ALTER SESSION SET CURRENT_SCHEMA=APPS;            
+ALTER SESSION SET NLS_LANGUAGE = 'LATIN AMERICAN SPANISH';
 
-
- SELECT DISTINCT 
+             SELECT DISTINCT 
                     PPF.PAYROLL_NAME,
                     (CASE
                         WHEN FLV1.LOOKUP_CODE = '02' THEN 'CS'
@@ -27,9 +26,9 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                       WHERE PA.PERSON_ID = PAPF.PERSON_ID
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,     
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  SUBTBR,     
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  ISRRET,
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
                     (CASE
@@ -51,7 +50,7 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                      END)                                                                           AS  NOM_FECINI,
                     PTP.END_DATE                                                                    AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  NOM_DIAPAG,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
@@ -77,9 +76,9 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                     MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
                                          PPA.DATE_EARNED,
                                          PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
-                    PAC_CFDI_FUNCTIONS_PKG.GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  NOM_PER_TOTGRA,
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  NOM_PER_TOTEXE,  
+                    PAC_CFDI_FUNCTIONS_PKG.GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                    AS  NOM_DESCRI,  
                      NVL((SELECT DISTINCT 
                                  (CASE WHEN PAPF.EMPLOYEE_NUMBER = 13 OR PAPF.EMPLOYEE_NUMBER = 24 THEN
                                         '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
@@ -168,6 +167,7 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                    AND PPA.EFFECTIVE_DATE BETWEEN HAPD.EFFECTIVE_START_DATE AND HAPD.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PRTX.EFFECTIVE_START_DATE AND PRTX.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                   AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%EFECTIVO%'
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,

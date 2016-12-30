@@ -433,9 +433,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                       WHERE PA.PERSON_ID = PAPF.PERSON_ID
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
-                    SUM(NVL(GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,     
-                    SUM(NVL(GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
-                    SUM(NVL(GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  SUBTBR,     
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  ISRRET,
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
                     (CASE
@@ -457,7 +457,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      END)                                                                           AS  NOM_FECINI,
                     PTP.END_DATE                                                                    AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  NOM_DIAPAG,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
@@ -480,12 +480,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P039_DESPENSA',
                                               'Pay Value'), '0'))                                   AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
-                    MAX(NVL(GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
                                          PPA.DATE_EARNED,
                                          PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
-                    SUM(NVL(GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
-                    SUM(NVL(GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
-                    GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  NOM_PER_TOTGRA,
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  NOM_PER_TOTEXE,  
+                    PAC_CFDI_FUNCTIONS_PKG.GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                    AS  NOM_DESCRI,  
                      NVL((SELECT DISTINCT 
                                  (CASE WHEN PAPF.EMPLOYEE_NUMBER = 13 OR PAPF.EMPLOYEE_NUMBER = 24 THEN
                                         '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
@@ -574,6 +574,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PPA.EFFECTIVE_DATE BETWEEN HAPD.EFFECTIVE_START_DATE AND HAPD.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PRTX.EFFECTIVE_START_DATE AND PRTX.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                   AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%EFECTIVO%'
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
@@ -1439,9 +1440,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                       WHERE PA.PERSON_ID = PAPF.PERSON_ID
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
-                    SUM(NVL(GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,     
-                    SUM(NVL(GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
-                    SUM(NVL(GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  SUBTBR,     
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  ISRRET,
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
                     (CASE
@@ -1463,7 +1464,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      END)                                                                           AS  NOM_FECINI,
                     PTP.END_DATE                                                                    AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  NOM_DIAPAG,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
@@ -1486,12 +1487,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P039_DESPENSA',
                                               'Pay Value'), '0'))                                   AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
-                    MAX(NVL(GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
                                          PPA.DATE_EARNED,
                                          PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
-                    SUM(NVL(GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
-                    SUM(NVL(GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
-                    GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  NOM_PER_TOTGRA,
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  NOM_PER_TOTEXE,  
+                    PAC_CFDI_FUNCTIONS_PKG.GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                    AS  NOM_DESCRI,  
                      NVL((SELECT DISTINCT 
                                  (CASE WHEN PAPF.EMPLOYEE_NUMBER = 13 OR PAPF.EMPLOYEE_NUMBER = 24 THEN
                                         '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
@@ -1580,6 +1581,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PPA.EFFECTIVE_DATE BETWEEN HAPD.EFFECTIVE_START_DATE AND HAPD.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PRTX.EFFECTIVE_START_DATE AND PRTX.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                   AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%EFECTIVO%'
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
@@ -2187,5 +2189,77 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     
     END TIMBRADO_CFDI_NOMINA;  
     
+    FUNCTION GET_PAYMENT_METHOD(
+        P_ASSIGNMENT_ID         NUMBER)
+      RETURN VARCHAR2
+    IS
+        var_payment_method      VARCHAR2(500);
+    BEGIN
+    
+        SELECT POPM.ORG_PAYMENT_METHOD_NAME
+          INTO var_payment_method
+          FROM PAY_PERSONAL_PAYMENT_METHODS_F   PPPM,
+               PAY_ORG_PAYMENT_METHODS_F        POPM
+         WHERE 1 = 1
+           AND SYSDATE BETWEEN PPPM.EFFECTIVE_START_DATE 
+                           AND PPPM.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN POPM.EFFECTIVE_START_DATE
+                           AND POPM.EFFECTIVE_END_DATE
+           AND POPM.ORG_PAYMENT_METHOD_ID = PPPM.ORG_PAYMENT_METHOD_ID
+           AND PPPM.ASSIGNMENT_ID = P_ASSIGNMENT_ID  
+           AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%PENSIONES%'
+           AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%DESPENSA%'
+           AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%EFECTIVALE%'
+           AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%CHEQUE%';
+        
+        RETURN var_payment_method;
+    END GET_PAYMENT_METHOD;
+    
+    FUNCTION GET_UUID(
+        P_EMPLOYEE_NUMBER           NUMBER,
+        P_START_DATE                DATE,
+        P_END_DATE                  DATE,
+        P_CONSOLIDATION_SET_NAME    VARCHAR2)
+      RETURN VARCHAR2
+    IS
+        var_uuid        VARCHAR2(500);
+    BEGIN
+    
+    
+        SELECT UNIQUE
+               UUID.UUID
+          INTO var_uuid
+          FROM XXCALV_UUID_NOM     UUID 
+         WHERE 1 = 1 
+           AND UUID.NUMEMPLOYEE = P_EMPLOYEE_NUMBER 
+           AND REPLACE(UUID.PERIOD, ' ', '') = (CASE 
+                                                    WHEN P_CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
+                                                         TO_CHAR(TO_DATE(P_START_DATE, 'DD/MM/RRRR'), 'DD-MON-RR') || TO_CHAR(TO_DATE(P_END_DATE,'DD/MM/RRRR'), 'DD-MON-RR')
+                                                    ELSE 
+                                                         REPLACE(UUID.PERIOD, ' ', '')
+                                                END)
+           AND UUID.JUEGO_CONSOLIDACION = (CASE
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACION_MAYO' OR P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACIÓN' THEN
+                                                    'GRATIFICACION MARZO'
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACION_MAYO_PTU' THEN
+                                                    'GRATIFICACION MAYO PTU'
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE '%AHORRO%' THEN 
+                                                    'FONDO DE AHORRO'
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE '%ORDINARIA%' THEN 
+                                                    'PAGO DE NOMINA'
+                                               ELSE
+                                                    UPPER(REPLACE(P_CONSOLIDATION_SET_NAME, '_', ' '))
+                                            END);
+    
+        RETURN var_uuid;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN 'SIN TIMBRAR';
+        WHEN TOO_MANY_ROWS THEN
+            DBMS_OUTPUT.PUT_LINE(P_EMPLOYEE_NUMBER || ':' ||
+                                    P_START_DATE      || ':' ||
+                                    P_END_DATE        || ':' ||
+                                    P_CONSOLIDATION_SET_NAME);
+    END GET_UUID;
     
 END PAC_CFDI_FUNCTIONS_PKG;
