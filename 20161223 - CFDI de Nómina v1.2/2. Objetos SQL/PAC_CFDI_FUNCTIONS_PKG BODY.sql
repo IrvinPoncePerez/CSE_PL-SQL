@@ -599,6 +599,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PPA.EFFECTIVE_DATE BETWEEN HAPD.EFFECTIVE_START_DATE AND HAPD.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PRTX.EFFECTIVE_START_DATE AND PRTX.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                   AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%EFECTIVO%'
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
@@ -892,7 +893,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTGRA  ' || TO_CHAR(0, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTEXE  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DESCRI  ' || DETAIL(rowIndex).NOM_DESCRI);
-                        UTL_FILE.PUT_LINE(var_file, 'R');
+--                        UTL_FILE.PUT_LINE(var_file, 'R');
                     
                         DECLARE 
                         
@@ -1022,7 +1023,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                        AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
                                                                                   'P080_FONDO AHORRO TR ACUM',
                                                                                   'P017_PRIMA DE ANTIGUEDAD',
-                                                                                  'P032_SUBSIDIO_PARA_EMPLEO',
+--                                                                                  'P032_SUBSIDIO_PARA_EMPLEO',
                                                                                   'P047_ISPT ANUAL A FAVOR',
                                                                                   'P026_INDEMNIZACION')
                                                        AND PETF.ELEMENT_NAME NOT IN (CASE 
@@ -1095,20 +1096,69 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                          AND (   NOM_DED_IMPGRA <> 0
                                               OR NOM_DED_IMPEXE <> 0)
                                        ORDER BY NOM_DED_DESCRI;
+                                       
+                            CURSOR DETAIL_OTRA_PERCEPCION (P_ASSIGNMENT_ACTION_ID   NUMBER) IS
+                                    SELECT 
+                                                        NVL((SELECT DISTINCT
+                                                                    DESCRIPTION
+                                                               FROM FND_LOOKUP_VALUES
+                                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                                AND MEANING LIKE PETF.ELEMENT_NAME
+                                                                AND LANGUAGE = 'ESA'), '016')       AS  NOM_OTR_TIP,
+                                                        NVL((SELECT DISTINCT
+                                                                    TAG
+                                                               FROM FND_LOOKUP_VALUES
+                                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                                AND MEANING LIKE PETF.ELEMENT_NAME
+                                                                AND LANGUAGE = 'ESA'), '000')      AS  NOM_OTR_CVE,
+                                                        (CASE
+                                                            WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
+                                                                'REPARTO DE UTILIDADES' 
+                                                            WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
+                                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                            WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
+                                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                            ELSE
+                                                                REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
+                                                         END)                                       AS  NOM_OTR_DESCRI,
+                                                         0                                          AS  NOM_OTR_IMPEXE,
+                                                         SUM(PRRV.RESULT_VALUE)                     AS  NOM_OTR_IMPGRA
+                                                      FROM PAY_RUN_RESULTS              PRR,
+                                                           PAY_ELEMENT_TYPES_F          PETF,
+                                                           PAY_RUN_RESULT_VALUES        PRRV,
+                                                           PAY_INPUT_VALUES_F           PIVF,
+                                                           PAY_ELEMENT_CLASSIFICATIONS  PEC
+                                                     WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+                                                       AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                                                       AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                                                       AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                                                       AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+                                                       AND PETF.ELEMENT_NAME  IN ('P032_SUBSIDIO_PARA_EMPLEO')
+                                                       AND PIVF.UOM = 'M'
+                                                       AND PIVF.NAME = 'Pay Value'
+                                                       AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                                       AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
+                                                     GROUP BY PETF.ELEMENT_NAME,
+                                                              PETF.REPORTING_NAME,
+                                                              PETF.ELEMENT_INFORMATION11,
+                                                              PIVF.NAME;
                         
                             isPERCEP    BOOLEAN;
                             isDEDUC     BOOLEAN;
-                            
+                            isOTRO      BOOLEAN;
                             
                         BEGIN
                         
                             isPERCEP := FALSE;
                             isDEDUC  := FALSE;
+                            isOTRO   := FALSE;
                         
                             FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP       
                                 FOR PERCEP IN DETAIL_PERCEPCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
                                     IF isPERCEP = FALSE THEN
-                                        UTL_FILE.PUT_LINE(var_file, 'INIPER');
+--                                        UTL_FILE.PUT_LINE(var_file, 'INIPER');
                                         isPERCEP := TRUE;
                                     END IF;
                                 
@@ -1124,7 +1174,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                     
                             IF isPERCEP = TRUE THEN
                                 UTL_FILE.PUT_LINE(var_file, '');
-                                UTL_FILE.PUT_LINE(var_file, 'FINPER');
+--                                UTL_FILE.PUT_LINE(var_file, 'FINPER');
                             END IF;                        
                                
                             
@@ -1133,7 +1183,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                 FOR DEDUC IN DETAIL_DEDUCCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
                                 
                                     IF isDEDUC = FALSE THEN
-                                        UTL_FILE.PUT_LINE(var_file, 'INIDED');
+--                                        UTL_FILE.PUT_LINE(var_file, 'INIDED');
                                         isDEDUC := TRUE;   
                                     END IF;
                                 
@@ -1149,10 +1199,33 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                     
                             IF isDEDUC = TRUE THEN
                                 UTL_FILE.PUT_LINE(var_file, '');
-                                UTL_FILE.PUT_LINE(var_file, 'FINDED');
+--                                UTL_FILE.PUT_LINE(var_file, 'FINDED');
                             END IF;
                                 
+                            FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP
+                                FOR OTR IN DETAIL_OTRA_PERCEPCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
+                                
+                                    IF isOTRO = FALSE THEN
+--                                        UTL_FILE.PUT_LINE(var_file, 'INIDED');
+                                        isOTRO := TRUE;   
+                                    END IF;
+                                
+                                    UTL_FILE.PUT_LINE(var_file, '');
+                                    UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_TIP     ' || OTR.NOM_OTR_TIP);
+                                    UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_CVE     ' || OTR.NOM_OTR_CVE);
+                                    UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_DESCRI  ' || REPLACE(OTR.NOM_OTR_DESCRI, '_', ' '));
+                                    UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_IMPGRA  ' || TO_CHAR(OTR.NOM_OTR_IMPGRA, '9999990D99'));
+                                    UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_IMPEXE  ' || TO_CHAR(OTR.NOM_OTR_IMPEXE, '9999990D99'));
+                                    UTL_FILE.PUT_LINE(var_file, '');    
+                                    UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_SUBSID ' || GET_SUBSIDIO_EMPLEO(ASSIGN.ASSIGNMENT_ACTION_ID));
+                                    
+                                END LOOP;
+                            END LOOP;
                             
+                            IF isOTRO = TRUE THEN
+                                UTL_FILE.PUT_LINE(var_file, '');
+--                                UTL_FILE.PUT_LINE(var_file, 'FINDED');
+                            END IF;
                             
                             UTL_FILE.PUT_LINE(var_file, '');
                             
@@ -1643,6 +1716,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PPA.EFFECTIVE_DATE BETWEEN HAPD.EFFECTIVE_START_DATE AND HAPD.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PRTX.EFFECTIVE_START_DATE AND PRTX.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                   AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%EFECTIVO%'
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
@@ -2250,5 +2324,105 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     
     END TIMBRADO_CFDI_NOMINA;  
     
+    FUNCTION GET_PAYMENT_METHOD(
+        P_ASSIGNMENT_ID         NUMBER)
+      RETURN VARCHAR2
+    IS
+        var_payment_method      VARCHAR2(500);
+    BEGIN
+    
+        SELECT POPM.ORG_PAYMENT_METHOD_NAME
+          INTO var_payment_method
+          FROM PAY_PERSONAL_PAYMENT_METHODS_F   PPPM,
+               PAY_ORG_PAYMENT_METHODS_F        POPM
+         WHERE 1 = 1
+           AND SYSDATE BETWEEN PPPM.EFFECTIVE_START_DATE 
+                           AND PPPM.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN POPM.EFFECTIVE_START_DATE
+                           AND POPM.EFFECTIVE_END_DATE
+           AND POPM.ORG_PAYMENT_METHOD_ID = PPPM.ORG_PAYMENT_METHOD_ID
+           AND PPPM.ASSIGNMENT_ID = P_ASSIGNMENT_ID  
+           AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%PENSIONES%'
+           AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%DESPENSA%'
+           AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%EFECTIVALE%'
+           AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%CHEQUE%';
+        
+        RETURN var_payment_method;
+    END GET_PAYMENT_METHOD;
+    
+    FUNCTION GET_UUID(
+        P_EMPLOYEE_NUMBER           NUMBER,
+        P_START_DATE                DATE,
+        P_END_DATE                  DATE,
+        P_CONSOLIDATION_SET_NAME    VARCHAR2)
+      RETURN VARCHAR2
+    IS
+        var_uuid        VARCHAR2(500);
+    BEGIN
+    
+    
+        SELECT UNIQUE
+               UUID.UUID
+          INTO var_uuid
+          FROM XXCALV_UUID_NOM     UUID 
+         WHERE 1 = 1 
+           AND UUID.NUMEMPLOYEE = P_EMPLOYEE_NUMBER 
+           AND REPLACE(UUID.PERIOD, ' ', '') = (CASE 
+                                                    WHEN P_CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
+                                                         TO_CHAR(TO_DATE(P_START_DATE, 'DD/MM/RRRR'), 'DD-MON-RR') || TO_CHAR(TO_DATE(P_END_DATE,'DD/MM/RRRR'), 'DD-MON-RR')
+                                                    ELSE 
+                                                         REPLACE(UUID.PERIOD, ' ', '')
+                                                END)
+           AND UUID.JUEGO_CONSOLIDACION = (CASE
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACION_MAYO' OR P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACIÓN' THEN
+                                                    'GRATIFICACION MARZO'
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACION_MAYO_PTU' THEN
+                                                    'GRATIFICACION MAYO PTU'
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE '%AHORRO%' THEN 
+                                                    'FONDO DE AHORRO'
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE '%ORDINARIA%' THEN 
+                                                    'PAGO DE NOMINA'
+                                               ELSE
+                                                    UPPER(REPLACE(P_CONSOLIDATION_SET_NAME, '_', ' '))
+                                            END);
+    
+        RETURN var_uuid;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN ' ';
+        WHEN TOO_MANY_ROWS THEN
+            DBMS_OUTPUT.PUT_LINE(P_EMPLOYEE_NUMBER || ':' ||
+                                    P_START_DATE      || ':' ||
+                                    P_END_DATE        || ':' ||
+                                    P_CONSOLIDATION_SET_NAME);
+    END GET_UUID;
+    
+    FUNCTION GET_SUBSIDIO_EMPLEO(
+        P_ASSIGNMENT_ACTION_ID    NUMBER)
+      RETURN NUMBER
+    IS
+        var_result      NUMBER;
+    BEGIN
+    
+        SELECT SUM(PRRV.RESULT_VALUE) 
+          INTO var_result                    
+          FROM PAY_RUN_RESULTS              PRR,
+               PAY_ELEMENT_TYPES_F          PETF,
+               PAY_RUN_RESULT_VALUES        PRRV,
+               PAY_INPUT_VALUES_F           PIVF,
+               PAY_ELEMENT_CLASSIFICATIONS  PEC
+         WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+           AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+           AND PETF.ELEMENT_NAME  IN ('I055 ART 8VO TABLA')
+           AND PIVF.UOM = 'M'
+           AND PIVF.NAME = 'Pay Value'
+           AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;           
+        
+        RETURN var_result;
+    END GET_SUBSIDIO_EMPLEO;
     
 END PAC_CFDI_FUNCTIONS_PKG;

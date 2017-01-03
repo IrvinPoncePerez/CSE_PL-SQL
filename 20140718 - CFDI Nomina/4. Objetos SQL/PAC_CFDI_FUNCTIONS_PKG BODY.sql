@@ -2254,7 +2254,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         RETURN var_uuid;
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            RETURN 'SIN TIMBRAR';
+            RETURN ' ';
         WHEN TOO_MANY_ROWS THEN
             DBMS_OUTPUT.PUT_LINE(P_EMPLOYEE_NUMBER || ':' ||
                                     P_START_DATE      || ':' ||
