@@ -1334,7 +1334,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
                 
                     DECLARE 
-                        var_remote_directory    VARCHAR2(150) := '/' || var_directory_name || '/Descarga/' || EXTRACT(YEAR FROM SYSDATE) || '/' || EXTRACT(MONTH FROM SYSDATE);
+                        var_remote_directory    VARCHAR2(150) := '/' || var_directory_name || '/Descarga/' || EXTRACT(YEAR FROM SYSDATE) || '/' || TRIM(TO_CHAR(EXTRACT(MONTH FROM SYSDATE), '00'));
                         var_local_directory     VARCHAR2(150) := '/var/tmp/CARGAS/CFE/INTERFACE_NOM_O';
                         var_company_directory   VARCHAR2(150) := var_directory_name;
                         var_day_directory       VARCHAR2(150) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
@@ -1346,8 +1346,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             EXIT WHEN IS_DOWNLOADING(var_remote_directory,(var_file_records * 2)) = FALSE;
                         END LOOP;
                         
-                        DBMS_LOCK.SLEEP(30);
-                                            
+                        DBMS_LOCK.SLEEP(30);                                                                    
                     
                         V_REQUEST_ID :=
                             FND_REQUEST.SUBMIT_REQUEST (
