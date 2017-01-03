@@ -73,5 +73,60 @@ CREATE OR REPLACE PACKAGE BODY PAC_RFC_SAT_PKG AS
         P_RETCODE := 1;
         P_ERRBUF := 'Error al actualizar el RFC. ' || SQLERRM;
     END UPDATE_RFC;
+    
+    PROCEDURE   BULK_UPDATE_RFC(
+        P_ERRBUF    OUT NOCOPY  VARCHAR2,
+        P_RETCODE   OUT NOCOPY  VARCHAR2,
+        P_FILE_NAME             VARCHAR2)
+    IS
+        var_request_id      NUMBER;
+        var_waiting         BOOLEAN;
+        var_phase           VARCHAR2(1000);
+        var_status          VARCHAR2(1000);
+        var_dev_phase       VARCHAR2(1000);
+        var_dev_status      VARCHAR2(1000);
+        var_message         VARCHAR2(1000);
+        
+        CURSOR DETAILS IS
+            SELECT PURT.EMPLOYEE_NUMBER,
+                   PURT.EMPLOYEE_NAME,
+                   PURT.RFC
+              FROM PAC_UPDATE_RFC_TB    PURT;
+                  
+    BEGIN
+    
+        var_request_id :=
+            FND_REQUEST.SUBMIT_REQUEST 
+                (
+                    APPLICATION => 'PER',
+                    PROGRAM     => 'PAC_UPDATE_RFC',
+                    DESCRIPTION => '',
+                    START_TIME  => '',
+                    SUB_REQUEST => FALSE,
+                    ARGUMENT1   => TO_CHAR(P_FILE_NAME)
+                );
+        
+        STANDARD.COMMIT;                                          
+                                 
+        var_waiting :=
+            FND_CONCURRENT.WAIT_FOR_REQUEST 
+                (
+                    REQUEST_ID  => var_request_id,
+                    INTERVAL    => 1,
+                    MAX_WAIT    => 0,
+                    PHASE       => var_phase,
+                    STATUS      => var_status,
+                    DEV_PHASE   => var_dev_phase,
+                    DEV_STATUS  => var_dev_status,
+                    MESSAGE     => var_message
+                );
+                
+        IF var_phase IN ('Finalizado', 'Completed') AND var_status IN ('Normal') THEN 
+            NULL;
+        END IF;
+        
+        EXECUTE IMMEDIATE 'TRUNCATE TABLE PAC_UPDATE_RFC_TB';
+        
+    END BULK_UPDATE_RFC;
 
 END PAC_RFC_SAT_PKG;
