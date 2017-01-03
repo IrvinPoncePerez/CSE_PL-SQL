@@ -1,3 +1,6 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+
+
         SELECT PAPF.PERSON_ID,
                PAAF.ASSIGNMENT_ID,
                PEA_SDO.EXTERNAL_ACCOUNT_ID,
@@ -24,9 +27,9 @@
                  WHERE PA.PERSON_ID = PAPF.PERSON_ID
                    AND FT2.TERRITORY_CODE = PA.COUNTRY)                                     AS  "COUNTRY",
                PA.POSTAL_CODE                                                               AS  "POSTAL_CODE",
-               NVL(PA.TELEPHONE_NUMBER_1,
+               TO_CHAR(NVL(PA.TELEPHONE_NUMBER_1,
                    NVL(PA.TELEPHONE_NUMBER_2,
-                       PA.TELEPHONE_NUMBER_3))                                              AS  "TELEPHONE",
+                       PA.TELEPHONE_NUMBER_3)))                                              AS  "TELEPHONE",
                UPPER(PAC_HR_PAY_PKG.GET_LOOKUP_MEANING('SEX', PAPF.SEX))                    AS  "SEX",
                DECODE(NVL(PAPF.NATIONALITY, 'NOTHING'), 
                       'NOTHING', ' ',
@@ -74,24 +77,24 @@
                PAAF.ASS_ATTRIBUTE10                                                         AS  "AFORE",
                PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                         PPF.PAYROLL_ID,
-                                                                                                        :P_YEAR),
+                                                                                                        NVL(:P_YEAR, EXTRACT(YEAR FROM SYSDATE))),
                                                      'D058_INFONAVIT',
                                                      'Credit Number')                       AS  "INFONAVIT_CREDIT_NUMBER",
                (CASE 
                 WHEN PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                               PPF.PAYROLL_ID,
-                                                                                                              :P_YEAR),
+                                                                                                              NVL(:P_YEAR, EXTRACT(YEAR FROM SYSDATE))),
                                                            'D058_INFONAVIT',
                                                            'Discount Start Date') IS NOT NULL THEN
                     SUBSTR(PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                                     PPF.PAYROLL_ID,
-                                                                                                                    :P_YEAR),
+                                                                                                                    NVL(:P_YEAR, EXTRACT(YEAR FROM SYSDATE))),
                                                                  'D058_INFONAVIT',
                                                                  'Discount Start Date'), 1, 11)
                 END)                                                                        AS  "INFONAVIT_START_DATE",
                (CASE PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                               PPF.PAYROLL_ID,
-                                                                                                              :P_YEAR),
+                                                                                                              NVL(:P_YEAR, EXTRACT(YEAR FROM SYSDATE))),
                                                            'D058_INFONAVIT',
                                                            'Discount Type')
                      WHEN 'P' THEN '1'
@@ -99,23 +102,23 @@
                      WHEN 'V' THEN '3'
                      ELSE PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                                    PPF.PAYROLL_ID,
-                                                                                                                   :P_YEAR),  
+                                                                                                                   NVL(:P_YEAR, EXTRACT(YEAR FROM SYSDATE))),  
                                                                 'D058_INFONAVIT',
                                                                 'Discount Type')
                 END)                                                                        AS  "INFONAVIT_DISCOUNT_TYPE",
                PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                         PPF.PAYROLL_ID,
-                                                                                                        :P_YEAR),
+                                                                                                        NVL(:P_YEAR, EXTRACT(YEAR FROM SYSDATE))),
                                                      'D058_INFONAVIT',
                                                      'Discount Value')                      AS  "INFONAVIT_DISCOUNT_VALUE",
                PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                         PPF.PAYROLL_ID,
-                                                                                                        :P_YEAR),
+                                                                                                        NVL(:P_YEAR, EXTRACT(YEAR FROM SYSDATE))),
                                                      'D076_DESC_PENSION_ALIM',
                                                      'Porcentaje')                          AS  "PENSION_PORCENTAJE", 
                PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAC_RESULT_VALUES_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(PAAF.ASSIGNMENT_ID,
                                                                                                         PPF.PAYROLL_ID,
-                                                                                                        :P_YEAR),
+                                                                                                        NVL(:P_YEAR, EXTRACT(YEAR FROM SYSDATE))),
                                                      'D076_DESC_PENSION_ALIM',
                                                      'Amount')                              AS  "PENSION_AMOUNT",
                PAPF.EMAIL_ADDRESS                                                           AS  "EMAIL_ADDRESS",
