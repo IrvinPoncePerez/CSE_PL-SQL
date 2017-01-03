@@ -69,6 +69,9 @@ CREATE OR REPLACE PACKAGE BODY PAC_RFC_SAT_PKG AS
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_assign_payroll_warning : ' || (CASE WHEN var_assign_payroll_warning = TRUE THEN 'TRUE' ELSE 'FALSE' END));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_orig_hire_warning : ' || (CASE WHEN var_orig_hire_warning = TRUE THEN 'TRUE' ELSE 'FALSE' END));
     
+    EXCEPTION WHEN OTHERS THEN
+        P_RETCODE := 1;
+        P_ERRBUF := 'Error al actualizar el RFC. ' || SQLERRM;
     END UPDATE_RFC;
 
 END PAC_RFC_SAT_PKG;
