@@ -56,13 +56,14 @@ IS
     
     DETAIL  DETAILS;
     
-      FUNCTION GET_ADJUSTED_DATE(
+      FUNCTION GET_EFFECTIVE_DATE(
              P_PERSON_ID      NUMBER)
       RETURN DATE
       IS
             var_effective_start_date    DATE;
       BEGIN
-            SELECT PPOS.ADJUSTED_SVC_DATE
+
+            SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE)
               INTO var_effective_start_date
               FROM PER_PEOPLE_F             PPF,
                    PER_PERIODS_OF_SERVICE   PPOS    
@@ -72,7 +73,6 @@ IS
                AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
                AND PPOS.ACTUAL_TERMINATION_DATE IS NULL;
       
-      
             RETURN var_effective_start_date;
       EXCEPTION    
         WHEN NO_DATA_FOUND THEN
@@ -80,7 +80,7 @@ IS
         
             SELECT EFFECTIVE_DATE
               INTO var_effective_start_date
-              FROM (SELECT PPOS.ADJUSTED_SVC_DATE AS EFFECTIVE_DATE
+              FROM (SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE) AS EFFECTIVE_DATE
                       FROM PER_PEOPLE_F             PPF,
                            PER_PERIODS_OF_SERVICE   PPOS    
                      WHERE 1 = 1 
@@ -107,55 +107,7 @@ IS
             RETURN NULL;
       END;
     
-      FUNCTION GET_ORIGINAL_DATE_OF_HIRE(
-             P_PERSON_ID      NUMBER)
-      RETURN DATE
-      IS
-            var_effective_start_date    DATE;
-      BEGIN
-            SELECT PPF.ORIGINAL_DATE_OF_HIRE
-              INTO var_effective_start_date
-              FROM PER_PEOPLE_F             PPF,
-                   PER_PERIODS_OF_SERVICE   PPOS    
-             WHERE 1 = 1 
-               AND PPF.PERSON_ID = P_PERSON_ID
-               AND PPF.PERSON_ID = PPOS.PERSON_ID
-               AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
-               AND PPOS.ACTUAL_TERMINATION_DATE IS NULL;
-      
-      
-            RETURN var_effective_start_date;
-      EXCEPTION    
-        WHEN NO_DATA_FOUND THEN
-        BEGIN
-            SELECT EFFECTIVE_DATE
-              INTO var_effective_start_date
-              FROM (SELECT PPF.ORIGINAL_DATE_OF_HIRE AS EFFECTIVE_DATE
-                      FROM PER_PEOPLE_F             PPF,
-                           PER_PERIODS_OF_SERVICE   PPOS    
-                     WHERE 1 = 1 
-                       AND PPF.PERSON_ID = P_PERSON_ID
-                       AND PPF.PERSON_ID = PPOS.PERSON_ID
-                       AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
-                       AND PPOS.ACTUAL_TERMINATION_DATE IS NOT NULL
-                     ORDER BY PPOS.ACTUAL_TERMINATION_DATE DESC ) 
-             WHERE 1 = 1
-               AND ROWNUM = 1;
-               
-            RETURN var_effective_start_date;
-        EXCEPTION
-            WHEN OTHERS THEN
-            dbms_output.put_line('**Error en la funcion GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
-            FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
-            
-            RETURN NULL;
-        END;
-        WHEN OTHERS THEN
-            dbms_output.put_line('**Error en la funcion GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
-            FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
-            
-            RETURN NULL;
-      END;
+     
     
 BEGIN
      
@@ -259,7 +211,6 @@ BEGIN
                         'UNIDAD MED FAM,'||
                         'SEGURO,'||
                         'FECHA ALTA,'||
-                        'FECHA REINGRESO,'||
                         'SUELDO BASE,'||
                         'S D I,'||
                         'REG PATRONAL,'||
@@ -357,8 +308,7 @@ BEGIN
                                                     DETAIL(rowIndex).SUB_DELEGACION_IMSS        || ',' ||
                                                     DETAIL(rowIndex).UNI_MED_FAM                || ',' ||
                                                     DETAIL(rowIndex).SEGURO                     || ',' ||
-                                                    GET_ORIGINAL_DATE_OF_HIRE(DETAIL(rowIndex).PERSON_ID) || ',' ||
-                                                    GET_ADJUSTED_DATE(DETAIL(rowIndex).PERSON_ID)         || ',' ||
+                                                    GET_EFFECTIVE_DATE(DETAIL(rowIndex).PERSON_ID) || ',' ||
                                                     DETAIL(rowIndex).SUELDO_BASE                || ',' ||
                                                     DETAIL(rowIndex).S_D_I                      || ',' ||
                                                     DETAIL(rowIndex).REG_PATRONAL               || ',' ||
