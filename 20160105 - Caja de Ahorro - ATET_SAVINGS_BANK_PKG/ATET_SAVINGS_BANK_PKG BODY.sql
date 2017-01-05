@@ -8279,7 +8279,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                             ||LPAD(var_debit_amount, 40, ' ')
                             ||LPAD(var_credit_amount, 40, ' '));
 
---            ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;                                  
+            ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;                                  
             COMMIT;
         ELSE
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'YA SE PROCESO ANTERIORMENTE EL PAGO DE DEVOLUCIÓN DE AHORRO.');
