@@ -60,11 +60,11 @@ else
 		echo "Carga."
 		if [ $var2 = FND_RESPONSIBILITY ]; then
 			echo "Cargando definicion de "$var2" en "$var3
-			FNDLOAD apps/apps 0 Y $var1 $
+			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afscursp.lct $var3.ldt
 		fi
 		if [ $var2 = VALUE_SET ]; then
 			echo "Cargando definicion de "$var2" en "$var3
-			FNDLOAD apps/apps 0 Y $var1 $
+			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afffload.lct $var3.ldt
 		fi
 		if [ $var2 = MENU ]; then
 			echo "Cargando definicion de "$var2" en "$var3
@@ -76,11 +76,11 @@ else
 		fi
 		if [ $var2 = FUNCTION ]; then
 			echo "Cargando definicion de "$var2" en "$var3
-			FNDLOAD apps/apps 0 Y $var1 $
+			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afsload.lct $var3.ldt
 		fi
 		if [ $var2 = PROGRAM ]; then
 			echo "Cargando definicion de "$var2" en "$var3
-			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcpprog.lct $
+			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcpprog.lct $var3.ldt
 		fi
 		if [ $var2 = FND_LOOKUP_TYPE ]; then
 			echo "Cargando definicion de "$var2" en "$var3
@@ -88,11 +88,11 @@ else
 		fi
 		if [ $var2 = REQUEST_GROUP ]; then
 			echo "Cargando definicion de "$var2" en "$var3
-			FNDLOAD apps/apps 0 Y $var1 $
+			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcpreqg.lct $var3.ldt
 		fi
 		if [ $var2 = REQ_SET ]; then
 			echo "Cargando definicion de "$var2" en "$var3
-			FNDLOAD apps/apps 0 Y $var1 $
+			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcprset.lct $var3.ldt 
 		fi
 		if [ $var2 = XDO_DS_DEFINITIONS ]; then
 			echo "Cargando definicion de "$var2" en "$var3
