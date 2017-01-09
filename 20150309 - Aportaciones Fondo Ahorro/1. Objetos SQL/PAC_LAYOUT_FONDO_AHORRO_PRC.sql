@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE APPS.pac_layout_fondo_ahorro_prc (p_errbuf OUT NOCOPY varchar2,
+CREATE OR REPLACE PROCEDURE APPS.PAC_LAYOUT_FONDO_AHORRO_PRC (p_errbuf OUT NOCOPY varchar2,
                                                          p_retcode OUT NOCOPY varchar2,
                                                          p_company_id varchar2,
                                                          p_period_type varchar2,
