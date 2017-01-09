@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY PAC_RFC_SAT_PKG AS
+CREATE OR REPLACE PACKAGE BODY APPS.PAC_RFC_SAT_PKG AS
 
     PROCEDURE   UPDATE_RFC(
         P_ERRBUF    OUT NOCOPY  VARCHAR2,
@@ -34,8 +34,7 @@ CREATE OR REPLACE PACKAGE BODY PAC_RFC_SAT_PKG AS
          WHERE 1 = 1
            AND PPF.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
            AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
-           
-        
+
         HR_PERSON_API.UPDATE_PERSON
             (
               p_effective_date             => var_effective_date
@@ -51,8 +50,8 @@ CREATE OR REPLACE PACKAGE BODY PAC_RFC_SAT_PKG AS
               ,p_name_combination_warning   => var_name_combination_warning
               ,p_assign_payroll_warning     => var_assign_payroll_warning
               ,p_orig_hire_warning          => var_orig_hire_warning
-            );   
-            
+            );                  
+                
         COMMIT;
             
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_effective_date : ' || TO_CHAR(var_effective_date));
@@ -68,8 +67,6 @@ CREATE OR REPLACE PACKAGE BODY PAC_RFC_SAT_PKG AS
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_name_combination_warning : ' || (CASE WHEN var_name_combination_warning = TRUE THEN 'TRUE' ELSE 'FALSE' END));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_assign_payroll_warning : ' || (CASE WHEN var_assign_payroll_warning = TRUE THEN 'TRUE' ELSE 'FALSE' END));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_orig_hire_warning : ' || (CASE WHEN var_orig_hire_warning = TRUE THEN 'TRUE' ELSE 'FALSE' END));
-    
-        P_RETCODE := 2;
     
     EXCEPTION WHEN OTHERS THEN
         P_RETCODE := 1;
@@ -96,6 +93,9 @@ CREATE OR REPLACE PACKAGE BODY PAC_RFC_SAT_PKG AS
               FROM PAC_UPDATE_RFC_TB    PURT;
                   
     BEGIN
+
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'XXCALV - Actualización de RFC SAT (Carga de Datos)');
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
     
         var_request_id :=
             FND_REQUEST.SUBMIT_REQUEST 
@@ -123,8 +123,52 @@ CREATE OR REPLACE PACKAGE BODY PAC_RFC_SAT_PKG AS
                     MESSAGE     => var_message
                 );
                 
+        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || var_phase || '     Estatus : ' || var_status);   
+                
         IF var_phase IN ('Finalizado', 'Completed') AND var_status IN ('Normal') THEN 
-            NULL;
+        
+            FOR RFC IN DETAILS LOOP
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '');
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'XXCALV - Actualización de RFC SAT (Por Empleado)');
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Parámetros : ' || TO_CHAR(RFC.EMPLOYEE_NUMBER)
+                                                                || ', '  
+                                                                || TO_CHAR(RFC.EMPLOYEE_NAME)
+                                                                || ', '
+                                                                || TO_CHAR(RFC.RFC));
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+                
+                 var_request_id :=
+                    FND_REQUEST.SUBMIT_REQUEST 
+                        (
+                            APPLICATION => 'PER',
+                            PROGRAM     => 'PAC_UPDATE_RFC_SAT',
+                            DESCRIPTION => '',
+                            START_TIME  => '',
+                            SUB_REQUEST => FALSE,
+                            ARGUMENT1   => TO_CHAR(RFC.EMPLOYEE_NUMBER),
+                            ARGUMENT2   => TO_CHAR(RFC.RFC)
+                        );
+                
+                STANDARD.COMMIT; 
+                
+                var_waiting :=
+                    FND_CONCURRENT.WAIT_FOR_REQUEST 
+                        (
+                            REQUEST_ID  => var_request_id,
+                            INTERVAL    => 1,
+                            MAX_WAIT    => 0,
+                            PHASE       => var_phase,
+                            STATUS      => var_status,
+                            DEV_PHASE   => var_dev_phase,
+                            DEV_STATUS  => var_dev_status,
+                            MESSAGE     => var_message
+                        );
+                
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || var_phase || '     Estatus : ' || var_status);
+            END LOOP;
+                
         END IF;
         
         EXECUTE IMMEDIATE 'TRUNCATE TABLE PAC_UPDATE_RFC_TB';
