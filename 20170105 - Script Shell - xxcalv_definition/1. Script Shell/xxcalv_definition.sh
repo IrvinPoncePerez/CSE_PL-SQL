@@ -3,6 +3,7 @@ var1=$1
 var2=$2
 var3=$3
 var4=$4
+var5=$5
 if [ $var1 = DOWNLOAD ]; then
 	echo "Descarga."
 	if [ $var2 = FND_RESPONSIBILITY ]; then
@@ -45,14 +46,14 @@ if [ $var1 = DOWNLOAD ]; then
 		FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcpreqg.lct $var2"_"$var3.ldt $var2 REQUEST_GROUP_NAME=$var3
 		echo "Archivo "$var2"_"$var3".ldt Creado."			
 	fi
-	if [ $var2 = REQ_SET ]; then
-		echo "Descargando definicion de "$var2
-		FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcprset.lct $var2"_"$var3.ldt $var2 APPLICATION_SHORT_NAME=$var4 REQUEST_SET_NAME=$var3
-		echo "Archivo "$var2"_"$var3".ldt Creado."			
-	fi
 	if [ $var2 = XDO_DS_DEFINITIONS ]; then
 		echo "Descargando definicion de "$var2
 		FNDLOAD apps/apps 0 Y $var1 $XDO_TOP/patch/115/import/xdotmpl.lct $var2"_"$var3.ldt $var2 APPLICATION_SHORT_NAME=$var4 DATA_SOURCE_CODE=$var3
+		echo "Archivo "$var2"_"$var3".ldt Creado."			
+	fi
+	if [ $var2 = REQUEST_GROUP_UNIT ]; then
+		echo "Descargando definicion de "$var2
+		FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcpreqg.lct $var2"_"$var3.ldt REQUEST_GROUP REQUEST_GROUP_NAME=$var5 UNIT_NAME=$var3 UNIT_APP=$var4
 		echo "Archivo "$var2"_"$var3".ldt Creado."			
 	fi
 else
@@ -68,7 +69,7 @@ else
 		fi
 		if [ $var2 = MENU ]; then
 			echo "Cargando definicion de "$var2" en "$var3
-			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afffload.lct $var3.ldt
+			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afsload.lct $var3.ldt
 		fi
 		if [ $var2 = FORM ]; then
 			echo "Cargando definicion de "$var2" en "$var3
@@ -90,13 +91,13 @@ else
 			echo "Cargando definicion de "$var2" en "$var3
 			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcpreqg.lct $var3.ldt
 		fi
-		if [ $var2 = REQ_SET ]; then
-			echo "Cargando definicion de "$var2" en "$var3
-			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcprset.lct $var3.ldt 
-		fi
 		if [ $var2 = XDO_DS_DEFINITIONS ]; then
 			echo "Cargando definicion de "$var2" en "$var3
 			FNDLOAD apps/apps 0 Y $var1 $XDO_TOP/patch/115/import/xdotmpl.lct $var3.ldt
+		fi
+		if [ $var2 = REQUEST_GROUP_UNIT ]; then
+			echo "Cargando definicion de "$var2" en "$var3
+			FNDLOAD apps/apps 0 Y $var1 $FND_TOP/patch/115/import/afcpreqg.lct $var3.ldt
 		fi
 	fi
 fi

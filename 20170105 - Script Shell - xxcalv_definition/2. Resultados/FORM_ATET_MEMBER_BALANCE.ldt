@@ -1,0 +1,32 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+51 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/afsload.lct @~PROD:~PATH/~FILE
+LANGUAGE = "US"
+LDRCONFIG = "afsload.lct 120.2.12010000.1"
+
+#Source Database TEST
+
+#RELEASE_NAME 12.1.1
+
+# -- Begin Entity Definitions -- 
+
+DEFINE FORM
+  KEY   APPLICATION_SHORT_NAME          VARCHAR2(4000)
+  KEY   FORM_NAME                       VARCHAR2(4000)
+  BASE  AUDIT_ENABLED_FLAG              VARCHAR2(1)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+  TRANS USER_FORM_NAME                  VARCHAR2(80)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+  CTX   OWNER                           VARCHAR2(4000)
+END FORM
+
+# -- End Entity Definitions -- 
+
+
+BEGIN FORM "PER" "ATET_MEMBER_BALANCE"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2015/12/30"
+  USER_FORM_NAME = "ATET - Estado de cuenta"
+  OWNER = "LHERNANDEZ"
+END FORM
+
