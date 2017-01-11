@@ -795,6 +795,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         /****************************************************************/
                         /**                     DATOS DE ENCABEZADO                    **/
                         /****************************************************************/
+                        UTL_FILE.PUT_LINE(var_file, 'E');
                         UTL_FILE.PUT_LINE(var_file, 'NOMINA');
                         UTL_FILE.PUT_LINE(var_file, 'NOMDOC  RECIBO NOMINA');
                         UTL_FILE.PUT_LINE(var_file, 'TIPDOC  2');    
