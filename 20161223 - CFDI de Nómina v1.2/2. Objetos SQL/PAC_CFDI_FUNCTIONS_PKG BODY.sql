@@ -54,7 +54,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
                                               'P080_FONDO AHORRO TR ACUM',
                                               'P017_PRIMA DE ANTIGUEDAD',
-                                              'P032_SUBSIDIO_PARA_EMPLEO',
+--                                              'P032_SUBSIDIO_PARA_EMPLEO',
                                               'P047_ISPT ANUAL A FAVOR',
                                               'P026_INDEMNIZACION')
                    AND PETF.ELEMENT_NAME NOT IN (CASE 
@@ -71,6 +71,36 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         RETURN 0;
     END GET_SUBTBR;
 
+    FUNCTION GET_SUBEMP(
+        P_ASSIGNMENT_ACTION_ID    NUMBER)
+      RETURN NUMBER
+    IS
+        var_result_value    NUMBER;
+    BEGIN
+        
+         SELECT SUM(RESULT)
+           INTO var_result_value
+           FROM(SELECT SUM(PRRV.RESULT_VALUE) AS RESULT                    
+                  FROM PAY_RUN_RESULTS              PRR,
+                       PAY_ELEMENT_TYPES_F          PETF,
+                       PAY_RUN_RESULT_VALUES        PRRV,
+                       PAY_INPUT_VALUES_F           PIVF,
+                       PAY_ELEMENT_CLASSIFICATIONS  PEC
+                 WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+                   AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                   AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                   AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                   AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+                   AND PETF.ELEMENT_NAME  IN ('P032_SUBSIDIO_PARA_EMPLEO')
+                   AND PIVF.UOM = 'M'
+                   AND PIVF.NAME = 'Pay Value'
+                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE);
+    
+        RETURN var_result_value;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RETURN 0;
+    END GET_SUBEMP;
     /*
     ISR Retenido
     */    
@@ -322,6 +352,79 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         RETURN 0;
     END GET_PER_TOTEXE;
     
+    
+    FUNCTION GET_PER_TOTSUL(
+        P_ASSIGNMENT_ACTION_ID    NUMBER)
+      RETURN NUMBER
+    IS
+        var_result_value    NUMBER;
+    BEGIN
+        
+        SELECT SUM(PRRV.RESULT_VALUE)
+          INTO var_result_value
+          FROM PAY_RUN_RESULTS              PRR,
+               PAY_ELEMENT_TYPES_F          PETF,
+               PAY_RUN_RESULT_VALUES        PRRV,
+               PAY_INPUT_VALUES_F           PIVF,
+               PAY_ELEMENT_CLASSIFICATIONS  PEC
+         WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+           AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+           AND (PEC.CLASSIFICATION_NAME IN ('Earnings', 
+                                            'Supplemental Earnings', 
+                                            'Amends', 
+                                            'Imputed Earnings') 
+                   OR PETF.ELEMENT_NAME IN ('FINAN_TRABAJO_RET',
+                                            'P080_FONDO AHORRO TR ACUM',
+                                            'P032_SUBSIDIO_PARA_EMPLEO',
+                                            'P047_ISPT ANUAL A FAVOR'))
+           AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                            WHEN PP_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
+                                            ELSE 'TODOS'
+                                         END)
+           AND (PIVF.NAME = 'Pay Value')
+           AND PIVF.UOM = 'M'
+           AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;
+    
+        RETURN var_result_value;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RETURN 0;
+    END GET_PER_TOTSUL;
+      
+      
+    FUNCTION GET_PER_TOTSEP(
+        P_ASSIGNMENT_ACTION_ID    NUMBER)
+      RETURN NUMBER
+    IS
+        var_result_value    NUMBER;
+    BEGIN
+        
+        SELECT SUM(PRRV.RESULT_VALUE)
+          INTO var_result_value
+          FROM PAY_RUN_RESULTS              PRR,
+               PAY_ELEMENT_TYPES_F          PETF,
+               PAY_RUN_RESULT_VALUES        PRRV,
+               PAY_INPUT_VALUES_F           PIVF,
+               PAY_ELEMENT_CLASSIFICATIONS  PEC
+         WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+           AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+           AND PETF.ELEMENT_NAME IN ('P017_PRIMA DE ANTIGUEDAD', 'P026_INDEMNIZACION')
+           AND PIVF.NAME = 'Pay Value'
+           AND PIVF.UOM = 'M'
+           AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;
+    
+        RETURN var_result_value;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RETURN 0;
+    END GET_PER_TOTSEP;
+      
 
     FUNCTION GET_NOM_DESCRI(P_PAYROLL_ACTION_ID     NUMBER)
     RETURN VARCHAR2
@@ -422,9 +525,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     UPPER(FLV2.MEANING)                                                             AS  ESTEMI,
                     LA.POSTAL_CODE                                                                  AS  CODEMI,
                     UPPER(FT1.NLS_TERRITORY)                                                        AS  PAIEMI,
-                    (CASE
-                        WHEN FLV1.LOOKUP_CODE = '02' THEN 'Régimen General de Ley Personas Morales'
-                     END)                                                                           AS  REGIMEN,
                     REPLACE(PAPF.PER_INFORMATION2, '-', '')                                         AS  RFCREC,
                     UPPER(PAPF.LAST_NAME        || ' ' || 
                           PAPF.PER_INFORMATION1 || ' ' || 
@@ -437,11 +537,18 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                       WHERE PA.PERSON_ID = PAPF.PERSON_ID
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
-                    SUM(NVL(GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,     
+                    SUM(NVL(GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,  
+                    SUM(NVL(GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,   
                     SUM(NVL(GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
                     SUM(NVL(GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
+                    GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)                                        AS  NOM_FECREL,
+                    (CASE
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 1
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 0
+                        ELSE 0
+                     END)                                                                           AS  NOM_SINDC,
                     (CASE
                         WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX1_P' THEN
                             '01'
@@ -479,9 +586,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
                         WHEN PPF.PAYROLL_NAME LIKE '%SEM%' THEN
-                             'SEMANAL'
+                             '02'
                         WHEN PPF.PAYROLL_NAME LIKE '%QUIN%' THEN
-                             'QUINCENAL'
+                             '04'
                         ELSE
                              ''
                      END)                                                                           AS  NOM_FORPAG,
@@ -500,6 +607,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     MAX(NVL(GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
                                          PPA.DATE_EARNED,
                                          PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
+                    SUM(NVL(GET_PER_TOTSUL(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSUL,
+                    SUM(NVL(GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSEP,
                     SUM(NVL(GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
                     SUM(NVL(GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
                     GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,
@@ -511,16 +620,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      END)                                                                           AS  NOM_TIPO,   
                      NVL((SELECT DISTINCT 
                                  (CASE WHEN PAPF.EMPLOYEE_NUMBER = 13 OR PAPF.EMPLOYEE_NUMBER = 24 THEN
-                                        '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
+                                        '03' --TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
                                        WHEN PCS.CONSOLIDATION_SET_NAME = 'FINIQUITOS' THEN
-                                        '02-CHEQUE' --'CHEQUE'
+                                        '02' --CHEQUE' --'CHEQUE'
                                        WHEN POPM.ORG_PAYMENT_METHOD_NAME LIKE '%EFECTIVO%' THEN
-                                        '01-EFECTIVO' --'EFECTIVO'
+                                        '01' --EFECTIVO' --'EFECTIVO'
                                        WHEN (POPM.ORG_PAYMENT_METHOD_NAME LIKE '%BANCOMER%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%BANORTE%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%HSBC%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%INVERLAT%') THEN
-                                        '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
+                                        '03' --TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
                                        
                                   END)
                             FROM PER_ALL_ASSIGNMENTS_F          PAA,
@@ -797,7 +906,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         /****************************************************************/
                         UTL_FILE.PUT_LINE(var_file, 'E');
                         UTL_FILE.PUT_LINE(var_file, 'NOMINA');
-                        UTL_FILE.PUT_LINE(var_file, 'NOMDOC  RECIBO NOMINA');
+                        UTL_FILE.PUT_LINE(var_file, 'NOMDOC  Recibo Nomina');
                         UTL_FILE.PUT_LINE(var_file, 'TIPDOC  2');    
                         UTL_FILE.PUT_LINE(var_file, 'SERFOL  ' || DETAIL(rowIndex).SERFOL);
                         UTL_FILE.PUT_LINE(var_file, 'NUMFOL ' || TO_CHAR(var_reg_seq,'0000'));
@@ -815,7 +924,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'ESTEMI  ' || DETAIL(rowIndex).ESTEMI);
                         UTL_FILE.PUT_LINE(var_file, 'CODEMI  ' || DETAIL(rowIndex).CODEMI);
                         UTL_FILE.PUT_LINE(var_file, 'PAIEMI  ' || DETAIL(rowIndex).PAIEMI);
-                        UTL_FILE.PUT_LINE(var_file, 'REGIMEN ' || DETAIL(rowIndex).REGIMEN);
+                        UTL_FILE.PUT_LINE(var_file, 'REGIMEN General de Ley Personas Morales');
                         
                         /****************************************************************/
                         /**                     DATOS DEL EMPLEADO                      */
@@ -831,30 +940,32 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         IF DETAIL(rowIndex).MAIL <> 'NULL'  AND DETAIL(rowIndex).MAIL <> 'trabajadores@elcalvario.com.mx'THEN
                             UTL_FILE.PUT_LINE(var_file, 'EMAIL    ' || DETAIL(rowIndex).MAIL);
                         END IF;
+                        UTL_FILE.PUT_LINE(var_file, 'NUMERO_IMP 1');
+                        UTL_FILE.PUT_LINE(var_file, 'COPIAS     1');
                         
                         /****************************************************************/
                         /**                 FORMA DE PAGO Y TOTALES                     */
                         /****************************************************************/
-                        UTL_FILE.PUT_LINE(var_file, 'FORPAG  PAGO EN UNA SOLA EXCIBICION');
-                        IF DETAIL(rowIndex).GROCERIES_VALUE = 0 THEN
-                            UTL_FILE.PUT_LINE(var_file, 'METPAG  ' || DETAIL(rowIndex).METPAG);
-                        ELSIF DETAIL(rowIndex).GROCERIES_VALUE > 0 THEN
-                            UTL_FILE.PUT_LINE(var_file, 'METPAG  ' || DETAIL(rowIndex).METPAG || ', 05-MONEDERO E');
-                        END IF;
-                        UTL_FILE.PUT_LINE(var_file, 'LUGEXP  TEHUACAN'); 
-                        UTL_FILE.PUT_LINE(var_file, 'SUBTBR  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'FORPAG  Pago en una sola exhibición');
+                        UTL_FILE.PUT_LINE(var_file, 'METPAG  NA');
+                        UTL_FILE.PUT_LINE(var_file, 'LUGEXP  PUE, TEHUACAN'); 
+                        UTL_FILE.PUT_LINE(var_file, 'SUBTBR  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'ISRRET  ' || TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'MONDET  ' || TO_CHAR(DETAIL(rowIndex).MONDET, '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'TOTPAG  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR - (DETAIL(rowIndex).ISRRET + DETAIL(rowIndex).MONDET)), '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'MOTDES  Deducciones Nómina');
+                        UTL_FILE.PUT_LINE(var_file, 'TIPMON  MXN');
+                        UTL_FILE.PUT_LINE(var_file, 'TIPCAM  1');
+                        UTL_FILE.PUT_LINE(var_file, 'TOTPAG  ' || TO_CHAR(((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP) - (DETAIL(rowIndex).ISRRET + DETAIL(rowIndex).MONDET)), '9999990D99'));
                         
                         /****************************************************************/
                         /**                         DETALLE                             */
                         /****************************************************************/
                         UTL_FILE.PUT_LINE(var_file, 'CANTID  1');
-                        UTL_FILE.PUT_LINE(var_file, 'DESCRI  PAGO DE NOMINA');
-                        UTL_FILE.PUT_LINE(var_file, 'UNIDAD  SERVICIO');
-                        UTL_FILE.PUT_LINE(var_file, 'PBRUDE  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'IMPBRU  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'DESCRI  PAGO DE NÓMINA');
+                        UTL_FILE.PUT_LINE(var_file, 'UNIDAD  ACT');
+                        UTL_FILE.PUT_LINE(var_file, 'PBRUDE  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP), '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'IMPBRU  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP), '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'R');
                         
                         /****************************************************************/
                         /**             COMPLEMENTO DE RECIBOS DE NÓMINA                */
@@ -865,17 +976,23 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'NOM_FECINI  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECINI, 'YYYY-MM-DD'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_FECFIN  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECFIN, 'YYYY-MM-DD'));                        
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DIAPAG  ' || DETAIL(rowIndex).NOM_DIAPAG);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_TOTPER  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_TOTDED  ' || TO_CHAR((DETAIL(rowIndex).ISRRET + DETAIL(rowIndex).MONDET), '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_TOTPAG  ' || TO_CHAR(DETAIL(rowIndex).SUBEMP, '9999990D99'));
                         
                         /****************************************************************/
                         /**                     DATOS DE RECEPTOR                       */
                         /****************************************************************/
                         UTL_FILE.PUT_LINE(var_file, 'NOM_CURP    ' || DETAIL(rowIndex).NOM_CURP);
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_NUMSEG ' || DETAIL(rowIndex).NOM_NUMSEG);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_NUMSEG  ' || DETAIL(rowIndex).NOM_NUMSEG);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_FECREL  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECREL, 'RRRR-MM-DD'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TIPCON  ' || DETAIL(rowIndex).NOM_TIPCON);
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_TIPREG  2');
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_SINDC   ' || DETAIL(rowIndex).NOM_SINDC);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_TIPJOR  01');
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_TIPREG  02');
                         UTL_FILE.PUT_LINE(var_file, 'NOM_NUMEMP  ' || DETAIL(rowIndex).NOM_NUMEMP);
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_DEPTO   ' || DETAIL(rowIndex).NOM_DEPTO);
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_PUESTO  ' || DETAIL(rowIndex).NOM_PUESTO);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_DEPTO   ' || REPLACE(DETAIL(rowIndex).NOM_DEPTO, '.', ' '));
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_PUESTO  ' || REPLACE(DETAIL(rowIndex).NOM_PUESTO, '.', ' '));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_FORPAG  ' || DETAIL(rowIndex).NOM_FORPAG);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_SALBASE ' || TO_CHAR(DETAIL(rowIndex).NOM_SALBASE, '9999990D99'));
                         IF DETAIL(rowIndex).NOM_SDI >= (MIN_WAGE * 25) THEN
@@ -889,12 +1006,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TIPSAL  MIXTO');
                         UTL_FILE.PUT_LINE(var_file, 'NOM_CVENOM  ' || DETAIL(rowIndex).NOM_CVENOM);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_FAHOACUM    ' || TO_CHAR(DETAIL(rowIndex).NOM_FAHOACUM, '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTSUL  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTSUL, '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTSEP  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTSEP, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTGRA  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTGRA, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTEXE  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTEXE, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTGRA  ' || TO_CHAR(0, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTEXE  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DESCRI  ' || DETAIL(rowIndex).NOM_DESCRI);
---                        UTL_FILE.PUT_LINE(var_file, 'R');
                     
                         DECLARE 
                         
@@ -1207,7 +1325,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                 FOR OTR IN DETAIL_OTRA_PERCEPCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
                                 
                                     IF isOTRO = FALSE THEN
---                                        UTL_FILE.PUT_LINE(var_file, 'INIDED');
+--                                        UTL_FILE.PUT_LINE(var_file, 'INIOTR');
                                         isOTRO := TRUE;   
                                     END IF;
                                 
@@ -1225,7 +1343,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             
                             IF isOTRO = TRUE THEN
                                 UTL_FILE.PUT_LINE(var_file, '');
---                                UTL_FILE.PUT_LINE(var_file, 'FINDED');
+--                                UTL_FILE.PUT_LINE(var_file, 'FINOTR');
                             END IF;
                             
                             UTL_FILE.PUT_LINE(var_file, '');
@@ -1312,18 +1430,19 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         var_file_name           VARCHAR2 (1000);
         var_file_records        NUMBER;
         var_directory_name      VARCHAR2 (1000);
+        var_local_directory     VARCHAR2(150) := '/var/tmp/CARGAS/CFE/INTERFACE_NOM_O';
+        
+        var_request_id_export   NUMBER;
         
         NO_DIRECTORY            EXCEPTION;
     
     BEGIN
         
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Crea CFDI de Nómina');
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-        
-        
         BEGIN
-            
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Crea CFDI de Nómina');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));   
                 
             V_REQUEST_ID :=
                 FND_REQUEST.SUBMIT_REQUEST (
@@ -1370,8 +1489,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
          WHERE 1 = 1
            AND CFDI.REQUEST_ID = V_REQUEST_ID; 
            
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'REQUEST_ID : ' || V_REQUEST_ID);
-        
+
         IF P_COMPANY_ID = '02' THEN 
             var_directory_name := 'Calvario_Servicios';
         ELSIF P_COMPANY_ID = '08' THEN 
@@ -1381,11 +1499,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         END IF;
     
         
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Mueve CFDI de Nómina');
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-        
         IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN 
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Mueve CFDI de Nómina');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
         
             BEGIN
                 
@@ -1422,27 +1540,178 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
             END;
             
-            
+        ELSE
+                    P_RETCODE := 1;
+        END IF;
+        
+        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN 
+        
             FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
             FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Timbrado CFDI de Nómina');
             FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
             
-            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN 
-            
-                BEGIN
+            BEGIN
                 
+                V_REQUEST_ID :=
+                    FND_REQUEST.SUBMIT_REQUEST (
+                       APPLICATION => 'PER',
+                       PROGRAM => 'PAC_TIMBRADO_CFDI_NOMINA',
+                       DESCRIPTION => '',
+                       START_TIME => '',
+                       SUB_REQUEST => FALSE,
+                       ARGUMENT1 => TO_CHAR(var_file_name),
+                       ARGUMENT2 => TO_CHAR(var_directory_name)
+                                               );
+                STANDARD.COMMIT;                  
+                                 
+                WAITING :=
+                    FND_CONCURRENT.WAIT_FOR_REQUEST (
+                        REQUEST_ID => V_REQUEST_ID,
+                        INTERVAL => 1,
+                        MAX_WAIT => 0,
+                        PHASE => PHASE,
+                        STATUS => STATUS,
+                        DEV_PHASE => DEV_PHASE,
+                        DEV_STATUS => DEV_STATUS,
+                        MESSAGE => V_MESSAGE
+                                                );
+                    
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                
+            EXCEPTION WHEN OTHERS THEN
+                dbms_output.put_line('**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
+            END;
+            
+        ELSE
+                P_RETCODE := 1;    
+        END IF;
+        
+        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Descarga CFDI de Nómina');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+                
+            DECLARE 
+                var_remote_directory    VARCHAR2(150) := '/' || var_directory_name || '/Descarga/' || EXTRACT(YEAR FROM SYSDATE) || '/' || TRIM(TO_CHAR(EXTRACT(MONTH FROM SYSDATE), '00'));
+                var_company_directory   VARCHAR2(150) := var_directory_name;
+                var_day_directory       VARCHAR2(150) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
+                var_new_directory       VARCHAR2(150) := var_day_directory || '_' || REPLACE(var_file_name, '.txt', '');
+            BEGIN
+                    
+                          
+                LOOP
+                    EXIT WHEN IS_DOWNLOADING(var_remote_directory,(var_file_records * 2)) = FALSE;
+                END LOOP;
+                                                                                     
+                    
+                V_REQUEST_ID :=
+                    FND_REQUEST.SUBMIT_REQUEST (
+                       APPLICATION => 'PER',
+                       PROGRAM => 'DESCARGA_CFDI_NOMINA',
+                       DESCRIPTION => '',
+                       START_TIME => '',
+                       SUB_REQUEST => FALSE,
+                       ARGUMENT1 => TO_CHAR(var_remote_directory),
+                       ARGUMENT2 => TO_CHAR(var_local_directory),
+                       ARGUMENT3 => TO_CHAR(var_company_directory),
+                       ARGUMENT4 => TO_CHAR(var_day_directory),
+                       ARGUMENT5 => TO_CHAR(var_new_directory)
+                                               );
+                STANDARD.COMMIT;                  
+                                     
+                WAITING :=
+                    FND_CONCURRENT.WAIT_FOR_REQUEST (
+                        REQUEST_ID => V_REQUEST_ID,
+                        INTERVAL => 1,
+                        MAX_WAIT => 0,
+                        PHASE => PHASE,
+                        STATUS => STATUS,
+                        DEV_PHASE => DEV_PHASE,
+                        DEV_STATUS => DEV_STATUS,
+                        MESSAGE => V_MESSAGE
+                                                );
+                        
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                    
+            EXCEPTION WHEN OTHERS THEN
+                dbms_output.put_line('**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
+            END;
+                 
+        ELSE
+            P_RETCODE := 1; 
+        END IF;
+        
+        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV-Programa_Importacion_CFDI_Nom');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+        
+            BEGIN                                                                    
+                    
+                V_REQUEST_ID :=
+                    FND_REQUEST.SUBMIT_REQUEST (
+                       APPLICATION => 'PER',
+                       PROGRAM => 'XXCALV_UUID_NOM',
+                       DESCRIPTION => '',
+                       START_TIME => '',
+                       SUB_REQUEST => FALSE,
+                       ARGUMENT1 => TO_CHAR(var_local_directory)
+                                               );
+                STANDARD.COMMIT;                  
+                                     
+                WAITING :=
+                    FND_CONCURRENT.WAIT_FOR_REQUEST (
+                        REQUEST_ID => V_REQUEST_ID,
+                        INTERVAL => 1,
+                        MAX_WAIT => 0,
+                        PHASE => PHASE,
+                        STATUS => STATUS,
+                        DEV_PHASE => DEV_PHASE,
+                        DEV_STATUS => DEV_STATUS,
+                        MESSAGE => V_MESSAGE
+                                                );
+                        
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                    
+            EXCEPTION WHEN OTHERS THEN
+                dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+            END;
+        ELSE
+            P_RETCODE := 1;
+        END IF;
+        
+        IF P_COMPANY_ID = '02' AND P_CONSOLIDATION_ID = 68 THEN
+        
+            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'ATET - Exportar movimientos de caja de ahorro');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+            
+                BEGIN                                                                    
+                        
                     V_REQUEST_ID :=
                         FND_REQUEST.SUBMIT_REQUEST (
                            APPLICATION => 'PER',
-                           PROGRAM => 'PAC_TIMBRADO_CFDI_NOMINA',
+                           PROGRAM => 'ATET_EXPORT_PAYROLL_RESULTS',
                            DESCRIPTION => '',
                            START_TIME => '',
                            SUB_REQUEST => FALSE,
-                           ARGUMENT1 => TO_CHAR(var_file_name),
-                           ARGUMENT2 => TO_CHAR(var_directory_name)
+                           ARGUMENT1 => TO_CHAR(P_PERIOD_TYPE),
+                           ARGUMENT2 => TO_CHAR(P_YEAR),
+                           ARGUMENT3 => TO_CHAR(P_MONTH),
+                           ARGUMENT4 => TO_CHAR(P_PERIOD_NAME)
                                                    );
                     STANDARD.COMMIT;                  
-                                 
+                                         
                     WAITING :=
                         FND_CONCURRENT.WAIT_FOR_REQUEST (
                             REQUEST_ID => V_REQUEST_ID,
@@ -1454,81 +1723,154 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             DEV_STATUS => DEV_STATUS,
                             MESSAGE => V_MESSAGE
                                                     );
-                    
+                                                    
+                    var_request_id_export := V_REQUEST_ID;
+                            
                     FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
-                
+                        
                 EXCEPTION WHEN OTHERS THEN
-                    dbms_output.put_line('**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
+                    dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
                 END;
-                
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Descarga CFDI de Nómina');
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-                
-                IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
-                
-                    DECLARE 
-                        var_remote_directory    VARCHAR2(150) := '/' || var_directory_name || '/Descarga/' || EXTRACT(YEAR FROM SYSDATE) || '/' || TRIM(TO_CHAR(EXTRACT(MONTH FROM SYSDATE), '00'));
-                        var_local_directory     VARCHAR2(150) := '/var/tmp/CARGAS/CFE/INTERFACE_NOM_O';
-                        var_company_directory   VARCHAR2(150) := var_directory_name;
-                        var_day_directory       VARCHAR2(150) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
-                        var_new_directory       VARCHAR2(150) := var_day_directory || '_' || REPLACE(var_file_name, '.txt', '');
-                    BEGIN
-                    
-                          
-                        LOOP
-                            EXIT WHEN IS_DOWNLOADING(var_remote_directory,(var_file_records * 2)) = FALSE;
-                        END LOOP;
-                        
-                        DBMS_LOCK.SLEEP(30);
-                                            
-                    
-                        V_REQUEST_ID :=
-                            FND_REQUEST.SUBMIT_REQUEST (
-                               APPLICATION => 'PER',
-                               PROGRAM => 'DESCARGA_CFDI_NOMINA',
-                               DESCRIPTION => '',
-                               START_TIME => '',
-                               SUB_REQUEST => FALSE,
-                               ARGUMENT1 => TO_CHAR(var_remote_directory),
-                               ARGUMENT2 => TO_CHAR(var_local_directory),
-                               ARGUMENT3 => TO_CHAR(var_company_directory),
-                               ARGUMENT4 => TO_CHAR(var_day_directory),
-                               ARGUMENT5 => TO_CHAR(var_new_directory)
-                                                       );
-                        STANDARD.COMMIT;                  
-                                     
-                        WAITING :=
-                            FND_CONCURRENT.WAIT_FOR_REQUEST (
-                                REQUEST_ID => V_REQUEST_ID,
-                                INTERVAL => 1,
-                                MAX_WAIT => 0,
-                                PHASE => PHASE,
-                                STATUS => STATUS,
-                                DEV_PHASE => DEV_PHASE,
-                                DEV_STATUS => DEV_STATUS,
-                                MESSAGE => V_MESSAGE
-                                                        );
-                        
-                        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
-                    
-                    EXCEPTION WHEN OTHERS THEN
-                        dbms_output.put_line('**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
-                    END;
-                 
-                ELSE
-                    P_RETCODE := 1; 
-                END IF;
-            
             ELSE
-                    P_RETCODE := 1;    
+                P_RETCODE := 1;
             END IF;
-        ELSE
-                    P_RETCODE := 1;
+            
+            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'ATET - Importar movimientos de caja de ahorro');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+            
+                BEGIN                                                                    
+                        
+                    V_REQUEST_ID :=
+                        FND_REQUEST.SUBMIT_REQUEST (
+                           APPLICATION => 'PER',
+                           PROGRAM => 'ATET_EXPORT_PAYROLL_RESULTS',
+                           DESCRIPTION => '',
+                           START_TIME => '',
+                           SUB_REQUEST => FALSE,
+                           ARGUMENT1 => TO_CHAR(var_request_id_export)
+                                                   );
+                    STANDARD.COMMIT;                  
+                                         
+                    WAITING :=
+                        FND_CONCURRENT.WAIT_FOR_REQUEST (
+                            REQUEST_ID => V_REQUEST_ID,
+                            INTERVAL => 1,
+                            MAX_WAIT => 0,
+                            PHASE => PHASE,
+                            STATUS => STATUS,
+                            DEV_PHASE => DEV_PHASE,
+                            DEV_STATUS => DEV_STATUS,
+                            MESSAGE => V_MESSAGE
+                                                    );
+                            
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                        
+                EXCEPTION WHEN OTHERS THEN
+                    dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                END;
+            ELSE
+                P_RETCODE := 1;
+            END IF;
+            
+            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'ATET - Transferir movimientos de caja de ahorro a GL - D071_CAJA DE AHORRO');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+            
+                BEGIN                                                                    
+                        
+                    V_REQUEST_ID :=
+                        FND_REQUEST.SUBMIT_REQUEST (
+                           APPLICATION => 'PER',
+                           PROGRAM => 'ATET_TRANSFER_EXPORT_TO_GL',
+                           DESCRIPTION => '',
+                           START_TIME => '',
+                           SUB_REQUEST => FALSE,
+                           ARGUMENT1 => TO_CHAR(P_PERIOD_TYPE),
+                           ARGUMENT2 => TO_CHAR(P_YEAR),
+                           ARGUMENT3 => TO_CHAR(P_MONTH),
+                           ARGUMENT4 => TO_CHAR(P_PERIOD_NAME),
+                           ARGUMENT5 => TO_CHAR('D071_CAJA DE AHORRO')
+                                                   );
+                    STANDARD.COMMIT;                  
+                                         
+                    WAITING :=
+                        FND_CONCURRENT.WAIT_FOR_REQUEST (
+                            REQUEST_ID => V_REQUEST_ID,
+                            INTERVAL => 1,
+                            MAX_WAIT => 0,
+                            PHASE => PHASE,
+                            STATUS => STATUS,
+                            DEV_PHASE => DEV_PHASE,
+                            DEV_STATUS => DEV_STATUS,
+                            MESSAGE => V_MESSAGE
+                                                    );
+                            
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                        
+                EXCEPTION WHEN OTHERS THEN
+                    dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                END;
+            ELSE
+                P_RETCODE := 1;
+            END IF;
+            
+            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'ATET - Transferir movimientos de caja de ahorro a GL - D072_PRESTAMO CAJA DE AHORRO');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+            
+                BEGIN                                                                    
+                        
+                    V_REQUEST_ID :=
+                        FND_REQUEST.SUBMIT_REQUEST (
+                           APPLICATION => 'PER',
+                           PROGRAM => 'ATET_TRANSFER_EXPORT_TO_GL',
+                           DESCRIPTION => '',
+                           START_TIME => '',
+                           SUB_REQUEST => FALSE,
+                           ARGUMENT1 => TO_CHAR(P_PERIOD_TYPE),
+                           ARGUMENT2 => TO_CHAR(P_YEAR),
+                           ARGUMENT3 => TO_CHAR(P_MONTH),
+                           ARGUMENT4 => TO_CHAR(P_PERIOD_NAME),
+                           ARGUMENT5 => TO_CHAR('D072_PRESTAMO CAJA DE AHORRO')
+                                                   );
+                    STANDARD.COMMIT;                  
+                                         
+                    WAITING :=
+                        FND_CONCURRENT.WAIT_FOR_REQUEST (
+                            REQUEST_ID => V_REQUEST_ID,
+                            INTERVAL => 1,
+                            MAX_WAIT => 0,
+                            PHASE => PHASE,
+                            STATUS => STATUS,
+                            DEV_PHASE => DEV_PHASE,
+                            DEV_STATUS => DEV_STATUS,
+                            MESSAGE => V_MESSAGE
+                                                    );
+                            
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                        
+                EXCEPTION WHEN OTHERS THEN
+                    dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                END;
+            ELSE
+                P_RETCODE := 1;
+            END IF;
+            
         END IF;
 
     EXCEPTION WHEN NO_DIRECTORY THEN
@@ -2425,5 +2767,57 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         
         RETURN var_result;
     END GET_SUBSIDIO_EMPLEO;
+
+    FUNCTION GET_EFFECTIVE_START_DATE(
+             P_PERSON_ID      NUMBER)
+      RETURN DATE
+      IS
+            var_effective_start_date    DATE;
+      BEGIN
+      
+            SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE)
+              INTO var_effective_start_date
+              FROM PER_PEOPLE_F             PPF,
+                   PER_PERIODS_OF_SERVICE   PPOS    
+             WHERE 1 = 1 
+               AND PPF.PERSON_ID = P_PERSON_ID
+               AND PPF.PERSON_ID = PPOS.PERSON_ID
+               AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+               AND PPOS.ACTUAL_TERMINATION_DATE IS NULL;
+      
+      
+            RETURN var_effective_start_date;
+      EXCEPTION    
+        WHEN NO_DATA_FOUND THEN
+        BEGIN
+        
+            SELECT EFFECTIVE_DATE
+              INTO var_effective_start_date
+              FROM (SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE) AS EFFECTIVE_DATE
+                      FROM PER_PEOPLE_F             PPF,
+                           PER_PERIODS_OF_SERVICE   PPOS    
+                     WHERE 1 = 1 
+                       AND PPF.PERSON_ID = P_PERSON_ID
+                       AND PPF.PERSON_ID = PPOS.PERSON_ID
+                       AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                       AND PPOS.ACTUAL_TERMINATION_DATE IS NOT NULL
+                     ORDER BY PPOS.ACTUAL_TERMINATION_DATE DESC ) 
+             WHERE 1 = 1
+               AND ROWNUM = 1;
+               
+            RETURN var_effective_start_date;
+        EXCEPTION
+            WHEN OTHERS THEN
+            dbms_output.put_line('**Error en la funcion GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
+            FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
+            
+            RETURN NULL;
+        END;
+        WHEN OTHERS THEN
+            dbms_output.put_line('**Error en la funcion GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
+            FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
+            
+            RETURN NULL;
+      END GET_EFFECTIVE_START_DATE;    
     
 END PAC_CFDI_FUNCTIONS_PKG;
