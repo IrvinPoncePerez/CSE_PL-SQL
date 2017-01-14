@@ -1176,18 +1176,19 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         var_file_name           VARCHAR2 (1000);
         var_file_records        NUMBER;
         var_directory_name      VARCHAR2 (1000);
+        var_local_directory     VARCHAR2(150) := '/var/tmp/CARGAS/CFE/INTERFACE_NOM_O';
+        
+        var_request_id_export   NUMBER;
         
         NO_DIRECTORY            EXCEPTION;
     
     BEGIN
         
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Crea CFDI de Nómina');
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-        
-        
         BEGIN
-            
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Crea CFDI de Nómina');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));   
                 
             V_REQUEST_ID :=
                 FND_REQUEST.SUBMIT_REQUEST (
@@ -1234,8 +1235,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
          WHERE 1 = 1
            AND CFDI.REQUEST_ID = V_REQUEST_ID; 
            
---        FND_FILE.PUT_LINE(FND_FILE.LOG, 'REQUEST_ID : ' || V_REQUEST_ID);
-        
+
         IF P_COMPANY_ID = '02' THEN 
             var_directory_name := 'Calvario_Servicios';
         ELSIF P_COMPANY_ID = '08' THEN 
@@ -1245,11 +1245,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         END IF;
     
         
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Mueve CFDI de Nómina');
-        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-        
         IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN 
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Mueve CFDI de Nómina');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
         
             BEGIN
                 
@@ -1286,27 +1286,178 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al mover el archivo CFDI de Nómina. ' || SQLERRM);
             END;
             
-            
+        ELSE
+                    P_RETCODE := 1;
+        END IF;
+        
+        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN 
+        
             FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
             FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Timbrado CFDI de Nómina');
             FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
             
-            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN 
-            
-                BEGIN
+            BEGIN
                 
+                V_REQUEST_ID :=
+                    FND_REQUEST.SUBMIT_REQUEST (
+                       APPLICATION => 'PER',
+                       PROGRAM => 'PAC_TIMBRADO_CFDI_NOMINA',
+                       DESCRIPTION => '',
+                       START_TIME => '',
+                       SUB_REQUEST => FALSE,
+                       ARGUMENT1 => TO_CHAR(var_file_name),
+                       ARGUMENT2 => TO_CHAR(var_directory_name)
+                                               );
+                STANDARD.COMMIT;                  
+                                 
+                WAITING :=
+                    FND_CONCURRENT.WAIT_FOR_REQUEST (
+                        REQUEST_ID => V_REQUEST_ID,
+                        INTERVAL => 1,
+                        MAX_WAIT => 0,
+                        PHASE => PHASE,
+                        STATUS => STATUS,
+                        DEV_PHASE => DEV_PHASE,
+                        DEV_STATUS => DEV_STATUS,
+                        MESSAGE => V_MESSAGE
+                                                );
+                    
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                
+            EXCEPTION WHEN OTHERS THEN
+                dbms_output.put_line('**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
+            END;
+            
+        ELSE
+                P_RETCODE := 1;    
+        END IF;
+        
+        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Descarga CFDI de Nómina');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+                
+            DECLARE 
+                var_remote_directory    VARCHAR2(150) := '/' || var_directory_name || '/Descarga/' || EXTRACT(YEAR FROM SYSDATE) || '/' || TRIM(TO_CHAR(EXTRACT(MONTH FROM SYSDATE), '00'));
+                var_company_directory   VARCHAR2(150) := var_directory_name;
+                var_day_directory       VARCHAR2(150) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
+                var_new_directory       VARCHAR2(150) := var_day_directory || '_' || REPLACE(var_file_name, '.txt', '');
+            BEGIN
+                    
+                          
+                LOOP
+                    EXIT WHEN IS_DOWNLOADING(var_remote_directory,(var_file_records * 2)) = FALSE;
+                END LOOP;
+                                                                                     
+                    
+                V_REQUEST_ID :=
+                    FND_REQUEST.SUBMIT_REQUEST (
+                       APPLICATION => 'PER',
+                       PROGRAM => 'DESCARGA_CFDI_NOMINA',
+                       DESCRIPTION => '',
+                       START_TIME => '',
+                       SUB_REQUEST => FALSE,
+                       ARGUMENT1 => TO_CHAR(var_remote_directory),
+                       ARGUMENT2 => TO_CHAR(var_local_directory),
+                       ARGUMENT3 => TO_CHAR(var_company_directory),
+                       ARGUMENT4 => TO_CHAR(var_day_directory),
+                       ARGUMENT5 => TO_CHAR(var_new_directory)
+                                               );
+                STANDARD.COMMIT;                  
+                                     
+                WAITING :=
+                    FND_CONCURRENT.WAIT_FOR_REQUEST (
+                        REQUEST_ID => V_REQUEST_ID,
+                        INTERVAL => 1,
+                        MAX_WAIT => 0,
+                        PHASE => PHASE,
+                        STATUS => STATUS,
+                        DEV_PHASE => DEV_PHASE,
+                        DEV_STATUS => DEV_STATUS,
+                        MESSAGE => V_MESSAGE
+                                                );
+                        
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                    
+            EXCEPTION WHEN OTHERS THEN
+                dbms_output.put_line('**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
+            END;
+                 
+        ELSE
+            P_RETCODE := 1; 
+        END IF;
+        
+        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+        
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV-Programa_Importacion_CFDI_Nom');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+        
+            BEGIN                                                                    
+                    
+                V_REQUEST_ID :=
+                    FND_REQUEST.SUBMIT_REQUEST (
+                       APPLICATION => 'PER',
+                       PROGRAM => 'XXCALV_UUID_NOM',
+                       DESCRIPTION => '',
+                       START_TIME => '',
+                       SUB_REQUEST => FALSE,
+                       ARGUMENT1 => TO_CHAR(var_local_directory)
+                                               );
+                STANDARD.COMMIT;                  
+                                     
+                WAITING :=
+                    FND_CONCURRENT.WAIT_FOR_REQUEST (
+                        REQUEST_ID => V_REQUEST_ID,
+                        INTERVAL => 1,
+                        MAX_WAIT => 0,
+                        PHASE => PHASE,
+                        STATUS => STATUS,
+                        DEV_PHASE => DEV_PHASE,
+                        DEV_STATUS => DEV_STATUS,
+                        MESSAGE => V_MESSAGE
+                                                );
+                        
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                    
+            EXCEPTION WHEN OTHERS THEN
+                dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+            END;
+        ELSE
+            P_RETCODE := 1;
+        END IF;
+        
+        IF P_COMPANY_ID = '02' AND P_CONSOLIDATION_ID = 68 THEN
+        
+            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'ATET - Exportar movimientos de caja de ahorro');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+            
+                BEGIN                                                                    
+                        
                     V_REQUEST_ID :=
                         FND_REQUEST.SUBMIT_REQUEST (
                            APPLICATION => 'PER',
-                           PROGRAM => 'PAC_TIMBRADO_CFDI_NOMINA',
+                           PROGRAM => 'ATET_EXPORT_PAYROLL_RESULTS',
                            DESCRIPTION => '',
                            START_TIME => '',
                            SUB_REQUEST => FALSE,
-                           ARGUMENT1 => TO_CHAR(var_file_name),
-                           ARGUMENT2 => TO_CHAR(var_directory_name)
+                           ARGUMENT1 => TO_CHAR(P_PERIOD_TYPE),
+                           ARGUMENT2 => TO_CHAR(P_YEAR),
+                           ARGUMENT3 => TO_CHAR(P_MONTH),
+                           ARGUMENT4 => TO_CHAR(P_PERIOD_NAME)
                                                    );
                     STANDARD.COMMIT;                  
-                                 
+                                         
                     WAITING :=
                         FND_CONCURRENT.WAIT_FOR_REQUEST (
                             REQUEST_ID => V_REQUEST_ID,
@@ -1318,80 +1469,154 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             DEV_STATUS => DEV_STATUS,
                             MESSAGE => V_MESSAGE
                                                     );
-                    
+                                                    
+                    var_request_id_export := V_REQUEST_ID;
+                            
                     FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
-                
+                        
                 EXCEPTION WHEN OTHERS THEN
-                    dbms_output.put_line('**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
+                    dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
                 END;
-                
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Descarga CFDI de Nómina');
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-                
-                IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
-                
-                    DECLARE 
-                        var_remote_directory    VARCHAR2(150) := '/' || var_directory_name || '/Descarga/' || EXTRACT(YEAR FROM SYSDATE) || '/' || TRIM(TO_CHAR(EXTRACT(MONTH FROM SYSDATE), '00'));
-                        var_local_directory     VARCHAR2(150) := '/var/tmp/CARGAS/CFE/INTERFACE_NOM_O';
-                        var_company_directory   VARCHAR2(150) := var_directory_name;
-                        var_day_directory       VARCHAR2(150) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
-                        var_new_directory       VARCHAR2(150) := var_day_directory || '_' || REPLACE(var_file_name, '.txt', '');
-                    BEGIN
-                    
-                          
-                        LOOP
-                            EXIT WHEN IS_DOWNLOADING(var_remote_directory,(var_file_records * 2)) = FALSE;
-                        END LOOP;
-                        
-                        DBMS_LOCK.SLEEP(30);                                                                    
-                    
-                        V_REQUEST_ID :=
-                            FND_REQUEST.SUBMIT_REQUEST (
-                               APPLICATION => 'PER',
-                               PROGRAM => 'DESCARGA_CFDI_NOMINA',
-                               DESCRIPTION => '',
-                               START_TIME => '',
-                               SUB_REQUEST => FALSE,
-                               ARGUMENT1 => TO_CHAR(var_remote_directory),
-                               ARGUMENT2 => TO_CHAR(var_local_directory),
-                               ARGUMENT3 => TO_CHAR(var_company_directory),
-                               ARGUMENT4 => TO_CHAR(var_day_directory),
-                               ARGUMENT5 => TO_CHAR(var_new_directory)
-                                                       );
-                        STANDARD.COMMIT;                  
-                                     
-                        WAITING :=
-                            FND_CONCURRENT.WAIT_FOR_REQUEST (
-                                REQUEST_ID => V_REQUEST_ID,
-                                INTERVAL => 1,
-                                MAX_WAIT => 0,
-                                PHASE => PHASE,
-                                STATUS => STATUS,
-                                DEV_PHASE => DEV_PHASE,
-                                DEV_STATUS => DEV_STATUS,
-                                MESSAGE => V_MESSAGE
-                                                        );
-                        
-                        FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
-                    
-                    EXCEPTION WHEN OTHERS THEN
-                        dbms_output.put_line('**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
-                    END;
-                 
-                ELSE
-                    P_RETCODE := 1; 
-                END IF;
-            
             ELSE
-                    P_RETCODE := 1;    
+                P_RETCODE := 1;
             END IF;
-        ELSE
-                    P_RETCODE := 1;
+            
+            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'ATET - Importar movimientos de caja de ahorro');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+            
+                BEGIN                                                                    
+                        
+                    V_REQUEST_ID :=
+                        FND_REQUEST.SUBMIT_REQUEST (
+                           APPLICATION => 'PER',
+                           PROGRAM => 'ATET_EXPORT_PAYROLL_RESULTS',
+                           DESCRIPTION => '',
+                           START_TIME => '',
+                           SUB_REQUEST => FALSE,
+                           ARGUMENT1 => TO_CHAR(var_request_id_export)
+                                                   );
+                    STANDARD.COMMIT;                  
+                                         
+                    WAITING :=
+                        FND_CONCURRENT.WAIT_FOR_REQUEST (
+                            REQUEST_ID => V_REQUEST_ID,
+                            INTERVAL => 1,
+                            MAX_WAIT => 0,
+                            PHASE => PHASE,
+                            STATUS => STATUS,
+                            DEV_PHASE => DEV_PHASE,
+                            DEV_STATUS => DEV_STATUS,
+                            MESSAGE => V_MESSAGE
+                                                    );
+                            
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                        
+                EXCEPTION WHEN OTHERS THEN
+                    dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                END;
+            ELSE
+                P_RETCODE := 1;
+            END IF;
+            
+            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'ATET - Transferir movimientos de caja de ahorro a GL - D071_CAJA DE AHORRO');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+            
+                BEGIN                                                                    
+                        
+                    V_REQUEST_ID :=
+                        FND_REQUEST.SUBMIT_REQUEST (
+                           APPLICATION => 'PER',
+                           PROGRAM => 'ATET_TRANSFER_EXPORT_TO_GL',
+                           DESCRIPTION => '',
+                           START_TIME => '',
+                           SUB_REQUEST => FALSE,
+                           ARGUMENT1 => TO_CHAR(P_PERIOD_TYPE),
+                           ARGUMENT2 => TO_CHAR(P_YEAR),
+                           ARGUMENT3 => TO_CHAR(P_MONTH),
+                           ARGUMENT4 => TO_CHAR(P_PERIOD_NAME),
+                           ARGUMENT5 => TO_CHAR('D071_CAJA DE AHORRO')
+                                                   );
+                    STANDARD.COMMIT;                  
+                                         
+                    WAITING :=
+                        FND_CONCURRENT.WAIT_FOR_REQUEST (
+                            REQUEST_ID => V_REQUEST_ID,
+                            INTERVAL => 1,
+                            MAX_WAIT => 0,
+                            PHASE => PHASE,
+                            STATUS => STATUS,
+                            DEV_PHASE => DEV_PHASE,
+                            DEV_STATUS => DEV_STATUS,
+                            MESSAGE => V_MESSAGE
+                                                    );
+                            
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                        
+                EXCEPTION WHEN OTHERS THEN
+                    dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                END;
+            ELSE
+                P_RETCODE := 1;
+            END IF;
+            
+            IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+            
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'ATET - Transferir movimientos de caja de ahorro a GL - D072_PRESTAMO CAJA DE AHORRO');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+            
+                BEGIN                                                                    
+                        
+                    V_REQUEST_ID :=
+                        FND_REQUEST.SUBMIT_REQUEST (
+                           APPLICATION => 'PER',
+                           PROGRAM => 'ATET_TRANSFER_EXPORT_TO_GL',
+                           DESCRIPTION => '',
+                           START_TIME => '',
+                           SUB_REQUEST => FALSE,
+                           ARGUMENT1 => TO_CHAR(P_PERIOD_TYPE),
+                           ARGUMENT2 => TO_CHAR(P_YEAR),
+                           ARGUMENT3 => TO_CHAR(P_MONTH),
+                           ARGUMENT4 => TO_CHAR(P_PERIOD_NAME),
+                           ARGUMENT5 => TO_CHAR('D072_PRESTAMO CAJA DE AHORRO')
+                                                   );
+                    STANDARD.COMMIT;                  
+                                         
+                    WAITING :=
+                        FND_CONCURRENT.WAIT_FOR_REQUEST (
+                            REQUEST_ID => V_REQUEST_ID,
+                            INTERVAL => 1,
+                            MAX_WAIT => 0,
+                            PHASE => PHASE,
+                            STATUS => STATUS,
+                            DEV_PHASE => DEV_PHASE,
+                            DEV_STATUS => DEV_STATUS,
+                            MESSAGE => V_MESSAGE
+                                                    );
+                            
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                        
+                EXCEPTION WHEN OTHERS THEN
+                    dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
+                END;
+            ELSE
+                P_RETCODE := 1;
+            END IF;
+            
         END IF;
 
     EXCEPTION WHEN NO_DIRECTORY THEN
