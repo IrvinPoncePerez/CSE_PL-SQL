@@ -2719,8 +2719,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
          
         RETURN var_member_account_id;
 
-    EXCEPTION WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_SAVING_MEMBER_ACCOUNT_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR (-20001, 'Error encontrado en GET_SAVING_MEMBER_ACCOUNT_ID ' || SQLCODE || ' -ERROR- ' || SQLERRM);
     END GET_SAVING_MEMBER_ACCOUNT_ID;
     
     
@@ -2899,7 +2900,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
          var_max_sav_amt_wk             NUMBER;
          var_posibility_saving          NUMBER;
          var_real_posibility_saving     NUMBER;
-         var_subtbr                     NUMBER;
          var_validate                   VARCHAR2(1) := 'N';
          var_min_sav_amt_sm             NUMBER;
          var_min_sav_amt_wk             NUMBER;
@@ -2967,7 +2967,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             
                 var_period_type := ATET_SAVINGS_BANK_PKG.GET_PERIOD_TYPE(var_person_id);
                 var_max_assignment_action_id := ATET_SAVINGS_BANK_PKG.GET_MAX_ASSIGNMENT_ACTION_ID(var_assignment_id, var_payroll_id);
-                var_subtbr := ATET_SAVINGS_BANK_PKG.GET_SUBTBR(var_max_assignment_action_id);
                           
             
                 var_max_per_sav := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_PER_SAV');
@@ -2975,7 +2974,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 var_max_sav_amt_wk := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MAX_SAV_AMT_WK');
                 var_min_sav_amt_sm := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MIN_SAV_AMT_SM');
                 var_min_sav_amt_wk := ATET_SAVINGS_BANK_PKG.GET_PARAMETER_VALUE(var_saving_bank_id, 'MIN_SAV_AMT_WK');
-                var_posibility_saving := (var_subtbr) * (var_max_per_sav / 100);
+
+                IF    var_period_type IN ('Week', 'Semana') THEN
+                    var_posibility_saving := var_max_sav_amt_wk;
+                ELSIF var_period_type IN ('Semi-Month', 'Quincena') THEN
+                    var_posibility_saving := var_max_sav_amt_sm;
+                END IF;
+
             
                 IF    var_period_type IN ('Week', 'Semana') THEN
                 
@@ -7196,7 +7201,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'VOLUNTARY_CONTRIBUTION(P_MEMBER_ID => ' || P_MEMBER_ID ||
                                                               ',P_SAVING_AMOUNT => ' || P_SAVING_AMOUNT ||
-                                                              ')');    
+                                                              ')');   
+                                                              
+        CREATE_ACCOUNT(GET_PERSON_ID(P_MEMBER_ID),
+                       'SAVINGS_ELEMENT_NAME',
+                       'SAV_CODE_COMB'); 
                             
         var_member_account_id := GET_SAVING_MEMBER_ACCOUNT_ID(P_MEMBER_ID,
                                                               GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'SAV_CODE_COMB'),
