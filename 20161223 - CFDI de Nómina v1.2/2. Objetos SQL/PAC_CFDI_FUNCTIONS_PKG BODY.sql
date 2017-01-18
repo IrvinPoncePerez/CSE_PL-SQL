@@ -1268,6 +1268,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             isDEDUC     BOOLEAN;
                             isOTRO      BOOLEAN;
                             
+                            var_dias_extras     NUMBER;
+                            var_horas_extras    NUMBER;
+                            var_horas_importe   NUMBER;
+                            
                         BEGIN
                         
                             isPERCEP := FALSE;
@@ -1287,6 +1291,27 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_DESCRI  ' || REPLACE(PERCEP.NOM_PER_DESCRI, '_', ' '));
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPGRA  ' || TO_CHAR(PERCEP.NOM_PER_IMPGRA, '9999990D99'));
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPEXE  ' || TO_CHAR(PERCEP.NOM_PER_IMPEXE, '9999990D99'));
+                                    
+                                    IF DETAIL(rowIndex).NOM_SINDC = 1 AND PERCEP.NOM_PER_DESCRI = 'HORAS EXTRAS' THEN
+                                    
+                                        var_horas_extras := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID,'Hours');
+                                        var_horas_importe := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID, 'Pay Value');
+                                        
+                                        IF      var_horas_extras <= 3 THEN 
+                                            var_dias_extras := 1;
+                                        ELSIF   var_horas_extras > 3 AND var_horas_extras <= 6 THEN
+                                            var_dias_extras := 2;
+                                        ELSIF   var_horas_extras > 6  THEN
+                                            var_dias_extras := 3;
+                                        END IF;
+                                        
+                                        UTL_FILE.PUT_LINE(var_file, '');
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_DIAS   ' || TO_CHAR(var_dias_extras));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_TIP    01');
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_HOR    ' || TO_CHAR(var_horas_extras));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_IMP    ' || TO_CHAR(var_horas_importe, '9999990D99'));
+                                    
+                                    END IF;
                                 
                                 END LOOP;
                             END LOOP;
@@ -1296,7 +1321,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
 --                                UTL_FILE.PUT_LINE(var_file, 'FINPER');
                             END IF;                        
                                
-                            
+                            UTL_FILE.PUT_LINE(var_file, '');
+                            UTL_FILE.PUT_LINE(var_file, 'NOM_DED_OTRDED ' || TO_CHAR(DETAIL(rowIndex).MONDET, '9999990D99'));
+                            UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTRET ' ||TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
                             
                             FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP                            
                                 FOR DEDUC IN DETAIL_DEDUCCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
@@ -1656,7 +1683,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     
                 V_REQUEST_ID :=
                     FND_REQUEST.SUBMIT_REQUEST (
-                       APPLICATION => 'PER',
+                       APPLICATION => 'PAY',
                        PROGRAM => 'XXCALV_UUID_NOM',
                        DESCRIPTION => '',
                        START_TIME => '',
@@ -2773,51 +2800,80 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
       RETURN DATE
       IS
             var_effective_start_date    DATE;
-      BEGIN
-      
-            SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE)
-              INTO var_effective_start_date
-              FROM PER_PEOPLE_F             PPF,
-                   PER_PERIODS_OF_SERVICE   PPOS    
-             WHERE 1 = 1 
-               AND PPF.PERSON_ID = P_PERSON_ID
-               AND PPF.PERSON_ID = PPOS.PERSON_ID
-               AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
-               AND PPOS.ACTUAL_TERMINATION_DATE IS NULL;
-      
-      
-            RETURN var_effective_start_date;
-      EXCEPTION    
+    BEGIN
+          
+        SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE)
+          INTO var_effective_start_date
+          FROM PER_PEOPLE_F             PPF,
+               PER_PERIODS_OF_SERVICE   PPOS    
+         WHERE 1 = 1 
+           AND PPF.PERSON_ID = P_PERSON_ID
+           AND PPF.PERSON_ID = PPOS.PERSON_ID
+           AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+           AND PPOS.ACTUAL_TERMINATION_DATE IS NULL;
+          
+          
+        RETURN var_effective_start_date;
+    EXCEPTION    
         WHEN NO_DATA_FOUND THEN
-        BEGIN
-        
-            SELECT EFFECTIVE_DATE
-              INTO var_effective_start_date
-              FROM (SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE) AS EFFECTIVE_DATE
-                      FROM PER_PEOPLE_F             PPF,
-                           PER_PERIODS_OF_SERVICE   PPOS    
-                     WHERE 1 = 1 
-                       AND PPF.PERSON_ID = P_PERSON_ID
-                       AND PPF.PERSON_ID = PPOS.PERSON_ID
-                       AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
-                       AND PPOS.ACTUAL_TERMINATION_DATE IS NOT NULL
-                     ORDER BY PPOS.ACTUAL_TERMINATION_DATE DESC ) 
-             WHERE 1 = 1
-               AND ROWNUM = 1;
-               
-            RETURN var_effective_start_date;
-        EXCEPTION
-            WHEN OTHERS THEN
-            dbms_output.put_line('**Error en la funcion GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
-            FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
-            
-            RETURN NULL;
-        END;
+            BEGIN
+                    
+                SELECT EFFECTIVE_DATE
+                  INTO var_effective_start_date
+                  FROM (SELECT NVL(PPOS.ADJUSTED_SVC_DATE, PPF.ORIGINAL_DATE_OF_HIRE) AS EFFECTIVE_DATE
+                          FROM PER_PEOPLE_F             PPF,
+                               PER_PERIODS_OF_SERVICE   PPOS    
+                         WHERE 1 = 1 
+                           AND PPF.PERSON_ID = P_PERSON_ID
+                           AND PPF.PERSON_ID = PPOS.PERSON_ID
+                           AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                           AND PPOS.ACTUAL_TERMINATION_DATE IS NOT NULL
+                         ORDER BY PPOS.ACTUAL_TERMINATION_DATE DESC ) 
+                 WHERE 1 = 1
+                   AND ROWNUM = 1;
+                           
+                RETURN var_effective_start_date;
+            EXCEPTION
+                WHEN OTHERS THEN
+                dbms_output.put_line('**Error en la funcion GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
+                FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
+                        
+                RETURN NULL;
+            END;
         WHEN OTHERS THEN
             dbms_output.put_line('**Error en la funcion GET_EFFECTIVE_START_DATET. (' || P_PERSON_ID || ')' || SQLERRM);
             FND_FILE.put_line(FND_FILE.LOG, '**Error en la funcion GET_EFFECTIVE_START_DATE. (' || P_PERSON_ID || ')' || SQLERRM);
-            
+                    
             RETURN NULL;
-      END GET_EFFECTIVE_START_DATE;    
+    END GET_EFFECTIVE_START_DATE;
+      
+    FUNCTION GET_NOM_HEX_DIAS(
+        P_ASSIGNMENT_ACTION_ID    NUMBER,
+        P_INPUT_VALUE_NAME        VARCHAR2)
+      RETURN NUMBER
+    IS
+        var_result      NUMBER;
+    BEGIN
+        
+        SELECT SUM(PRRV.RESULT_VALUE)
+          INTO var_result
+          FROM PAY_RUN_RESULTS              PRR,
+               PAY_ELEMENT_TYPES_F          PETF,
+               PAY_RUN_RESULT_VALUES        PRRV,
+               PAY_INPUT_VALUES_F           PIVF,
+               PAY_ELEMENT_CLASSIFICATIONS  PEC
+         WHERE 1 = 1
+           AND PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+           AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+           AND PETF.ELEMENT_NAME = 'P002_HORAS EXTRAS'
+           AND PIVF.NAME = P_INPUT_VALUE_NAME
+           AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;   
+    
+        RETURN var_result;
+    END GET_NOM_HEX_DIAS;
     
 END PAC_CFDI_FUNCTIONS_PKG;
