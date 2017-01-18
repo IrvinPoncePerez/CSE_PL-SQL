@@ -1402,7 +1402,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     
                 V_REQUEST_ID :=
                     FND_REQUEST.SUBMIT_REQUEST (
-                       APPLICATION => 'PER',
+                       APPLICATION => 'PAY',
                        PROGRAM => 'XXCALV_UUID_NOM',
                        DESCRIPTION => '',
                        START_TIME => '',
