@@ -1494,7 +1494,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     V_REQUEST_ID :=
                         FND_REQUEST.SUBMIT_REQUEST (
                            APPLICATION => 'PER',
-                           PROGRAM => 'ATET_EXPORT_PAYROLL_RESULTS',
+                           PROGRAM => 'ATET_IMPORT_PAYROLL_RESULTS',
                            DESCRIPTION => '',
                            START_TIME => '',
                            SUB_REQUEST => FALSE,
