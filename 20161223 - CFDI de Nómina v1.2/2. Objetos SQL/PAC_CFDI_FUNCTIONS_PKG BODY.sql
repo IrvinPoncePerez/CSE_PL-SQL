@@ -647,6 +647,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                 ), '01')                                                            AS  METPAG,
                     PPF.PAYROLL_ID,
                     PAAF.ASSIGNMENT_ID,
+                    PAPF.PERSON_ID,
                     PPA.PAYROLL_ACTION_ID,
                     PPA.DATE_EARNED,
                     PPA.CONSOLIDATION_SET_ID,
@@ -1268,9 +1269,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             isDEDUC     BOOLEAN;
                             isOTRO      BOOLEAN;
                             
-                            var_dias_extras     NUMBER;
-                            var_horas_extras    NUMBER;
-                            var_horas_importe   NUMBER;
+                            var_extra_days      NUMBER;
+                            var_extra_hours     NUMBER;
+                            var_extra_pay_value NUMBER;
+                            var_seniority_years NUMBER;
+                            var_proposed_salary NUMBER;
                             
                         BEGIN
                         
@@ -1294,22 +1297,36 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                     
                                     IF DETAIL(rowIndex).NOM_SINDC = 1 AND PERCEP.NOM_PER_DESCRI = 'HORAS EXTRAS' THEN
                                     
-                                        var_horas_extras := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID,'Hours');
-                                        var_horas_importe := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID, 'Pay Value');
+                                        var_extra_hours := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID,'Hours');
+                                        var_extra_pay_value := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID, 'Pay Value');
                                         
-                                        IF      var_horas_extras <= 3 THEN 
-                                            var_dias_extras := 1;
-                                        ELSIF   var_horas_extras > 3 AND var_horas_extras <= 6 THEN
-                                            var_dias_extras := 2;
-                                        ELSIF   var_horas_extras > 6  THEN
-                                            var_dias_extras := 3;
+                                        IF      var_extra_hours <= 3 THEN 
+                                            var_extra_days := 1;
+                                        ELSIF   var_extra_hours > 3 AND var_extra_hours <= 6 THEN
+                                            var_extra_days := 2;
+                                        ELSIF   var_extra_hours > 6  THEN
+                                            var_extra_days := 3;
                                         END IF;
                                         
                                         UTL_FILE.PUT_LINE(var_file, '');
-                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_DIAS   ' || TO_CHAR(var_dias_extras));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_DIAS   ' || TO_CHAR(var_extra_days));
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_TIP    01');
-                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_HOR    ' || TO_CHAR(var_horas_extras));
-                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_IMP    ' || TO_CHAR(var_horas_importe, '9999990D99'));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_HOR    ' || TO_CHAR(var_extra_hours));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_IMP    ' || TO_CHAR(var_extra_pay_value, '9999990D99'));
+                                    
+                                    END IF;
+                                    
+                                    IF PERCEP.NOM_PER_DESCRI = 'INDEMNIZACION' THEN
+                                    
+                                        var_seniority_years := TRUNC(HR_MX_UTILITY.GET_SENIORITY_SOCIAL_SECURITY(DETAIL(rowIndex).PERSON_ID, SYSDATE));
+                                        var_proposed_salary := GET_PROPOSED_SALARY(DETAIL(rowIndex).ASSIGNMENT_ID);
+                                    
+                                        UTL_FILE.PUT_LINE(var_file, '');
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTPAG     ' || TO_CHAR(GET_NOM_PER_TOTPAG(ASSIGN.ASSIGNMENT_ACTION_ID), '9999990D99'));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_ANIO       ' || TO_CHAR(var_seniority_years));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_UTLSUE     ' || TO_CHAR(var_proposed_salary, '9999990D99'));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_INGACUM    ');
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_INGNO      ');    
                                     
                                     END IF;
                                 
@@ -1775,7 +1792,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     V_REQUEST_ID :=
                         FND_REQUEST.SUBMIT_REQUEST (
                            APPLICATION => 'PER',
-                           PROGRAM => 'ATET_EXPORT_PAYROLL_RESULTS',
+                           PROGRAM => 'ATET_IMPORT_PAYROLL_RESULTS',
                            DESCRIPTION => '',
                            START_TIME => '',
                            SUB_REQUEST => FALSE,
@@ -2875,5 +2892,51 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     
         RETURN var_result;
     END GET_NOM_HEX_DIAS;
+    
+    FUNCTION GET_NOM_PER_TOTPAG(
+        P_ASSIGNMENT_ACTION_ID    NUMBER)
+      RETURN NUMBER
+    IS
+        var_result  NUMBER;
+    BEGIN
+    
+        SELECT SUM(PRRV.RESULT_VALUE)
+          INTO var_result
+          FROM PAY_RUN_RESULTS              PRR,
+               PAY_ELEMENT_TYPES_F          PETF,
+               PAY_RUN_RESULT_VALUES        PRRV,
+               PAY_INPUT_VALUES_F           PIVF,
+               PAY_ELEMENT_CLASSIFICATIONS  PEC
+         WHERE 1 = 1
+           AND PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+           AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+           AND PETF.ELEMENT_NAME = 'P026_INDEMNIZACION'
+           AND PIVF.NAME = 'Pay Value'
+           AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;   
+    
+        RETURN var_result;
+    END GET_NOM_PER_TOTPAG;
+    
+    FUNCTION GET_PROPOSED_SALARY(
+        P_ASSIGNMENT_ID           NUMBER)
+      RETURN NUMBER
+    IS
+        var_result  NUMBER;
+    BEGIN
+    
+        SELECT PPP.PROPOSED_SALARY_N
+          INTO var_result
+          FROM PER_PAY_PROPOSALS    PPP
+         WHERE 1 = 1
+           AND PPP.ASSIGNMENT_ID = P_ASSIGNMENT_ID
+           AND SYSDATE BETWEEN PPP.CHANGE_DATE AND PPP.DATE_TO
+           AND PPP.APPROVED = 'Y';
+        
+        RETURN var_result;
+    END GET_PROPOSED_SALARY;
     
 END PAC_CFDI_FUNCTIONS_PKG;
