@@ -73,8 +73,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_SALARY_PROPOSAL_PKG AS
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_approved_warning : ' || (CASE WHEN var_approved_warning = TRUE THEN 'TRUE' ELSE 'FALSE' END));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'var_payroll_warning : ' || (CASE WHEN var_payroll_warning = TRUE THEN 'TRUE' ELSE 'FALSE' END));
         
+        COMMIT;
+        
     EXCEPTION WHEN OTHERS THEN
         P_RETCODE := 1;
+        ROLLBACK;
         P_ERRBUF := 'Error al crear el registro de salario. ' || SQLERRM;
     END CHANGE_SALARY;
     
