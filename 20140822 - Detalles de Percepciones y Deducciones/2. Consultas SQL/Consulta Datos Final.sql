@@ -1,8 +1,3 @@
-/**************************************************/
-/*                  ALTER SESION                  */
-/**************************************************/
-ALTER SESSION SET CURRENT_SCHEMA=APPS; 
-
             SELECT PAAF.ASS_ATTRIBUTE15                                                             AS  EMPRESA,
                    CLAVE_NOMINA,
                    (SELECT HOUV.NAME
@@ -18,7 +13,6 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                    NUM_NOMINA,
                    PAYMENT_PAYROLL,
                    PAYMENT_GROCERIES,
---                   (ACTION_TYPE || ' - ' || RUN_TYPE_NAME)                                          AS  TIPO_EJECUCION,
                    REG_PATRONAL                                                                     AS  REG_PATRONAL,
                    PCS.CONSOLIDATION_SET_NAME                                                       AS  JUEGO_CONSOLIDACION,
                    PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PERSON_ID)                        AS  EFFECTIVE_START_DATE,
@@ -40,9 +34,10 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                    SUM(VACACIONES)           AS VACACIONES,        
                    SUM(PRIMA_VACACIONAL)     AS PRIMA_VACACIONAL,   
                    SUM(PRIMA_VACACIONAL_EXE) AS PRIMA_VACACIONAL_EXE,
-                   SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA, 
-                   SUM(AYUDA_ALIMENTOS)      AS AYUDA_ALIMENTOS, 
+                   SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA,  
                    SUM(PREMIO_ASISTENCIA_EXE) AS PREMIO_ASISTENCIA_EXE,
+                   SUM(PREMIO_ASISTENCIA_RET) AS PREMIO_ASISTENCIA_RET,
+                   SUM(AYUDA_ALIMENTOS)      AS AYUDA_ALIMENTOS,
                    SUM(COMISIONES)           AS COMISIONES,          
                    SUM(SUBSIDIO_INCAPACIDAD) AS SUBSIDIO_INCAPACIDAD,
                    SUM(AGUINALDO)            AS AGUINALDO,           
@@ -70,8 +65,10 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                    SUM(VACACIONES_PAGADAS)   AS VACACIONES_PAGADAS, 
                    SUM(BONO_EXTRAORDINARIO)  AS BONO_EXTRAORDINARIO,
                    SUM(DESPENSA)             AS DESPENSA,           
-                   SUM(DESPENSA_EXE)         AS DESPENSA_EXE,       
-                   SUM(FONDO_AHO_EMP)        AS FONDO_AHO_EMP,      
+                   SUM(DESPENSA_EXE)         AS DESPENSA_EXE,   
+                   SUM(DESPENSA_RET)         AS DESPENSA_RET,    
+                   SUM(FONDO_AHO_EMP)        AS FONDO_AHO_EMP,  
+                   SUM(FONDO_AHO_EMP)        AS FONDO_AHO_EMP_RET,    
                    SUM(PERMISO_PATERNIDAD)   AS PERMISO_PATERNIDAD,
                    SUM(BONO_CUATRIMESTRAL)   AS BONO_CUATRIMESTRAL,
                    SUM(FONDO_TR_ACUMULADO)   AS FONDO_TR_ACUMULADO, 
@@ -334,7 +331,6 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                            PPA.DATE_EARNED,
                            PTP.START_DATE,
                            PTP.END_DATE,
---                           PTF.RUN_TYPE_NAME,
                            (SELECT meaning 
                               FROM HR_LOOKUPS 
                              WHERE LOOKUP_TYPE = 'ACTION_TYPE'
@@ -383,6 +379,7 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P006_PRIMA VACACIONAL',    'ISR Exempt'),  '0')    AS  PRIMA_VACACIONAL_EXE,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P007_PREMIO ASISTENCIA',   'Pay Value'),   '0')    AS  PREMIO_ASISTENCIA,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EXEMPT_VALUE(PAA.ASSIGNMENT_ACTION_ID,     'P007_PREMIO ASISTENCIA',   'Pay Value',    'Tope'), '0')   AS  PREMIO_ASISTENCIA_EXE,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P007_PREMIO ASISTENCIA',   'Futuro5'),     '0')    AS  PREMIO_ASISTENCIA_RET,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P010 AYUDA DE ALIMENTOS',  'Pay Value'),   '0')    AS  AYUDA_ALIMENTOS,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P009_COMISIONES',          'Pay Value'),   '0')    AS  COMISIONES,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P012_SUBSIDIO INCAPACIDAD','Pay Value'),   '0')    AS  SUBSIDIO_INCAPACIDAD,
@@ -415,7 +412,9 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                                                                          PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID, 
                                                                                                                  'P039_DESPENSA',            
                                                                                                                  'Pay Value'), PPA.EFFECTIVE_DATE, PPF.PERIOD_TYPE),   '0')    AS  DESPENSA_EXE,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P039_DESPENSA',            'Futuro 7'),    '0')    AS  DESPENSA_RET,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P043_FONDO AHORRO EMP',    'Pay Value'),   '0')    AS  FONDO_AHO_EMP,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P043_FONDO AHORRO EMP',    'Futuro 5'),    '0')    AS  FONDO_AHO_EMP_RET,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P045_PERMISO X PATERNIDAD','Pay Value'),   '0')    AS  PERMISO_PATERNIDAD,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P046_BONO CUATRIMESTRAL',  'Pay Value'),   '0')    AS  BONO_CUATRIMESTRAL,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P080_FONDO AHORRO TR ACUM','Pay Value'),   '0')    AS  FONDO_TR_ACUMULADO,
@@ -535,11 +534,9 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                            PER_TIME_PERIODS             PTP,
                            PAY_ASSIGNMENT_ACTIONS       PAA,
                            PAY_PAYROLLS_F               PPF
---                           PAY_RUN_TYPES_F              PTF
                      WHERE PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
                        AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
                        AND PPA.PAYROLL_ID = PPF.PAYROLL_ID 
---                       AND PAA.RUN_TYPE_ID = PTF.RUN_TYPE_ID
                         ----------Parametros de Ejecucion-----------------
                        AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = :P_COMPANY_ID    
                        AND PPA.PAYROLL_ID = NVL(:P_PAYROLL_ID,  PPA.PAYROLL_ID)
@@ -562,7 +559,6 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                               PPA.EFFECTIVE_DATE,
                               PTP.START_DATE,
                               PTP.END_DATE,
---                              PTF.RUN_TYPE_NAME,
                               PPA.ACTION_TYPE,
                               PPA.DATE_EARNED,
                               PPF.PERIOD_TYPE
@@ -584,26 +580,12 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                        PAYMENT_PAYROLL,
                        PAYMENT_GROCERIES,
                        REG_PATRONAL,
---                       SUELDO_DIARIO,
---                       SALARIO_DIARIO_INTEGRADO,
---                       CREDITO_INFONAVIT,
---                       FECHA_INFONAVIT,
---                       TIPO_INFONAVIT,
---                       VALOR_INFONAVIT, 
---                       INC_EG,
---                       INC_MA,
---                       INC_RT,
---                       AUSENCIAS,
---                       PERMISOS,
---                       PATERNIDAD,
---                       SUSPENSIONES,
                        PORCENTAJE,
                        PCS.CONSOLIDATION_SET_NAME,
                        PAAF.ORGANIZATION_ID,
                        PAAF.POSITION_ID,
                        PAAF.PERSON_ID,
                        ACTION_TYPE,
---                       RUN_TYPE_NAME,
                        START_DATE,
                        END_DATE
              ORDER BY  6,        --Nombre

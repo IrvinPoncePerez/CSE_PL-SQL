@@ -10,9 +10,6 @@ CREATE OR REPLACE PROCEDURE APPS.PAC_PERCEP_Y_DEDUC_PRC(
         P_CONSOLIDATION_SET_ID  VARCHAR2,
         P_PERIOD_NAME           VARCHAR2)
 IS
---    var_path        VARCHAR2(250) := 'PERCEPCION_DEDUCCION';
---    var_file_name   VARCHAR2(250) := 'DETALLE_PERCEP_Y_DEDUC.csv';
---    var_file        UTL_FILE.FILE_TYPE;
     
     var_company_name                VARCHAR2(250);
     var_payroll_name                VARCHAR2(250);
@@ -35,7 +32,6 @@ IS
                    NUM_NOMINA,
                    PAYMENT_PAYROLL,
                    PAYMENT_GROCERIES,
---                   (ACTION_TYPE || ' - ' || RUN_TYPE_NAME)                                          AS  TIPO_EJECUCION,
                    REG_PATRONAL                                                                     AS  REG_PATRONAL,
                    PCS.CONSOLIDATION_SET_NAME                                                       AS  JUEGO_CONSOLIDACION,
                    PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PERSON_ID)                        AS  EFFECTIVE_START_DATE,
@@ -57,9 +53,10 @@ IS
                    SUM(VACACIONES)           AS VACACIONES,        
                    SUM(PRIMA_VACACIONAL)     AS PRIMA_VACACIONAL,   
                    SUM(PRIMA_VACACIONAL_EXE) AS PRIMA_VACACIONAL_EXE,
-                   SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA, 
-                   SUM(AYUDA_ALIMENTOS)      AS AYUDA_ALIMENTOS, 
+                   SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA,  
                    SUM(PREMIO_ASISTENCIA_EXE) AS PREMIO_ASISTENCIA_EXE,
+                   SUM(PREMIO_ASISTENCIA_RET) AS PREMIO_ASISTENCIA_RET,
+                   SUM(AYUDA_ALIMENTOS)      AS AYUDA_ALIMENTOS,
                    SUM(COMISIONES)           AS COMISIONES,          
                    SUM(SUBSIDIO_INCAPACIDAD) AS SUBSIDIO_INCAPACIDAD,
                    SUM(AGUINALDO)            AS AGUINALDO,           
@@ -87,8 +84,10 @@ IS
                    SUM(VACACIONES_PAGADAS)   AS VACACIONES_PAGADAS, 
                    SUM(BONO_EXTRAORDINARIO)  AS BONO_EXTRAORDINARIO,
                    SUM(DESPENSA)             AS DESPENSA,           
-                   SUM(DESPENSA_EXE)         AS DESPENSA_EXE,       
-                   SUM(FONDO_AHO_EMP)        AS FONDO_AHO_EMP,      
+                   SUM(DESPENSA_EXE)         AS DESPENSA_EXE,   
+                   SUM(DESPENSA_RET)         AS DESPENSA_RET,    
+                   SUM(FONDO_AHO_EMP)        AS FONDO_AHO_EMP,  
+                   SUM(FONDO_AHO_EMP_RET)    AS FONDO_AHO_EMP_RET,    
                    SUM(PERMISO_PATERNIDAD)   AS PERMISO_PATERNIDAD,
                    SUM(BONO_CUATRIMESTRAL)   AS BONO_CUATRIMESTRAL,
                    SUM(FONDO_TR_ACUMULADO)   AS FONDO_TR_ACUMULADO, 
@@ -351,7 +350,6 @@ IS
                            PPA.DATE_EARNED,
                            PTP.START_DATE,
                            PTP.END_DATE,
---                           PTF.RUN_TYPE_NAME,
                            (SELECT meaning 
                               FROM HR_LOOKUPS 
                              WHERE LOOKUP_TYPE = 'ACTION_TYPE'
@@ -400,6 +398,7 @@ IS
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P006_PRIMA VACACIONAL',    'ISR Exempt'),  '0')    AS  PRIMA_VACACIONAL_EXE,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P007_PREMIO ASISTENCIA',   'Pay Value'),   '0')    AS  PREMIO_ASISTENCIA,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EXEMPT_VALUE(PAA.ASSIGNMENT_ACTION_ID,     'P007_PREMIO ASISTENCIA',   'Pay Value',    'Tope'), '0')   AS  PREMIO_ASISTENCIA_EXE,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P007_PREMIO ASISTENCIA',   'Futuro5'),     '0')    AS  PREMIO_ASISTENCIA_RET,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P010 AYUDA DE ALIMENTOS',  'Pay Value'),   '0')    AS  AYUDA_ALIMENTOS,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P009_COMISIONES',          'Pay Value'),   '0')    AS  COMISIONES,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P012_SUBSIDIO INCAPACIDAD','Pay Value'),   '0')    AS  SUBSIDIO_INCAPACIDAD,
@@ -432,7 +431,9 @@ IS
                                                                          PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID, 
                                                                                                                  'P039_DESPENSA',            
                                                                                                                  'Pay Value'), PPA.EFFECTIVE_DATE, PPF.PERIOD_TYPE),   '0')    AS  DESPENSA_EXE,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P039_DESPENSA',            'Futuro 7'),    '0')    AS  DESPENSA_RET,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P043_FONDO AHORRO EMP',    'Pay Value'),   '0')    AS  FONDO_AHO_EMP,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P043_FONDO AHORRO EMP',    'Futuro 5'),    '0')    AS  FONDO_AHO_EMP_RET,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P045_PERMISO X PATERNIDAD','Pay Value'),   '0')    AS  PERMISO_PATERNIDAD,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P046_BONO CUATRIMESTRAL',  'Pay Value'),   '0')    AS  BONO_CUATRIMESTRAL,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P080_FONDO AHORRO TR ACUM','Pay Value'),   '0')    AS  FONDO_TR_ACUMULADO,
@@ -552,11 +553,9 @@ IS
                            PER_TIME_PERIODS             PTP,
                            PAY_ASSIGNMENT_ACTIONS       PAA,
                            PAY_PAYROLLS_F               PPF
---                           PAY_RUN_TYPES_F              PTF
                      WHERE PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
                        AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
                        AND PPA.PAYROLL_ID = PPF.PAYROLL_ID 
---                       AND PAA.RUN_TYPE_ID = PTF.RUN_TYPE_ID
                         ----------Parametros de Ejecucion-----------------
                        AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = P_COMPANY_ID    
                        AND PPA.PAYROLL_ID = NVL(P_PAYROLL_ID,  PPA.PAYROLL_ID)
@@ -579,7 +578,6 @@ IS
                               PPA.EFFECTIVE_DATE,
                               PTP.START_DATE,
                               PTP.END_DATE,
---                              PTF.RUN_TYPE_NAME,
                               PPA.ACTION_TYPE,
                               PPA.DATE_EARNED,
                               PPF.PERIOD_TYPE
@@ -601,26 +599,12 @@ IS
                        PAYMENT_PAYROLL,
                        PAYMENT_GROCERIES,
                        REG_PATRONAL,
---                       SUELDO_DIARIO,
---                       SALARIO_DIARIO_INTEGRADO,
---                       CREDITO_INFONAVIT,
---                       FECHA_INFONAVIT,
---                       TIPO_INFONAVIT,
---                       VALOR_INFONAVIT, 
---                       INC_EG,
---                       INC_MA,
---                       INC_RT,
---                       AUSENCIAS,
---                       PERMISOS,
---                       PATERNIDAD,
---                       SUSPENSIONES,
                        PORCENTAJE,
                        PCS.CONSOLIDATION_SET_NAME,
                        PAAF.ORGANIZATION_ID,
                        PAAF.POSITION_ID,
                        PAAF.PERSON_ID,
                        ACTION_TYPE,
---                       RUN_TYPE_NAME,
                        START_DATE,
                        END_DATE
              ORDER BY  6,        --Nombre
@@ -655,19 +639,6 @@ BEGIN
     fnd_file.put_line(fnd_file.log,'P_CONSOLIDATION_SET_ID : ' || P_CONSOLIDATION_SET_ID);
     fnd_file.put_line(fnd_file.log,'P_PERIOD_NAME : '         || P_PERIOD_NAME);
     
-     --Eliminacion y creacion del Archivo.
---    BEGIN
---    
---        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
---        UTL_FILE.FREMOVE(var_path, var_file_name);
---    EXCEPTION WHEN UTL_FILE.INVALID_OPERATION THEN
---        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
---              WHEN OTHERS THEN
---        dbms_output.put_line('**Error al Limpiar el Archivo. ' || SQLERRM);
---        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo. ' || SQLERRM);
---    END;
---    
---    var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
     
     BEGIN
     
@@ -688,15 +659,15 @@ BEGIN
                var_consolidation_set_name
           FROM DUAL;
           
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'COMPAÑIA:,'    || var_company_name);
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'AÑO,'         || P_YEAR);
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES INICIAL:,' || P_START_MONTH);
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES FINAL:,'   || P_END_MONTH);
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'TIPO DE PERIODO:,'        || NVL(P_PERIOD_TYPE,              'TODOS'));
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'NOMINA:,'                 || NVL(var_payroll_name,           'TODAS'));
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'JUEGO DE CONSOLIDACION:,' || NVL(var_consolidation_set_name, 'TODOS'));
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'PERIODO:,'     || NVL(P_PERIOD_NAME, 'TODOS')); 
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, ',,');
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'COMPAÑIA:,'    || var_company_name);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'AÑO,'         || P_YEAR);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES INICIAL:,' || P_START_MONTH);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES FINAL:,'   || P_END_MONTH);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'TIPO DE PERIODO:,'        || NVL(P_PERIOD_TYPE,              'TODOS'));
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'NOMINA:,'                 || NVL(var_payroll_name,           'TODAS'));
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'JUEGO DE CONSOLIDACION:,' || NVL(var_consolidation_set_name, 'TODOS'));
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'PERIODO:,'     || NVL(P_PERIOD_NAME, 'TODOS')); 
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, ',,');
     
     EXCEPTION WHEN OTHERS THEN
         dbms_output.put_line('**Error al Generar el encabezado del documento. ' || SQLERRM);
@@ -741,6 +712,7 @@ BEGIN
                     'PRIMA VACACIONAL EXCENTA ISR,' ||
                     'PREMIO ASISTENCIA,'        ||
                     'PREMIO ASISTENCIA EXCENTA IMSS,' ||
+                    'PREMIO ASISTENCIA RETROACTIVO,' ||
                     'AYUDA DE ALIMENTOS,'       ||
                     'COMISIONES,'               ||
                     'SUBSIDIO INCAPACIDAD,'     ||
@@ -770,7 +742,9 @@ BEGIN
                     'BONO EXTRAORDINARIO,'      ||
                     'DESPENSA,'                 ||
                     'DESPENSA EXCENTO IMSS,'    ||
+                    'DESPENSA RETROACTIVO,'     ||
                     'FONDO AHORRO EMPRESA,'     ||
+                    'FONDO AHORRO EMPRESA RETROACTIVO,' ||
                     'PERMISO POR PATERNIDAD,'   ||
                     'BONO DE CUATRIMESTRAL,'    ||
                     'FONDO TR ACUMULADO,'       ||
@@ -832,7 +806,7 @@ BEGIN
                     'AJUSTE ISR SEGUN TABLA,'   ||
                     'AJUSTE SUBSIDIO SEGUN TABLA,';
                     
-        /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
     
     EXCEPTION WHEN OTHERS THEN
         dbms_output.put_line('**Error al Generar el encabezado de la tabla de detalle. ' || SQLERRM);
@@ -891,6 +865,7 @@ BEGIN
                                DETAIL(rowIndex).PRIMA_VACACIONAL_EXE    || ',' ||
                                DETAIL(rowIndex).PREMIO_ASISTENCIA       || ',' ||
                                DETAIL(rowIndex).PREMIO_ASISTENCIA_EXE   || ',' ||
+                               DETAIL(rowIndex).PREMIO_ASISTENCIA_RET   || ',' ||
                                DETAIL(rowIndex).AYUDA_ALIMENTOS         || ',' ||
                                DETAIL(rowIndex).COMISIONES              || ',' ||
                                DETAIL(rowIndex).SUBSIDIO_INCAPACIDAD    || ',' ||
@@ -920,7 +895,9 @@ BEGIN
                                DETAIL(rowIndex).BONO_EXTRAORDINARIO     || ',' ||
                                DETAIL(rowIndex).DESPENSA                || ',' ||
                                DETAIL(rowIndex).DESPENSA_EXE            || ',' ||
+                               DETAIL(rowIndex).DESPENSA_RET            || ',' ||
                                DETAIL(rowIndex).FONDO_AHO_EMP           || ',' ||
+                               DETAIL(rowIndex).FONDO_AHO_EMP_RET       || ',' ||
                                DETAIL(rowIndex).PERMISO_PATERNIDAD      || ',' ||
                                DETAIL(rowIndex).BONO_CUATRIMESTRAL      || ',' ||
                                DETAIL(rowIndex).FONDO_TR_ACUMULADO      || ',' ||
@@ -982,7 +959,7 @@ BEGIN
                                DETAIL(rowIndex).AJUSTE_ISR_SEGUN_TABLA  || ',' ||
                                DETAIL(rowIndex).AJUSTE_SUBSIDIO_SEGUN_TABLA || ',';
                 
-                /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
                 
             END LOOP;        
         
