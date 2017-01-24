@@ -111,6 +111,57 @@ IF ASG_PAYROLL LIKE '%SEM%'  THEN
    TOPE = (( SDI * .10)*7)
  )
 
+/* Bloque del Retroactivo */
+IF ASG_PAYROLL LIKE '%QUIN%' THEN (
+
+  DiasRetroactivo = 0
+  SalarioDiarioAnt = 0
+  PorcentajeAnt = G_PORCENTAJE_ANT/100
+  Retroactivo = 0
+
+  DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P001_SUELDO NORMAL', ASG_PAYROLL)
+  DiasRetroactivo = DiasRetroactivo + PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P005_VACACIONES', ASG_PAYROLL)
+  SalarioDiarioAnt = PAC_P044_SALARIO_DIARIO_ANT() 
+
+  Retroactivo = ((DiasRetroactivo * SalarioDiario_Q) * Porcentaje) - ((DiasRetroactivo * SalarioDiarioAnt) * PorcentajeAnt)
+
+  IF Retroactivo > TOPE_CANT_QUIN THEN(
+    Retroactivo = 0
+  )
+
+
+  flat_amount = TRUNC(flat_amount, 2) + ROUND(Retroactivo, 2)
+
+) ELSE (
+  IF ASG_PAYROLL LIKE '%SEM%' THEN (
+    DiasRetroactivo = 0
+    SalarioDiarioAnt = 0
+    PorcentajeAnt = G_PORCENTAJE_ANT/100
+    Retroactivo = 0
+
+    DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P001_SUELDO NORMAL', ASG_PAYROLL)
+    DiasRetroactivo = DiasRetroactivo + PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P005_VACACIONES', ASG_PAYROLL)
+    SalarioDiarioAnt = PAC_P044_SALARIO_DIARIO_ANT() 
+
+    Retroactivo = ((DiasRetroactivo * SalarioDiario_S) * Porcentaje) - ((DiasRetroactivo * SalarioDiarioAnt) * PorcentajeAnt)
+
+    IF Retroactivo > TOPE_CANT_SEM THEN(
+        Retroactivo = TOPE_CANT_SEM
+    )
+
+
+    flat_amount = TRUNC(flat_amount, 2) + ROUND(Retroactivo, 2)
+  )
+)
+
+mesg2 = 'RETROACTIVO '
+      + ' DiasRetroactivo: ' + to_char(DiasRetroactivo)
+      + ' SalarioDiarioAnt: ' + to_char(SalarioDiarioAnt)
+      + ' Retroactivo: ' + to_char(Retroactivo)
+      + ' flat_amount: ' + to_char(flat_amount)
+
+/* Bloque del Retroactivo */
+
 TOPE_SDI = TOPE
 TopeSDI	=  (LEAST(flat_amount,TOPE_SDI))*-1
 
@@ -125,6 +176,8 @@ RETURN flat_amount,
        mesg,
        isr_subject,
        isr_exempt,
-	   TopeSDI
+	   TopeSDI,
+     mesg2,
+     Retroactivo
 
 /* End Formula Text */

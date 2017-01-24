@@ -45,7 +45,7 @@ DEFAULT FOR Work_Schedule IS '1 Schedule: 8-8-8-8-8-0-0'
 
 INPUTS ARE        Amount,
                   Bono,
-				  Bono_Anterior		  
+          Bono_Anterior     
 
 /* =====Local variables =====  */
 local_tax_type = 'ISR'
@@ -56,87 +56,149 @@ local_daily_salary = 0
 local_gross_earnings = GROSS_EARNINGS_ASG_RUN
 local_ytd_gross_earnings = GROSS_EARNINGS_ASG_YTD
 
- ECON_ZONE 	=  GET_MX_ECON_ZONE()	
- MIN_WAGE_SDI  	=  TO_NUMBER(GET_MIN_WAGE('NONE','A' /*ECON_ZONE*/))
+ ECON_ZONE  =  GET_MX_ECON_ZONE() 
+ MIN_WAGE_SDI   =  TO_NUMBER(GET_MIN_WAGE('NONE','A' /*ECON_ZONE*/))
  
 IF Bono_Anterior WAS NOT DEFAULTED THEN
     (
-	   BonoAnt = Bono_Anterior
-	 ) 
+     BonoAnt = Bono_Anterior
+   ) 
 ELSE
   (
     IF Bono WAS DEFAULTED THEN
-     (	
-	   BonoAnt = 0
-	 )  
+     (  
+     BonoAnt = 0
+   )  
 
    )
    
  IF Bono WAS NOT DEFAULTED THEN
     (
-	   IF ASG_PAYROLL LIKE '%QUIN%' THEN
-		  (
-		    Amount= Bono + Bono_Anterior
-			TOPE= (MIN_WAGE_SDI * .40)*15
-		  )	
-		ELSE
+     IF ASG_PAYROLL LIKE '%QUIN%' THEN
+      (
+        Amount= Bono + Bono_Anterior
+      TOPE= (MIN_WAGE_SDI * .40)*15
+      ) 
+    ELSE
          (
-          	IF ASG_PAYROLL LIKE '%SEM%' THEN
+            IF ASG_PAYROLL LIKE '%SEM%' THEN
               (
                  Amount= Bono + Bono_Anterior
-			     TOPE= (MIN_WAGE_SDI * .40)*7
-			  )	 
-		 )	  
-		  
-	    
-	 )
-	ELSE
-	 (
-	   IF Bono WAS DEFAULTED THEN
-        (	
-   		   IF ASG_PAYROLL LIKE '%02%QUIN%' THEN
+           TOPE= (MIN_WAGE_SDI * .40)*7
+        )  
+     )    
+      
+      
+   )
+  ELSE
+   (
+     IF Bono WAS DEFAULTED THEN
+        ( 
+         IF ASG_PAYROLL LIKE '%02%QUIN%' THEN
              (
                Amount = BONO_QUIN + BonoAnt
-			   TOPE= (MIN_WAGE_SDI * .40)*15
+         TOPE= (MIN_WAGE_SDI * .40)*15
              )  
              ELSE
-			 (
-			   IF ASG_PAYROLL LIKE '%SEM%' THEN
+       (
+         IF ASG_PAYROLL LIKE '%SEM%' THEN
                  (
                    Amount = BONO_SEM + BonoAnt
-				   TOPE = (MIN_WAGE_SDI * .40)*7
+           TOPE = (MIN_WAGE_SDI * .40)*7
                  )  
                 ELSE
-                  (				
+                  (       
                      IF ASG_PAYROLL LIKE '%08%QUIN%' THEN
                         (
                           Amount = BONO_QUIN_AP + BonoAnt
-						  TOPE = (MIN_WAGE_SDI * .40)*15
+              TOPE = (MIN_WAGE_SDI * .40)*15
                         ) 
-				  )
+          )
               )
-         )			  
-	 )	
-	 
+         )        
+   )  
+
+/* Parte de Retroactivo */
+IF ASG_PAYROLL LIKE '%02%QUIN%' THEN (
+  DiasRetroactivo = 0
+  BonoDiario = 0
+  BonoDiarioAnt = 0
+  Retroactivo = 0
+
+  DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P001_SUELDO NORMAL', ASG_PAYROLL)
+  DiasRetroactivo = DiasRetroactivo + PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P005_VACACIONES', ASG_PAYROLL)
+
+  BonoDiario = BONO_QUIN / 15
+  BonoDiarioAnt = BONO_QUIN_ANT / 15
+
+  Retroactivo = (BonoDiario * DiasRetroactivo) - (BonoDiarioAnt * DiasRetroactivo)
+  Amount = Amount + Retroactivo
+
+  mesg2 = 'RETROACTIVO '
+        + ' DiasRetroactivo: ' + to_char(DiasRetroactivo)
+        + ' BonoDiariO: ' + to_char(BonoDiario)
+        + ' BonoDiarioAnt: ' + to_char(BonoDiarioAnt)
+        + ' Retroactivo: ' + to_char(Retroactivo)
+
+  /*IF P039_DESPENSA_ASG_GRE_YTD = BONO_QUIN_ANT THEN (
+    Amount = Amount + BONO_QUIN_RET
+  ) ELSE (
+    IF P039_DESPENSA_ASG_GRE_YTD = BONO_SEM_ANT THEN (
+      Amount = Amount + BONO_SEM_RET
+    )
+  )*/
+) ELSE (
+  IF ASG_PAYROLL LIKE '%SEM%' THEN (
+
+    DiasRetroactivo = 0
+    BonoDiario = 0
+    BonoDiarioAnt = 0
+    Retroactivo = 0
+
+    DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P001_SUELDO NORMAL', ASG_PAYROLL)
+    DiasRetroactivo = DiasRetroactivo + PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P005_VACACIONES', ASG_PAYROLL)
+
+    BonoDiario = BONO_SEM / 7
+    BonoDiarioAnt = BONO_SEM_ANT / 7 
+
+    Retroactivo = (BonoDiario * DiasRetroactivo) - (BonoDiarioAnt * DiasRetroactivo)
+    Amount = Amount + Retroactivo
+
+    mesg2 = 'RETROACTIVO '
+          + ' DiasRetroactivo: ' + to_char(DiasRetroactivo)
+          + ' BonoDiariO: ' + to_char(BonoDiario)
+          + ' BonoDiarioAnt: ' + to_char(BonoDiarioAnt)
+          + ' Retroactivo: ' + to_char(Retroactivo)
+    /*IF P039_DESPENSA_ASG_GRE_YTD = BONO_QUIN_ANT THEN (
+      Amount = Amount + BONO_QUIN_RET
+    ) ELSE (
+      IF P039_DESPENSA_ASG_GRE_YTD = BONO_SEM_ANT THEN (
+        Amount = Amount + BONO_SEM_RET
+      )
+    )*/
+  )
+)
+/* Parte de Retroactivo */
+   
 
 flat_amount = Amount
 TOPE_SDI = TOPE 
 
 
-TopeSDI	=  (LEAST(flat_amount,TOPE_SDI))*-1
+TopeSDI =  (LEAST(flat_amount,TOPE_SDI))*-1
 
 
-		
+    
 /* Cambio porque alicia comentó que exenta este elemento al 100% siempre*/
 
-          isr_exempt	=  flat_amount
-          isr_subject	=  0		
-		
+          isr_exempt  =  flat_amount
+          isr_subject =  0    
+    
 mesg1 = 'P039 DESPENSA:  Bono: '    + to_char(flat_amount)   +
-        ' Tope SDI: ' +   to_char(TopeSDI) 	+	
-		' Zona Economica: ' +   to_char(MIN_WAGE_SDI) 	
-		
-	   
+        ' Tope SDI: ' +   to_char(TopeSDI)  + 
+    ' Zona Economica: ' +   to_char(MIN_WAGE_SDI)   
+    
+     
 /* ======ISR Subject calculation begins ======= 
     isr_subject = get_subject_earnings_ann
                     (local_tax_type,
@@ -158,7 +220,9 @@ RETURN flat_amount,
        isr_subject,
        isr_exempt,
        TopeSDI,
-	   BonoAnt,
-       mesg1
+     BonoAnt,
+       mesg1,
+       mesg2,
+       Retroactivo
 
 /* End Formula Text */

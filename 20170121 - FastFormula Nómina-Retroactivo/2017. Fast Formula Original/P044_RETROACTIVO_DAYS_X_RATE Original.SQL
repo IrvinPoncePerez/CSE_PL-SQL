@@ -86,13 +86,6 @@ local_ytd_gross_earnings = GROSS_EARNINGS_ASG_YTD
 mesg = 'NOT ENTERED'
 Factor = 30
 
-/* ******** Variables Locales RETROACTIVO ********* */
-DiasRetroactivo = 0
-SueldoPendiente = 0
-SueldoPagado = 0
-Retroactivo = 0
-/* ******** Variables Locales RETROACTIVO ********* */
-
 
 /* ===== CALCULATION SECTION BEGIN ===== */
 /*Ausentismos = AUSENTISMOS_RETROACTIVO_ASG_GRE_YTD*/
@@ -148,67 +141,9 @@ earnings_amount = ( SalarioDiario - SalarioDiarioRet) * calc_days
 
 /* ===== CALCULATION SECTION END ===== */
 
-
-/* ********* Calculo RETROACTIVO ************ */
-IF ASG_PAYROLL LIKE '%QUIN%' THEN
-(
-  SalarioDiario = ASG_SALARY / Factor
-)
-ELSE
-(
-  IF ASG_PAYROLL LIKE '%SEM%' THEN 
-  (
-    SalarioDiario = ASG_SALARY / Factor
-  )
-)
-
-/*        P001_SUELDO_NORMAL      */
-IF Rate = 0 THEN (
-
-  SueldoPagado = P001_SUELDO_NORMAL_ASG_GRE_YTD 
-  SueldoPendiente = P001_SUELDO_NORMAL_ASG_GRE_RUN 
-
-  DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P001_SUELDO NORMAL', ASG_PAYROLL)
-  SueldoPagado = SueldoPagado - SueldoPendiente
-  Retroactivo = (DiasRetroactivo * SalarioDiario) - SueldoPagado
-
-  earnings_amount = TRUNC(Retroactivo, 2)
-  calc_days = DiasRetroactivo
-
-  mesg1 = 'P044_RETROACTIVO: '
-          + ' P001 Dias Retroactivo: ' + to_char(DiasRetroactivo)
-          + ' P001 Sueldo Pagado: ' + to_char(SueldoPagado)
-          + ' P001 Retroactivo: ' + to_char(Retroactivo)
-
-  /*        P005_VACACIONES       */
-  SueldoPagado = P005_VACACIONES_ASG_GRE_YTD
-  SueldoPendiente = P005_VACACIONES_ASG_GRE_RUN 
-
-  DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P005_VACACIONES', ASG_PAYROLL)
-  SueldoPagado = SueldoPagado - SueldoPendiente
-  Retroactivo = (DiasRetroactivo * SalarioDiario) - SueldoPagado
-
-  earnings_amount = earnings_amount + TRUNC(Retroactivo, 2)
-  calc_days = calc_days + DiasRetroactivo
-
-  mesg1 = mesg1 
-          + ' P005 Dias Retroactivo: ' + to_char(DiasRetroactivo)
-          + ' P005 Sueldo Pagado: ' + to_char(SueldoPagado)
-          + ' P005 Retroactivo: ' + to_char(Retroactivo)
-) ELSE (
- IF Rate > 0  THEN (
-  
-   calc_days = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P001_SUELDO NORMAL', ASG_PAYROLL) + PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P005_VACACIONES', ASG_PAYROLL)
-   earnings_amount = Rate
-
-   mesg1 = 'P044_RETROACTIVO: '
-         +  ' Dias Retroactivo: ' + to_char(calc_days)
-         +  ' Retroactivo: ' + to_char(earnings_amount)
-
-  )
-)
-/* ********* Calculo RETROACTIVO ************ */
-
+  earnings_amount = 0
+  calc_days = 0
+  mesg1 = 'RETROACTIVO'
 
 /* ======ISR Subject calculation begins ======= */
     isr_subject = get_subject_earnings_ann

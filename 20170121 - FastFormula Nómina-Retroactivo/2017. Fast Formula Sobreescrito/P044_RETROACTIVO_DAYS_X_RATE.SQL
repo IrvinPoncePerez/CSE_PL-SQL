@@ -90,6 +90,7 @@ Factor = 30
 DiasRetroactivo = 0
 SueldoPendiente = 0
 SueldoPagado = 0
+SalarioDiarioAnt = 0
 Retroactivo = 0
 /* ******** Variables Locales RETROACTIVO ********* */
 
@@ -167,15 +168,19 @@ IF Rate = 0 THEN (
 
   SueldoPagado = P001_SUELDO_NORMAL_ASG_GRE_YTD 
   SueldoPendiente = P001_SUELDO_NORMAL_ASG_GRE_RUN 
-
+  SalarioDiarioAnt = PAC_P044_SALARIO_DIARIO_ANT() 
   DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P001_SUELDO NORMAL', ASG_PAYROLL)
   SueldoPagado = SueldoPagado - SueldoPendiente
-  Retroactivo = (DiasRetroactivo * SalarioDiario) - SueldoPagado
+  
+  /*Retroactivo = (DiasRetroactivo * SalarioDiario) - SueldoPagado*/
+  Retroactivo = (DiasRetroactivo * SalarioDiario) - (DiasRetroactivo * SalarioDiarioAnt)
 
   earnings_amount = TRUNC(Retroactivo, 2)
   calc_days = DiasRetroactivo
 
-  mesg1 = 'P044_RETROACTIVO: '
+  mesg1 = 'P044_RETROACTIVO: ' 
+          + ' P001 SueldoDiarioAnt: ' + to_char(SalarioDiarioAnt)
+          + ' P001 SalarioDiario: ' + to_char(SalarioDiario)
           + ' P001 Dias Retroactivo: ' + to_char(DiasRetroactivo)
           + ' P001 Sueldo Pagado: ' + to_char(SueldoPagado)
           + ' P001 Retroactivo: ' + to_char(Retroactivo)
@@ -186,7 +191,8 @@ IF Rate = 0 THEN (
 
   DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P005_VACACIONES', ASG_PAYROLL)
   SueldoPagado = SueldoPagado - SueldoPendiente
-  Retroactivo = (DiasRetroactivo * SalarioDiario) - SueldoPagado
+  /*Retroactivo = (DiasRetroactivo * SalarioDiario) - SueldoPagado*/
+  Retroactivo = (DiasRetroactivo * SalarioDiario) - (DiasRetroactivo * SalarioDiarioAnt)
 
   earnings_amount = earnings_amount + TRUNC(Retroactivo, 2)
   calc_days = calc_days + DiasRetroactivo

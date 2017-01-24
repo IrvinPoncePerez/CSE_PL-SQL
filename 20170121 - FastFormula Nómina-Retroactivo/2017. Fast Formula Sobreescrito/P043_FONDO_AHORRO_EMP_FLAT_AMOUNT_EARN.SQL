@@ -106,6 +106,57 @@ IF ASG_PAYROLL LIKE '%SEM%'  THEN
     flat_amount = flat_amount
    )
  )
+
+ /* Bloque del Retroactivo */
+IF ASG_PAYROLL LIKE '%QUIN%' THEN (
+
+  DiasRetroactivo = 0
+  SalarioDiarioAnt = 0
+  PorcentajeAnt = G_PORCENTAJE_ANT/100
+  Retroactivo = 0
+
+  DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P001_SUELDO NORMAL', ASG_PAYROLL)
+  DiasRetroactivo = DiasRetroactivo + PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P005_VACACIONES', ASG_PAYROLL)
+  SalarioDiarioAnt = PAC_P044_SALARIO_DIARIO_ANT() 
+
+  Retroactivo = ((DiasRetroactivo * SalarioDiario_Q) * Porcentaje) - ((DiasRetroactivo * SalarioDiarioAnt) * PorcentajeAnt)
+
+  IF Retroactivo > TOPE_CANT_QUIN THEN(
+    Retroactivo = 0
+  )
+
+
+  flat_amount = TRUNC(flat_amount, 2) + ROUND(Retroactivo, 2)
+
+) ELSE (
+  IF ASG_PAYROLL LIKE '%SEM%' THEN (
+    DiasRetroactivo = 0
+    SalarioDiarioAnt = 0
+    PorcentajeAnt = G_PORCENTAJE_ANT/100
+    Retroactivo = 0
+
+    DiasRetroactivo = PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P001_SUELDO NORMAL', ASG_PAYROLL)
+    DiasRetroactivo = DiasRetroactivo + PAC_P044_DIAS_RETROACTIVOS(PAY_PROC_PERIOD_END_DATE, 'P005_VACACIONES', ASG_PAYROLL)
+    SalarioDiarioAnt = PAC_P044_SALARIO_DIARIO_ANT() 
+
+    Retroactivo = ((DiasRetroactivo * SalarioDiario_S) * Porcentaje) - ((DiasRetroactivo * SalarioDiarioAnt) * PorcentajeAnt)
+
+    IF Retroactivo > TOPE_CANT_SEM THEN(
+        Retroactivo = TOPE_CANT_SEM
+    )
+
+
+    flat_amount = TRUNC(flat_amount, 2) + ROUND(Retroactivo, 2)
+  )
+)
+
+mesg2 = 'RETROACTIVO '
+      + ' DiasRetroactivo: ' + to_char(DiasRetroactivo)
+      + ' SalarioDiarioAnt: ' + to_char(SalarioDiarioAnt)
+      + ' Retroactivo: ' + to_char(Retroactivo)
+      + ' flat_amount: ' + to_char(flat_amount)
+
+/* Bloque del Retroactivo */
  
 
  /* Cambio porque alicia comentó que exenta este elemento al 100% siempre*/
@@ -135,6 +186,8 @@ soe_ytd = P043_FONDO_AHORRO_EMP_ASG_GRE_YTD
 RETURN flat_amount,
        mesg,
        isr_subject,
-       isr_exempt
+       isr_exempt,
+       mesg2,
+       Retroactivo
 
 /* End Formula Text */
