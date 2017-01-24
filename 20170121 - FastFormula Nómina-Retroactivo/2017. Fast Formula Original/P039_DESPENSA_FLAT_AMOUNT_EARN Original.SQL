@@ -125,7 +125,8 @@ TOPE_SDI = TOPE
 
 TopeSDI	=  (LEAST(flat_amount,TOPE_SDI))*-1
 
-
+ mesg2 = ' SIN MENSAJE '
+ Retroactivo = 0
 		
 /* Cambio porque alicia comentó que exenta este elemento al 100% siempre*/
 
@@ -159,6 +160,8 @@ RETURN flat_amount,
        isr_exempt,
        TopeSDI,
 	   BonoAnt,
-       mesg1
+       mesg1,
+       mesg2,
+       Retroactivo
 
 /* End Formula Text */

@@ -129,6 +129,9 @@ IF ASG_PAYROLL LIKE '%QUIN%' THEN (
     Retroactivo = 0
   )
 
+  IF Retroactivo < 0 THEN (
+    Retroactivo = 0
+  )
 
   flat_amount = TRUNC(flat_amount, 2) + ROUND(Retroactivo, 2)
 
@@ -149,6 +152,9 @@ IF ASG_PAYROLL LIKE '%QUIN%' THEN (
         Retroactivo = TOPE_CANT_SEM
     )
 
+    IF Retroactivo < 0 THEN (
+      Retroactivo = 0
+    )
 
     flat_amount = TRUNC(flat_amount, 2) + ROUND(Retroactivo, 2)
   )

@@ -117,6 +117,8 @@ TopeSDI	=  (LEAST(flat_amount,TOPE_SDI))*-1
 
 soe_ytd = P007_PREMIO_ASISTENCIA_ASG_GRE_YTD
 
+mesg2 = ' SIN MENSAJE '
+Retroactivo = 0
 
 isr_subject = flat_amount
 isr_exempt = flat_amount - isr_subject
@@ -125,6 +127,8 @@ RETURN flat_amount,
        mesg,
        isr_subject,
        isr_exempt,
-	   TopeSDI
+	   TopeSDI,
+     mesg2,
+     Retroactivo
 
 /* End Formula Text */

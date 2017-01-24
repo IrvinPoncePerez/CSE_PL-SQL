@@ -132,6 +132,11 @@ IF ASG_PAYROLL LIKE '%02%QUIN%' THEN (
   BonoDiarioAnt = BONO_QUIN_ANT / 15
 
   Retroactivo = (BonoDiario * DiasRetroactivo) - (BonoDiarioAnt * DiasRetroactivo)
+
+  IF Retroactivo < 0 THEN (
+    Retroactivo = 0
+  )
+
   Amount = Amount + Retroactivo
 
   mesg2 = 'RETROACTIVO '
@@ -162,6 +167,11 @@ IF ASG_PAYROLL LIKE '%02%QUIN%' THEN (
     BonoDiarioAnt = BONO_SEM_ANT / 7 
 
     Retroactivo = (BonoDiario * DiasRetroactivo) - (BonoDiarioAnt * DiasRetroactivo)
+
+    IF Retroactivo < 0 THEN (
+      Retroactivo = 0
+    )
+
     Amount = Amount + Retroactivo
 
     mesg2 = 'RETROACTIVO '

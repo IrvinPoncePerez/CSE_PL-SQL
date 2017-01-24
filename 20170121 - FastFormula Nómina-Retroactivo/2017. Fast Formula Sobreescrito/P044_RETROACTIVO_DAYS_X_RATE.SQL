@@ -86,71 +86,14 @@ local_ytd_gross_earnings = GROSS_EARNINGS_ASG_YTD
 mesg = 'NOT ENTERED'
 Factor = 30
 
-/* ******** Variables Locales RETROACTIVO ********* */
+/* ********* Calculo RETROACTIVO ************ */
 DiasRetroactivo = 0
 SueldoPendiente = 0
 SueldoPagado = 0
 SalarioDiarioAnt = 0
 Retroactivo = 0
-/* ******** Variables Locales RETROACTIVO ********* */
 
 
-/* ===== CALCULATION SECTION BEGIN ===== */
-/*Ausentismos = AUSENTISMOS_RETROACTIVO_ASG_GRE_YTD*/
-
-/*FinAño = To_DATE('31/12/'+ TO_CHAR(PAY_PROC_PERIOD_START_DATE, 'YYYY'),('DD/MM/YYYY'))
-
-AnioUltPeriodo = TO_NUMBER(TO_CHAR(FinAño,'YYYY'))
-MesUltPeriodo = TO_NUMBER(TO_CHAR(FinAño,'MM')) 
-DiaUltPeriodo = TO_CHAR(FinAño,'DD') 
-
-
-AnioAnterior = AnioUltPeriodo -1
-
-FechaUltPeriodoAnt = TO_DATE(TO_CHAR(AnioAnterior) + '/' + 
-                TO_CHAR(MesUltPeriodo) + '/' + 
-                DiaUltPeriodo, 
-                'YYYY/MM/DD')
-
-
-
-SueldoAnterior= XXCALV_GET_LAST_SALARY_F(FechaUltPeriodoAnt)
-FechaPrimPer= XXCALV_FECHA_INICIO(PAY_PROC_PERIOD_END_DATE)
-
-DIAS_RETRO = DAYS_BETWEEN(PAY_PROC_PERIOD_START_DATE, FechaPrimPer)
-DIAS_TOT = P001_SUELDO_NORMAL_Days_ASG_GRE_YTD - P001_SUELDO_NORMAL_Days_ASG_GRE_RUN
-calc_days = ( DIAS_TOT + P005_VACACIONES_Days_ASG_GRE_YTD) /*- Ausentismos*/
-
-
-
-/*IF ASG_PAYROLL LIKE '%QUIN%' THEN
- (   
-   SalarioDiario = ASG_SALARY / Factor
-   SalarioDiarioRet = SueldoAnterior /Factor
-
- )  
-
-IF ASG_PAYROLL LIKE '%SEM%'  THEN
- (
-   SalarioDiario = ASG_SALARY / Factor
-   SalarioDiarioRet = SueldoAnterior /Factor
- )
-
-earnings_amount = ( SalarioDiario - SalarioDiarioRet) * calc_days 
-
- mesg1 = 'P044_RETROACTIVO: Sueldo Ant: '  + to_char(SueldoAnterior) 
-                +'Fecha ier Periodo:'+ to_char(FechaPrimPer) 
-        +'Dias Normales:'+ to_char(DIAS_RETRO)
-                +'Dias Vac:'+ to_char(P005_VACACIONES_Days_ASG_GRE_YTD) 
-        +'Dias SUELDO AÑO:'+ to_char(P001_SUELDO_NORMAL_Days_ASG_GRE_YTD)
-                +'Dias EJECUCION:'+ to_char(P001_SUELDO_NORMAL_Days_ASG_GRE_RUN)        
-        +'Dias Totales:'+ to_char(calc_days)          
-    
-
-/* ===== CALCULATION SECTION END ===== */
-
-
-/* ********* Calculo RETROACTIVO ************ */
 IF ASG_PAYROLL LIKE '%QUIN%' THEN
 (
   SalarioDiario = ASG_SALARY / Factor
@@ -175,6 +118,10 @@ IF Rate = 0 THEN (
   /*Retroactivo = (DiasRetroactivo * SalarioDiario) - SueldoPagado*/
   Retroactivo = (DiasRetroactivo * SalarioDiario) - (DiasRetroactivo * SalarioDiarioAnt)
 
+  IF Retroactivo < 0 THEN (
+    Retroactivo = 0
+  )
+
   earnings_amount = TRUNC(Retroactivo, 2)
   calc_days = DiasRetroactivo
 
@@ -193,6 +140,10 @@ IF Rate = 0 THEN (
   SueldoPagado = SueldoPagado - SueldoPendiente
   /*Retroactivo = (DiasRetroactivo * SalarioDiario) - SueldoPagado*/
   Retroactivo = (DiasRetroactivo * SalarioDiario) - (DiasRetroactivo * SalarioDiarioAnt)
+
+  IF Retroactivo < 0 THEN (
+    Retroactivo = 0
+  )
 
   earnings_amount = earnings_amount + TRUNC(Retroactivo, 2)
   calc_days = calc_days + DiasRetroactivo

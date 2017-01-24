@@ -107,6 +107,8 @@ IF ASG_PAYROLL LIKE '%SEM%'  THEN
    )
  )
  
+ mesg2 = ' SIN MENSAJE '
+ Retroactivo = 0
 
  /* Cambio porque alicia comentó que exenta este elemento al 100% siempre*/
  
@@ -135,6 +137,8 @@ soe_ytd = P043_FONDO_AHORRO_EMP_ASG_GRE_YTD
 RETURN flat_amount,
        mesg,
        isr_subject,
-       isr_exempt
+       isr_exempt,
+       mesg2,
+       Retroactivo
 
 /* End Formula Text */
