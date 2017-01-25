@@ -1,3 +1,5 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+
              SELECT DISTINCT 
                     PPF.PAYROLL_NAME,
                     (CASE
@@ -25,21 +27,28 @@
                       WHERE PA.PERSON_ID = PAPF.PERSON_ID
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,     
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
+                    SUM(NVL(GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,  
+                    SUM(NVL(GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,   
+                    SUM(NVL(GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
+                    SUM(NVL(GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
+                    GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)                                        AS  NOM_FECREL,
+                    (CASE
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 1
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 0
+                        ELSE 0
+                     END)                                                                           AS  NOM_SINDC,
                     (CASE
                         WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX1_P' THEN
                             '01'
                         WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX2_E' THEN
                             '03'
-                     END)                                                                           AS  NOM_TIPCON,                                                              
+                     END)                                                                           AS  NOM_TIPCON,
                     (CASE
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
                             CASE 
-                                WHEN :P_PERIOD_TYPE = 'Week' OR :P_PERIOD_TYPE = 'Semana' THEN
+                                WHEN P_PERIOD_TYPE = 'Week' OR P_PERIOD_TYPE = 'Semana' THEN
                                      PTP.END_DATE + 4
                                 ELSE
                                      PTP.END_DATE
@@ -55,19 +64,21 @@
                      END)                                                                           AS  NOM_FECINI,
                     PTP.END_DATE                                                                    AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  NOM_DIAPAG,
+                    MAX(NVL(GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     (CASE
                         WHEN HOUV.REGION_1 = 'CAMP' THEN 'CAM'
                         WHEN HOUV.REGION_1 = 'TAMPS' THEN 'TAM'
+                        WHEN HOUV.REGION_1 = 'CHIS' THEN 'CHP'
+                        WHEN HOUV.REGION_1 = 'DF' THEN 'DIF'
                         ELSE HOUV.REGION_1
                      END)                                                                           AS  NOM_ENTFED,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
                         WHEN PPF.PAYROLL_NAME LIKE '%SEM%' THEN
-                             'SEMANAL'
+                             '02'
                         WHEN PPF.PAYROLL_NAME LIKE '%QUIN%' THEN
-                             'QUINCENAL'
+                             '04'
                         ELSE
                              ''
                      END)                                                                           AS  NOM_FORPAG,
@@ -83,12 +94,14 @@
                                               'P039_DESPENSA',
                                               'Pay Value'), '0'))                                   AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
-                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
+                    MAX(NVL(GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
                                          PPA.DATE_EARNED,
                                          PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
-                    PAC_CFDI_FUNCTIONS_PKG.GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,
+                    SUM(NVL(GET_PER_TOTSUL(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSUL,
+                    SUM(NVL(GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSEP,
+                    SUM(NVL(GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
+                    SUM(NVL(GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
+                    GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,
                     (CASE
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
                             'O'
@@ -97,16 +110,16 @@
                      END)                                                                           AS  NOM_TIPO,   
                      NVL((SELECT DISTINCT 
                                  (CASE WHEN PAPF.EMPLOYEE_NUMBER = 13 OR PAPF.EMPLOYEE_NUMBER = 24 THEN
-                                        '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
+                                        '03' --TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
                                        WHEN PCS.CONSOLIDATION_SET_NAME = 'FINIQUITOS' THEN
-                                        '02-CHEQUE' --'CHEQUE'
+                                        '02' --CHEQUE' --'CHEQUE'
                                        WHEN POPM.ORG_PAYMENT_METHOD_NAME LIKE '%EFECTIVO%' THEN
-                                        '01-EFECTIVO' --'EFECTIVO'
+                                        '01' --EFECTIVO' --'EFECTIVO'
                                        WHEN (POPM.ORG_PAYMENT_METHOD_NAME LIKE '%BANCOMER%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%BANORTE%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%HSBC%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%INVERLAT%') THEN
-                                        '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
+                                        '03' --TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
                                        
                                   END)
                             FROM PER_ALL_ASSIGNMENTS_F          PAA,
@@ -124,6 +137,7 @@
                                 ), '01')                                                            AS  METPAG,
                     PPF.PAYROLL_ID,
                     PAAF.ASSIGNMENT_ID,
+                    PAPF.PERSON_ID,
                     PPA.PAYROLL_ACTION_ID,
                     PPA.DATE_EARNED,
                     PPA.CONSOLIDATION_SET_ID,
@@ -185,6 +199,7 @@
                    AND PPA.EFFECTIVE_DATE BETWEEN HAPD.EFFECTIVE_START_DATE AND HAPD.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PRTX.EFFECTIVE_START_DATE AND PRTX.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                   AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%%'
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
@@ -200,10 +215,11 @@
                           PAPF.PER_INFORMATION1, 
                           PAPF.FIRST_NAME, 
                           PAPF.MIDDLE_NAMES,
-                          PAD.ADDRESS_LINE1,
                           PAPF.PERSON_ID,
+                          PAD.ADDRESS_LINE1,
                           PAPF.EMAIL_ADDRESS,
                           PAPF.EMPLOYEE_NUMBER,
+                          PAAF.EMPLOYEE_CATEGORY,
                           PAPF.NATIONAL_IDENTIFIER,
                           PCS.CONSOLIDATION_SET_NAME,
                           PTP.END_DATE,
