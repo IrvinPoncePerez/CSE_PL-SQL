@@ -1957,17 +1957,31 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                           PAPF.PER_INFORMATION1 || ' ' || 
                           PAPF.FIRST_NAME       || ' ' || 
                           PAPF.MIDDLE_NAMES)                                                        AS  NOMREC,
+                    UPPER(PAD.ADDRESS_LINE1)                                                        AS  CALREC,
                     (SELECT UPPER(NVL(FT2.NLS_TERRITORY, 'MEXICO'))
                        FROM PER_ADDRESSES    PA,
                             FND_TERRITORIES  FT2
                       WHERE PA.PERSON_ID = PAPF.PERSON_ID
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
-                    SUM(NVL(GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,     
+                    SUM(NVL(GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,  
+                    SUM(NVL(GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,   
                     SUM(NVL(GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
                     SUM(NVL(GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
+                    GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)                                        AS  NOM_FECREL,
+                    (CASE
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 1
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 0
+                        ELSE 0
+                     END)                                                                           AS  NOM_SINDC,
+                    (CASE
+                        WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX1_P' THEN
+                            '01'
+                        WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX2_E' THEN
+                            '03'
+                     END)                                                                           AS  NOM_TIPCON,
                     (CASE
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
                             CASE 
@@ -1989,12 +2003,19 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
                     MAX(NVL(GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
+                    (CASE
+                        WHEN HOUV.REGION_1 = 'CAMP' THEN 'CAM'
+                        WHEN HOUV.REGION_1 = 'TAMPS' THEN 'TAM'
+                        WHEN HOUV.REGION_1 = 'CHIS' THEN 'CHP'
+                        WHEN HOUV.REGION_1 = 'DF' THEN 'DIF'
+                        ELSE HOUV.REGION_1
+                     END)                                                                           AS  NOM_ENTFED,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
                         WHEN PPF.PAYROLL_NAME LIKE '%SEM%' THEN
-                             'SEMANAL'
+                             '02'
                         WHEN PPF.PAYROLL_NAME LIKE '%QUIN%' THEN
-                             'QUINCENAL'
+                             '04'
                         ELSE
                              ''
                      END)                                                                           AS  NOM_FORPAG,
@@ -2013,21 +2034,29 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     MAX(NVL(GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
                                          PPA.DATE_EARNED,
                                          PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
+                    SUM(NVL(GET_PER_TOTSUL(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSUL,
+                    SUM(NVL(GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSEP,
                     SUM(NVL(GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
                     SUM(NVL(GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
-                    GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,  
+                    GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,
+                    (CASE
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
+                            'O'
+                        ELSE
+                            'E'
+                     END)                                                                           AS  NOM_TIPO,   
                      NVL((SELECT DISTINCT 
                                  (CASE WHEN PAPF.EMPLOYEE_NUMBER = 13 OR PAPF.EMPLOYEE_NUMBER = 24 THEN
-                                        '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
+                                        '03' --TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
                                        WHEN PCS.CONSOLIDATION_SET_NAME = 'FINIQUITOS' THEN
-                                        '02-CHEQUE' --'CHEQUE'
+                                        '02' --CHEQUE' --'CHEQUE'
                                        WHEN POPM.ORG_PAYMENT_METHOD_NAME LIKE '%EFECTIVO%' THEN
-                                        '01-EFECTIVO' --'EFECTIVO'
+                                        '01' --EFECTIVO' --'EFECTIVO'
                                        WHEN (POPM.ORG_PAYMENT_METHOD_NAME LIKE '%BANCOMER%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%BANORTE%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%HSBC%'
                                           OR POPM.ORG_PAYMENT_METHOD_NAME LIKE '%INVERLAT%') THEN
-                                        '03-TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
+                                        '03' --TRANSFERENCIA E' --'TRANSFERENCIA ELECTRONICA'
                                        
                                   END)
                             FROM PER_ALL_ASSIGNMENTS_F          PAA,
@@ -2045,6 +2074,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                 ), '01')                                                            AS  METPAG,
                     PPF.PAYROLL_ID,
                     PAAF.ASSIGNMENT_ID,
+                    PAPF.PERSON_ID,
                     PPA.PAYROLL_ACTION_ID,
                     PPA.DATE_EARNED,
                     PPA.CONSOLIDATION_SET_ID,
@@ -2066,7 +2096,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                        PAY_RUN_TYPES_X              PRTX,
                        HR_ORGANIZATION_UNITS_V      HOUV,
                        HR_ALL_POSITIONS_D           HAPD,
-                       PAY_CONSOLIDATION_SETS       PCS
+                       PAY_CONSOLIDATION_SETS       PCS,
+                       PER_ADDRESSES                PAD
                  WHERE 1 = 1
                    AND FLV1.LOOKUP_TYPE = 'NOMINAS POR EMPLEADOR LEGAL'
                    AND FLV1.LOOKUP_CODE = P_COMPANY_ID
@@ -2092,6 +2123,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID   
                    AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
                    AND PAPF.PERSON_ID = PAAF.PERSON_ID
+                   AND PAD.PERSON_ID = PAPF.PERSON_ID
                    AND PPA.CONSOLIDATION_SET_ID = PCS.CONSOLIDATION_SET_ID
                    AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID 
                    AND PAA.ASSIGNMENT_ID = PAAF.ASSIGNMENT_ID
@@ -2121,6 +2153,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                           PAPF.FIRST_NAME, 
                           PAPF.MIDDLE_NAMES,
                           PAPF.PERSON_ID,
+                          PAD.ADDRESS_LINE1,
                           PAPF.EMAIL_ADDRESS,
                           PAPF.EMPLOYEE_NUMBER,
                           PAAF.EMPLOYEE_CATEGORY,
@@ -2130,9 +2163,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                           PTP.START_DATE,
                           PAPF.PER_INFORMATION3,
                           HOUV.NAME,
+                          HOUV.REGION_1,
                           HAPD.NAME,
                           PTP.PERIOD_NUM,
                           PAAF.ASSIGNMENT_ID,
+                          PAAF.EMPLOYMENT_CATEGORY,
                           PPF.ATTRIBUTE1,
                           PPA.PAYROLL_ACTION_ID,
                           PPF.PAYROLL_ID,
