@@ -35,14 +35,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_RFC_SAT_PKG AS
            AND PPF.EMPLOYEE_NUMBER = P_EMPLOYEE_NUMBER
            AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
 
-        HR_PERSON_API.UPDATE_PERSON
+        HR_MX_PERSON_API.UPDATE_MX_PERSON
             (
               p_effective_date             => var_effective_date,
               p_datetrack_update_mode      => var_datetrack_update_mode,
               p_person_id                  => var_person_id,
               p_object_version_number      => var_object_version_number,
               p_employee_number            => var_employee_number,
-              p_per_information2           => P_RFC,
+              p_RFC_id                     => P_RFC,
               p_effective_start_date       => var_effective_start_date,
               p_effective_end_date         => var_effective_end_date,
               p_full_name                  => var_full_name,
