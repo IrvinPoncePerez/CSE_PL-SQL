@@ -11,7 +11,7 @@ SELECT NOM_PER_TIP,
                                                 NOM_PER_DESCRI,
                                                 SUM(NOM_PER_IMPGRA) AS  NOM_PER_IMPGRA,
                                                 SUM(NOM_PER_IMPEXE) AS  NOM_PER_IMPEXE 
-                                              FROM (SELECT 
+                                              FROM (SELECT /*+ LEADING(PEC PETF PIVF) */
                                                         NVL((SELECT DISTINCT
                                                                     DESCRIPTION
                                                                FROM FND_LOOKUP_VALUES
@@ -77,7 +77,7 @@ SELECT NOM_PER_TIP,
                                                               PETF.ELEMENT_INFORMATION11,
                                                               PIVF.NAME
                                                     UNION
-                                                    SELECT 
+                                                    SELECT /*+ LEADING(PEC PETF PIVF) */
                                                         NVL((SELECT DISTINCT
                                                                     DESCRIPTION
                                                                FROM FND_LOOKUP_VALUES

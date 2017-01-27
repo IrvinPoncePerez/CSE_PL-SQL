@@ -854,7 +854,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                 NOM_PER_DESCRI,
                                                 SUM(NOM_PER_IMPGRA) AS  NOM_PER_IMPGRA,
                                                 SUM(NOM_PER_IMPEXE) AS  NOM_PER_IMPEXE 
-                                              FROM (SELECT 
+                                              FROM (SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                         NVL((SELECT DISTINCT
                                                                     DESCRIPTION
                                                                FROM FND_LOOKUP_VALUES
@@ -920,7 +920,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                               PETF.ELEMENT_INFORMATION11,
                                                               PIVF.NAME
                                                     UNION
-                                                    SELECT 
+                                                    SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                         NVL((SELECT DISTINCT
                                                                     DESCRIPTION
                                                                FROM FND_LOOKUP_VALUES
@@ -989,7 +989,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                             NOM_DED_DESCRI,
                                             NOM_DED_IMPGRA,
                                             NOM_DED_IMPEXE
-                                       FROM(SELECT 
+                                       FROM(SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                     NVL((SELECT DISTINCT
                                                                 DESCRIPTION
                                                            FROM FND_LOOKUP_VALUES
@@ -1037,13 +1037,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             isPERCEP    BOOLEAN;
                             isDEDUC     BOOLEAN;
                             
-                            
                         BEGIN
                         
                             isPERCEP := FALSE;
                             isDEDUC  := FALSE;
-                        
-                            FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP       
+                            
+                            FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP                           
                                 FOR PERCEP IN DETAIL_PERCEPCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
                                     IF isPERCEP = FALSE THEN
                                         UTL_FILE.PUT_LINE(var_file, 'INIPER');
@@ -1992,145 +1991,145 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                     AND PAA.PAYROLL_ACTION_ID = P_PAYROLL_ACTION_ID; 
                         
                         CURSOR  DETAIL_PERCEPCION (P_ASSIGNMENT_ACTION_ID   NUMBER) IS
-                                 SELECT NOM_PER_TIP,
-                                        NOM_PER_CVE,
-                                        NOM_PER_DESCRI,
-                                        NOM_PER_IMPGRA,
-                                        NOM_PER_IMPEXE    
-                                   FROM(SELECT 
-                                            NOM_PER_TIP,
+                                     SELECT NOM_PER_TIP,
                                             NOM_PER_CVE,
                                             NOM_PER_DESCRI,
-                                            SUM(NOM_PER_IMPGRA) AS  NOM_PER_IMPGRA,
-                                            SUM(NOM_PER_IMPEXE) AS  NOM_PER_IMPEXE 
-                                          FROM (SELECT 
-                                                    NVL((SELECT DISTINCT
-                                                                DESCRIPTION
-                                                           FROM FND_LOOKUP_VALUES
-                                                          WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                             OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                            AND MEANING LIKE PETF.ELEMENT_NAME
-                                                            AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
-                                                    NVL((SELECT DISTINCT
-                                                                TAG
-                                                           FROM FND_LOOKUP_VALUES
-                                                          WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                             OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                            AND MEANING LIKE PETF.ELEMENT_NAME
-                                                            AND LANGUAGE = 'ESA'), '000')      AS  NOM_PER_CVE,
-                                                    (CASE 
-                                                        WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
-                                                            'REPARTO DE UTILIDADES'
-                                                        WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
-                                                            REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                        WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
-                                                            REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                        ELSE
-                                                            REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
-                                                     END)                                       AS  NOM_PER_DESCRI,
-                                                    (CASE
-                                                        WHEN PIVF.NAME = 'ISR Subject' THEN
-                                                            SUM(PRRV.RESULT_VALUE)
-                                                        ELSE 0
-                                                     END)                                       AS  NOM_PER_IMPGRA,
-                                                     (CASE
-                                                        WHEN PIVF.NAME = 'ISR Exempt' THEN
-                                                            SUM(PRRV.RESULT_VALUE)
-                                                        ELSE 0
-                                                     END)                                       AS  NOM_PER_IMPEXE
-                                                  FROM PAY_RUN_RESULTS              PRR,
-                                                       PAY_ELEMENT_TYPES_F          PETF,
-                                                       PAY_RUN_RESULT_VALUES        PRRV,
-                                                       PAY_INPUT_VALUES_F           PIVF,
-                                                       PAY_ELEMENT_CLASSIFICATIONS  PEC
-                                                 WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-                                                   AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
-                                                   AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
-                                                   AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
-                                                   AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
-                                                   AND (PEC.CLASSIFICATION_NAME IN ('Earnings', 
-                                                                                    'Supplemental Earnings', 
-                                                                                    'Amends', 
-                                                                                    'Imputed Earnings') 
-                                                          OR PETF.ELEMENT_NAME  IN (SELECT MEANING
-                                                                                      FROM FND_LOOKUP_VALUES 
-                                                                                     WHERE LOOKUP_TYPE = 'XX_PERCEPCIONES_INFORMATIVAS'
-                                                                                       AND LANGUAGE = USERENV('LANG')))
-                                                   AND PETF.ELEMENT_NAME NOT IN (CASE 
-                                                                                    WHEN P_CONSOLIDATION_ID = 65 THEN 'P091_FONDO AHORRO E ACUM'
-                                                                                    ELSE 'TODOS'
-                                                                                 END)
-                                                   AND PIVF.UOM = 'M'
-                                                   AND (PIVF.NAME = 'ISR Subject' OR PIVF.NAME = 'ISR Exempt')
-                                                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
-                                                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE 
-                                                 GROUP BY PETF.ELEMENT_NAME,
-                                                          PETF.REPORTING_NAME,
-                                                          PETF.ELEMENT_INFORMATION11,
-                                                          PIVF.NAME
-                                                UNION
-                                                SELECT 
-                                                    NVL((SELECT DISTINCT
-                                                                DESCRIPTION
-                                                           FROM FND_LOOKUP_VALUES
-                                                          WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                             OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                            AND MEANING LIKE PETF.ELEMENT_NAME
-                                                            AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
-                                                    NVL((SELECT DISTINCT
-                                                                TAG
-                                                           FROM FND_LOOKUP_VALUES
-                                                          WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                             OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                            AND MEANING LIKE PETF.ELEMENT_NAME
-                                                            AND LANGUAGE = 'ESA'), '000')      AS  NOM_PER_CVE,
-                                                    (CASE
-                                                        WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
-                                                            'REPARTO DE UTILIDADES' 
-                                                        WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
-                                                            REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                        WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
-                                                            REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                        ELSE
-                                                            REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
-                                                     END)                                       AS  NOM_PER_DESCRI,
-                                                     0                                          AS  NOM_PER_IMPGRA,
-                                                     SUM(PRRV.RESULT_VALUE)                     AS  NOM_PER_IMPEXE
-                                                  FROM PAY_RUN_RESULTS              PRR,
-                                                       PAY_ELEMENT_TYPES_F          PETF,
-                                                       PAY_RUN_RESULT_VALUES        PRRV,
-                                                       PAY_INPUT_VALUES_F           PIVF,
-                                                       PAY_ELEMENT_CLASSIFICATIONS  PEC
-                                                 WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-                                                   AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
-                                                   AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
-                                                   AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
-                                                   AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
-                                                   AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
-                                                                              'P080_FONDO AHORRO TR ACUM',
-                                                                              'P017_PRIMA DE ANTIGUEDAD',
-                                                                              'P032_SUBSIDIO_PARA_EMPLEO',
-                                                                              'P047_ISPT ANUAL A FAVOR',
-                                                                              'P026_INDEMNIZACION')
-                                                   AND PETF.ELEMENT_NAME NOT IN (CASE 
-                                                                                    WHEN P_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
-                                                                                    ELSE 'TODOS'
-                                                                                 END)
-                                                   AND PIVF.UOM = 'M'
-                                                   AND PIVF.NAME = 'Pay Value'
-                                                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
-                                                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
-                                                 GROUP BY PETF.ELEMENT_NAME,
-                                                          PETF.REPORTING_NAME,
-                                                          PETF.ELEMENT_INFORMATION11,
-                                                          PIVF.NAME
-                                               ) GROUP BY NOM_PER_TIP,
-                                                          NOM_PER_CVE,
-                                                          NOM_PER_DESCRI)
-                                  WHERE 1 = 1
-                                    AND (   NOM_PER_IMPGRA <> 0
-                                         OR NOM_PER_IMPEXE <> 0)
-                                  ORDER BY NOM_PER_CVE;
+                                            NOM_PER_IMPGRA,
+                                            NOM_PER_IMPEXE    
+                                       FROM(SELECT 
+                                                NOM_PER_TIP,
+                                                NOM_PER_CVE,
+                                                NOM_PER_DESCRI,
+                                                SUM(NOM_PER_IMPGRA) AS  NOM_PER_IMPGRA,
+                                                SUM(NOM_PER_IMPEXE) AS  NOM_PER_IMPEXE 
+                                              FROM (SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
+                                                        NVL((SELECT DISTINCT
+                                                                    DESCRIPTION
+                                                               FROM FND_LOOKUP_VALUES
+                                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                                AND MEANING LIKE PETF.ELEMENT_NAME
+                                                                AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
+                                                        NVL((SELECT DISTINCT
+                                                                    TAG
+                                                               FROM FND_LOOKUP_VALUES
+                                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                                AND MEANING LIKE PETF.ELEMENT_NAME
+                                                                AND LANGUAGE = 'ESA'), '000')      AS  NOM_PER_CVE,
+                                                        (CASE 
+                                                            WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
+                                                                'REPARTO DE UTILIDADES'
+                                                            WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
+                                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                            WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
+                                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                            ELSE
+                                                                REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
+                                                         END)                                       AS  NOM_PER_DESCRI,
+                                                        (CASE
+                                                            WHEN PIVF.NAME = 'ISR Subject' THEN
+                                                                SUM(PRRV.RESULT_VALUE)
+                                                            ELSE 0
+                                                         END)                                       AS  NOM_PER_IMPGRA,
+                                                         (CASE
+                                                            WHEN PIVF.NAME = 'ISR Exempt' THEN
+                                                                SUM(PRRV.RESULT_VALUE)
+                                                            ELSE 0
+                                                         END)                                       AS  NOM_PER_IMPEXE
+                                                      FROM PAY_RUN_RESULTS              PRR,
+                                                           PAY_ELEMENT_TYPES_F          PETF,
+                                                           PAY_RUN_RESULT_VALUES        PRRV,
+                                                           PAY_INPUT_VALUES_F           PIVF,
+                                                           PAY_ELEMENT_CLASSIFICATIONS  PEC
+                                                     WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+                                                       AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                                                       AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                                                       AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                                                       AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+                                                       AND (PEC.CLASSIFICATION_NAME IN ('Earnings', 
+                                                                                        'Supplemental Earnings', 
+                                                                                        'Amends', 
+                                                                                        'Imputed Earnings') 
+                                                              OR PETF.ELEMENT_NAME  IN (SELECT MEANING
+                                                                                          FROM FND_LOOKUP_VALUES 
+                                                                                         WHERE LOOKUP_TYPE = 'XX_PERCEPCIONES_INFORMATIVAS'
+                                                                                           AND LANGUAGE = USERENV('LANG')))
+                                                       AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                                                                        WHEN P_CONSOLIDATION_ID = 65 THEN 'P091_FONDO AHORRO E ACUM'
+                                                                                        ELSE 'TODOS'
+                                                                                     END)
+                                                       AND PIVF.UOM = 'M'
+                                                       AND (PIVF.NAME = 'ISR Subject' OR PIVF.NAME = 'ISR Exempt')
+                                                       AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                                       AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE 
+                                                     GROUP BY PETF.ELEMENT_NAME,
+                                                              PETF.REPORTING_NAME,
+                                                              PETF.ELEMENT_INFORMATION11,
+                                                              PIVF.NAME
+                                                    UNION
+                                                    SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
+                                                        NVL((SELECT DISTINCT
+                                                                    DESCRIPTION
+                                                               FROM FND_LOOKUP_VALUES
+                                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                                AND MEANING LIKE PETF.ELEMENT_NAME
+                                                                AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
+                                                        NVL((SELECT DISTINCT
+                                                                    TAG
+                                                               FROM FND_LOOKUP_VALUES
+                                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                                AND MEANING LIKE PETF.ELEMENT_NAME
+                                                                AND LANGUAGE = 'ESA'), '000')      AS  NOM_PER_CVE,
+                                                        (CASE
+                                                            WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
+                                                                'REPARTO DE UTILIDADES' 
+                                                            WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
+                                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                            WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
+                                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                                            ELSE
+                                                                REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
+                                                         END)                                       AS  NOM_PER_DESCRI,
+                                                         0                                          AS  NOM_PER_IMPGRA,
+                                                         SUM(PRRV.RESULT_VALUE)                     AS  NOM_PER_IMPEXE
+                                                      FROM PAY_RUN_RESULTS              PRR,
+                                                           PAY_ELEMENT_TYPES_F          PETF,
+                                                           PAY_RUN_RESULT_VALUES        PRRV,
+                                                           PAY_INPUT_VALUES_F           PIVF,
+                                                           PAY_ELEMENT_CLASSIFICATIONS  PEC
+                                                     WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+                                                       AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                                                       AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                                                       AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                                                       AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+                                                       AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
+                                                                                  'P080_FONDO AHORRO TR ACUM',
+                                                                                  'P017_PRIMA DE ANTIGUEDAD',
+                                                                                  'P032_SUBSIDIO_PARA_EMPLEO',
+                                                                                  'P047_ISPT ANUAL A FAVOR',
+                                                                                  'P026_INDEMNIZACION')
+                                                       AND PETF.ELEMENT_NAME NOT IN (CASE 
+                                                                                        WHEN P_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
+                                                                                        ELSE 'TODOS'
+                                                                                     END)
+                                                       AND PIVF.UOM = 'M'
+                                                       AND PIVF.NAME = 'Pay Value'
+                                                       AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                                       AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
+                                                     GROUP BY PETF.ELEMENT_NAME,
+                                                              PETF.REPORTING_NAME,
+                                                              PETF.ELEMENT_INFORMATION11,
+                                                              PIVF.NAME
+                                                   ) GROUP BY NOM_PER_TIP,
+                                                              NOM_PER_CVE,
+                                                              NOM_PER_DESCRI)
+                                      WHERE 1 = 1
+                                        AND (   NOM_PER_IMPGRA <> 0
+                                             OR NOM_PER_IMPEXE <> 0)
+                                      ORDER BY NOM_PER_CVE;
                                                                   
                         CURSOR  DETAIL_DEDUCCION (P_ASSIGNMENT_ACTION_ID NUMBER) IS
                                  SELECT NOM_DED_TIP,
@@ -2138,7 +2137,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         NOM_DED_DESCRI,
                                         NOM_DED_IMPGRA,
                                         NOM_DED_IMPEXE
-                                   FROM(SELECT 
+                                   FROM(SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                 NVL((SELECT DISTINCT
                                                             DESCRIPTION
                                                        FROM FND_LOOKUP_VALUES
