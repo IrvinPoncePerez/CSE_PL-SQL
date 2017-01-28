@@ -6,7 +6,6 @@ INTO TABLE APPS.PAC_UPDATE_RFC_TB
 Fields terminated by "," Optionally enclosed by '"'
 (
   EMPLOYEE_NUMBER,
-  EMPLOYEE_NAME,
   RFC
 )
 
