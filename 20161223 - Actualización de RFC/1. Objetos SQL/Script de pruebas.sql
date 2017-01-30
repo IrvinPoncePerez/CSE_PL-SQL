@@ -38,7 +38,14 @@ BEGIN
             var_assign_payroll_warning       BOOLEAN        := NULL;
             var_orig_hire_warning            BOOLEAN        := NULL;
             var_rfc                          VARCHAR2(100)  := NULL;
+            
+            var_c_employee_number            NUMBER;
+            var_c_rfc                        VARCHAR2(100);
         BEGIN
+        
+            var_c_employee_number := RFC.EMPLOYEE_NUMBER;
+            var_c_rfc             := RFC.RFC;
+        
             SELECT SYSDATE,
                    'CORRECTION',
                    PPF.PERSON_ID,
@@ -53,12 +60,12 @@ BEGIN
                    var_rfc
               FROM PER_PEOPLE_F     PPF
              WHERE 1 = 1
-               AND PPF.EMPLOYEE_NUMBER = RFC.EMPLOYEE_NUMBER
+               AND PPF.EMPLOYEE_NUMBER = var_c_employee_number
                AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
                
             dbms_output.put('Empleado : ' || var_employee_number || '|' || var_rfc || '|');
             
-            HR_PERSON_API.UPDATE_PERSON
+            HR_MX_PERSON_API.UPDATE_MX_PERSON
                 (
                   p_validate                   => FALSE,
                   p_effective_date             => var_effective_date,
@@ -66,7 +73,7 @@ BEGIN
                   p_person_id                  => var_person_id,
                   p_object_version_number      => var_object_version_number,
                   p_employee_number            => var_employee_number,
-                  p_per_information2           => RFC.RFC,
+                  p_RFC_id                     => var_c_rfc,
                   p_effective_start_date       => var_effective_start_date,
                   p_effective_end_date         => var_effective_end_date,
                   p_full_name                  => var_full_name,
@@ -82,7 +89,7 @@ BEGIN
               INTO var_rfc
               FROM PER_PEOPLE_F     PPF
              WHERE 1 = 1
-               AND PPF.EMPLOYEE_NUMBER = RFC.EMPLOYEE_NUMBER
+               AND PPF.EMPLOYEE_NUMBER = var_c_employee_number
                AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
                
             dbms_output.put_line(var_full_name || '|' || var_rfc);
