@@ -16,7 +16,8 @@ IS
     
         CURSOR  EMPLOYEE_DETAILS
             IS
-        SELECT PPF.FIRST_NAME || ' ' || PPF.MIDDLE_NAMES                    AS  FIRST_NAME,
+        SELECT PPF.EMPLOYEE_NUMBER                                          AS  EMPLOYEE_NUMBER, 
+               PPF.FIRST_NAME || ' ' || PPF.MIDDLE_NAMES                    AS  FIRST_NAME,
                PPF.LAST_NAME                                                AS  LAST_NAME,
                PPF.PER_INFORMATION1                                         AS  SECOND_LAST_NAME,
                TO_CHAR(DATE_OF_BIRTH, 'RRRR-MM-DD')                         AS  DATE_BIRTH,
@@ -141,24 +142,25 @@ IS
         FOR employee IN EMPLOYEE_DETAILS LOOP
             
             var_line := '';
-            var_line := var_line || UPPER(employee.FIRST_NAME) || ',';
-            var_line := var_line || UPPER(employee.LAST_NAME) || ',';
-            var_line := var_line || UPPER(employee.SECOND_LAST_NAME) || ',';
-            var_line := var_line || UPPER(employee.DATE_BIRTH) || ',';
-            var_line := var_line || UPPER(employee.MARITAL_STATUS) || ',';
+            var_line := var_line || UPPER(employee.EMPLOYEE_NUMBER)     || ',';
+            var_line := var_line || UPPER(employee.FIRST_NAME)          || ',';
+            var_line := var_line || UPPER(employee.LAST_NAME)           || ',';
+            var_line := var_line || UPPER(employee.SECOND_LAST_NAME)    || ',';
+            var_line := var_line || UPPER(employee.DATE_BIRTH)          || ',';
+            var_line := var_line || UPPER(employee.MARITAL_STATUS)      || ',';
             var_line := var_line || UPPER(employee.NATIONAL_IDENTIFIER) || ',';
-            var_line := var_line || UPPER(employee.SEX) || ',';
-            var_line := var_line || UPPER(employee.NATIONALITY) || ',';
-            var_line := var_line || UPPER(employee.COUNTRY_OF_BIRTH) || ',';
-            var_line := var_line || UPPER(employee.EMPLOYMENT) || ',';
-            var_line := var_line || UPPER(employee.DATE_HIRE) || ',';
-            var_line := var_line || UPPER(employee.STREET) || ',';
-            var_line := var_line || UPPER(employee.INT_NUMBER) || ',';
-            var_line := var_line || UPPER(employee.EXT_NUMBER) || ',';
-            var_line := var_line || UPPER(employee.NEIGHBORHOOD) || ',';
-            var_line := var_line || UPPER(employee.POSTAL_CODE) || ',';
-            var_line := var_line || UPPER(employee.TOWN_OR_CITY) || ',';
-            var_line := var_line || UPPER(employee.STATE) || ',';
+            var_line := var_line || UPPER(employee.SEX)                 || ',';
+            var_line := var_line || UPPER(employee.NATIONALITY)         || ',';
+            var_line := var_line || UPPER(employee.COUNTRY_OF_BIRTH)    || ',';
+            var_line := var_line || UPPER(employee.EMPLOYMENT)          || ',';
+            var_line := var_line || UPPER(employee.DATE_HIRE)           || ',';
+            var_line := var_line || UPPER(employee.STREET)              || ',';
+            var_line := var_line || UPPER(employee.INT_NUMBER)          || ',';
+            var_line := var_line || UPPER(employee.EXT_NUMBER)          || ',';
+            var_line := var_line || UPPER(employee.NEIGHBORHOOD)        || ',';
+            var_line := var_line || UPPER(employee.POSTAL_CODE)         || ',';
+            var_line := var_line || UPPER(employee.TOWN_OR_CITY)        || ',';
+            var_line := var_line || UPPER(employee.STATE)               || ',';
             var_line := var_line || ',';
             var_line := var_line || ',';
             var_line := var_line || ',';
@@ -167,7 +169,7 @@ IS
             var_line := var_line || ',';
             var_line := var_line || ',';
             var_line := var_line || ',';
-            var_line := var_line || UPPER(employee.DEBIT_CARD) || ',';
+            var_line := var_line || UPPER(employee.DEBIT_CARD)          || ',';
             
             FND_FILE.PUT_LINE(FND_FILE.OUTPUT,var_line);
             FND_FILE.PUT_LINE(FND_FILE.LOG,var_line);
