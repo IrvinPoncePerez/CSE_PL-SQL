@@ -1390,48 +1390,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         ELSE
             P_RETCODE := 1; 
         END IF;
-        
-        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
-        
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV-Programa_Importacion_CFDI_Nom');
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-        
-            BEGIN                                                                    
-                    
-                V_REQUEST_ID :=
-                    FND_REQUEST.SUBMIT_REQUEST (
-                       APPLICATION => 'PAY',
-                       PROGRAM => 'XXCALV_UUID_NOM',
-                       DESCRIPTION => '',
-                       START_TIME => '',
-                       SUB_REQUEST => FALSE,
-                       ARGUMENT1 => TO_CHAR(var_local_directory)
-                                               );
-                STANDARD.COMMIT;                  
-                                     
-                WAITING :=
-                    FND_CONCURRENT.WAIT_FOR_REQUEST (
-                        REQUEST_ID => V_REQUEST_ID,
-                        INTERVAL => 1,
-                        MAX_WAIT => 0,
-                        PHASE => PHASE,
-                        STATUS => STATUS,
-                        DEV_PHASE => DEV_PHASE,
-                        DEV_STATUS => DEV_STATUS,
-                        MESSAGE => V_MESSAGE
-                                                );
-                        
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
-                    
-            EXCEPTION WHEN OTHERS THEN
-                dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
-                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
-            END;
-        ELSE
-            P_RETCODE := 1;
-        END IF;
+                
         
         IF P_COMPANY_ID = '02' AND P_CONSOLIDATION_ID = 68 THEN
         
