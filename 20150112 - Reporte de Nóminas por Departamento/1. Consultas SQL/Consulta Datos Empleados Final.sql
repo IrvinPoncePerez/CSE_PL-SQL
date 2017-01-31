@@ -10,7 +10,6 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                SUM(VACACIONES)              AS VACACIONES,        
                SUM(PRIMA_VACACIONAL)        AS PRIMA_VACACIONAL,   
                SUM(PREMIO_ASISTENCIA)       AS PREMIO_ASISTENCIA, 
-               SUM(AYUDA_ALIMENTOS)         AS AYUDA_ALIMENTOS, 
                SUM(AYUDA_DEFUNCION)         AS AYUDA_DEFUNCION,
                SUM(COMISIONES)              AS COMISIONES,
                SUM(AGUINALDO)               AS AGUINALDO,            
@@ -32,7 +31,10 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                SUM(VACACIONES_PAGADAS)      AS VACACIONES_PAGADAS,
                SUM(BONO_EXTRAORDINARIO)     AS BONO_EXTRAORDINARIO,
                SUM(DESPENSA)                AS DESPENSA,     
-               SUM(FONDO_AHORRO)            AS FONDO_AHORRO          
+               SUM(FONDO_AHORRO)            AS FONDO_AHORRO,
+               SUM(AYUDA_ALIMENTOS)         AS AYUDA_ALIMENTOS,
+               SUM(RETROACTIVO)             AS RETROACTIVO,
+               SUM(BONO_CUATRIMESTRAL)      AS BONO_CUATRIMESTRUAL          
           FROM (SELECT DISTINCT
                        PAA.ASSIGNMENT_ACTION_ID,
                        PAA.ASSIGNMENT_ID,
@@ -66,6 +68,8 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P037_VACACIONES P',        'Pay Value'),   '0')    AS  VACACIONES_PAGADAS,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P038_BONO EXTRAORD',       'Pay Value'),   '0')    AS  BONO_EXTRAORDINARIO,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P039_DESPENSA',            'Pay Value'),   '0')    AS  DESPENSA,
+                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P044_RETROACTIVO',         'Pay Value'),   '0')    AS  RETROACTIVO,
+                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,        'P046_BONO CUATRIMESTRAL',  'Pay Value'),   '0')    AS  BONO_CUATRIMESTRAL,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'D091_FONDO DE AHORRO EMPRESA', 'Pay Value'), '0')  AS  FONDO_AHORRO
                   FROM PAY_PAYROLL_ACTIONS          PPA,
                        PER_TIME_PERIODS             PTP,
