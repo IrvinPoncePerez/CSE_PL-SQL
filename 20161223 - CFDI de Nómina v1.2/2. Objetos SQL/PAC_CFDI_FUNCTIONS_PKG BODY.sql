@@ -906,7 +906,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         /****************************************************************/
                         /**                     DATOS DE ENCABEZADO                    **/
                         /****************************************************************/
-                        UTL_FILE.PUT_LINE(var_file, 'E');
+--                        UTL_FILE.PUT_LINE(var_file, 'E');
                         UTL_FILE.PUT_LINE(var_file, 'NOMINA');
                         UTL_FILE.PUT_LINE(var_file, 'NOMDOC  Recibo Nomina');
                         UTL_FILE.PUT_LINE(var_file, 'TIPDOC  2');    
@@ -950,7 +950,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         /****************************************************************/
                         UTL_FILE.PUT_LINE(var_file, 'FORPAG  Pago en una sola exhibición');
                         UTL_FILE.PUT_LINE(var_file, 'METPAG  NA');
-                        UTL_FILE.PUT_LINE(var_file, 'LUGEXP  PUE, TEHUACAN'); 
+                        UTL_FILE.PUT_LINE(var_file, 'LUGEXP  75790'); --PUE, TEHUACAN'); 
                         UTL_FILE.PUT_LINE(var_file, 'SUBTBR  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'ISRRET  ' || TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'MONDET  ' || TO_CHAR(DETAIL(rowIndex).MONDET, '9999990D99'));
