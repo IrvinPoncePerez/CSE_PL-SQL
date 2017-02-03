@@ -1,0 +1,9 @@
+CREATE TABLE APPS.PAC_AJUSTE_VACACIONES_TB
+(
+    EMPLOYEE_NUMBER         VARCHAR2(100),
+    FULL_NAME               VARCHAR2(1000),
+    ID_EVENTO               NUMBER,
+    DIAS_EVENTO             NUMBER,
+    SALDO_ANTERIOR          NUMBER,
+    SALDO_NUEVO             NUMBER
+);
