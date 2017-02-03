@@ -372,5 +372,10 @@ CREATE OR REPLACE PACKAGE APPS.ATET_SAVINGS_BANK_PKG IS
                     P_MEMBER_ID                 NUMBER
                 ) RETURN VARCHAR2;
                 
+    PROCEDURE   LOAN_REPAYMENT(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_LOAN_ID       NUMBER,
+                    P_TERM_PERIODS  NUMBER);                
 
 END ATET_SAVINGS_BANK_PKG;

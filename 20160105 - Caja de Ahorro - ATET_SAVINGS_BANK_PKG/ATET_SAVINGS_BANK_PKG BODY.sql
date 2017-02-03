@@ -11347,5 +11347,78 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         
         RETURN var_person_type;
     END GET_PERSON_TYPE;
+    
+    PROCEDURE   LOAN_REPAYMENT(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_LOAN_ID       NUMBER,
+                    P_TERM_PERIODS  NUMBER)
+    IS
+        var_member_id                   NUMBER;
+        var_loan_amount                 NUMBER;
+        var_loan_amount_validate        NUMBER;
+        var_interest_amount             NUMBER;
+        var_interest_amount_validate    NUMBER;
+        
+        LOAN_AMOUNT_EX                  EXCEPTION;
+        INTEREST_AMOUNT_EX              EXCEPTION;
+        
+    BEGIN
+        SELECT ASM.MEMBER_ID,
+               (CASE
+                    WHEN ASM.ATTRIBUTE6 = 'Week' THEN
+                        (ASM.AMOUNT_TO_SAVE * 4) * 4
+                    WHEN ASM.ATTRIBUTE6 = 'Semi-Month' THEN
+                        (ASM.AMOUNT_TO_SAVE * 2) * 4
+                END)                                PRESTAMO,
+               ASL.LOAN_AMOUNT,
+               (CASE
+                    WHEN ASM.ATTRIBUTE6 = 'Week' THEN
+                        ((ASM.AMOUNT_TO_SAVE * 4) * 4) * ((SELECT ASP.PARAMETER_VALUE/100
+                                                              FROM ATET_SB_PARAMETERS ASP
+                                                             WHERE 1 = 1
+                                                               AND ASP.PARAMETER_CODE = 'INT_RATE_SAV'
+                                                               AND ASP.SAVING_BANK_ID = GET_SAVING_BANK_ID) * 4)
+                    WHEN ASM.ATTRIBUTE6 = 'Semi-Month' THEN
+                        ((ASM.AMOUNT_TO_SAVE * 2) * 4) * ((SELECT ASP.PARAMETER_VALUE/100
+                                                              FROM ATET_SB_PARAMETERS ASP
+                                                             WHERE 1 = 1
+                                                               AND ASP.PARAMETER_CODE = 'INT_RATE_SAV'
+                                                               AND ASP.SAVING_BANK_ID = GET_SAVING_BANK_ID) * 4)
+                END)                                INTERES,
+               ASL.LOAN_INTEREST_AMOUNT
+          INTO var_member_id,
+               var_loan_amount_validate,
+               var_loan_amount,
+               var_interest_amount_validate,
+               var_interest_amount
+          FROM ATET_SB_MEMBERS              ASM,
+               ATET_SB_LOANS                ASL
+         WHERE 1 = 1
+           AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID
+           AND ASM.IS_SAVER = 'Y'
+           AND ASM.MEMBER_ID = ASL.MEMBER_ID
+           AND ASL.LOAN_STATUS_FLAG = 'ENTERED'
+           AND ASL.LOAN_ID = P_LOAN_ID;
+    
+        IF var_loan_amount = var_loan_amount_validate AND var_interest_amount = var_interest_amount_validate THEN
+            NULL;
+        ELSIF var_loan_amount <> var_loan_amount_validate THEN
+            RAISE LOAN_AMOUNT_EX;
+        ELSIF var_interest_amount <> var_interest_amount_validate THEN
+            RAISE INTEREST_AMOUNT_EX;
+        END IF;       
+           
+    EXCEPTION 
+        WHEN LOAN_AMOUNT_EX THEN
+            P_RETCODE := 1;
+            P_ERRBUF := 'El importe del préstamo no es equivalente a 4 meses de ahorro.';
+            ROLLBACK;
+        WHEN INTEREST_AMOUNT_EX THEN
+            P_RETCODE := 1;
+            P_ERRBUF := 'El importe de intereses no es el correspondiente de 4 meses de plazo.';
+            ROLLBACK;
+            
+    END LOAN_REPAYMENT;
 
 END ATET_SAVINGS_BANK_PKG;
