@@ -10,9 +10,6 @@ CREATE OR REPLACE PROCEDURE APPS.PAC_PERCEP_ACUM_PRC(
         P_CONSOLIDATION_SET_ID  VARCHAR2,
         P_PERSON_ID             VARCHAR2)
 IS
---    var_path        VARCHAR2(250) := 'PERCEPCION_DEDUCCION';
---    var_file_name   VARCHAR2(250) := 'DETALLE_PERCEP_ACUMULADO.csv';
---    var_file        UTL_FILE.FILE_TYPE;
     
     var_company_name                VARCHAR2(250);
     var_payroll_name                VARCHAR2(250);
@@ -21,7 +18,6 @@ IS
     
     CURSOR DETAIL_LIST IS
         SELECT PAAF.PERSON_ID,
-               DETAIL.CLAVE_NOMINA,       
                PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID)                               AS  "NUMERO_EMPLEADO",
                PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
                PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PAAF.PERSON_ID)                         AS  RFC,
@@ -41,7 +37,8 @@ IS
                SUM(PRIMA_VACACIONAL_EXE) AS PRIMA_VACACIONAL_EXE,
                SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA,  
                SUM(PREMIO_ASISTENCIA_EXE) AS PREMIO_ASISTENCIA_EXE,
-               SUM(COMISIONES)           AS COMISIONES,          
+               SUM(COMISIONES)           AS COMISIONES,    
+               SUM(AYUDA_ALIMENTOS)      AS AYUDA_ALIMENTOS,      
                SUM(SUBSIDIO_INCAPACIDAD) AS SUBSIDIO_INCAPACIDAD,
                SUM(AGUINALDO)            AS AGUINALDO,           
                SUM(AGUINALDO_EXE)        AS AGUINALDO_EXE,       
@@ -116,21 +113,6 @@ IS
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'Integrated Daily Wage',    'Pay Value'), '0')    AS  SALARIO_DIARIO_INTEGRADO,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P001_SUELDO NORMAL',       'Pay Value'), '0')    AS  SUELDO_NORMAL,
                        -----------------------------------------------------------------------------------------
-                       ----                                 DATOS INFONAVIT
-                       -----------------------------------------------------------------------------------------
---                       apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,          'D058_INFONAVIT',           'Credit Number')      AS  CREDITO_INFONAVIT,
---                       (CASE 
---                        WHEN apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'D058_INFONAVIT',           'Discount Start Date') IS NOT NULL THEN
---                            SUBSTR(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,'D058_INFONAVIT',         'Discount Start Date'), 1, 11)
---                        END)                                                                                                                      AS  FECHA_INFONAVIT,
---                       (CASE apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'D058_INFONAVIT',           'Discount Type')
---                          WHEN 'P' THEN '1'
---                          WHEN 'C' THEN '2'
---                          WHEN 'V' THEN '3'
---                          ELSE apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D058_INFONAVIT',           'Discount Type')
---                        END)                                                                                                                      AS  TIPO_INFONAVIT,
---                       apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,          'D058_INFONAVIT',           'Discount Value')     AS  VALOR_INFONAVIT,
-                       -----------------------------------------------------------------------------------------
                        ----                     DETALLE DE          PERCEPCIONES 
                        -----------------------------------------------------------------------------------------
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P002_HORAS EXTRAS',        'Pay Value'),   '0')    AS  HORAS_EXTRA,
@@ -144,6 +126,7 @@ IS
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P007_PREMIO ASISTENCIA',   'Pay Value'),   '0')    AS  PREMIO_ASISTENCIA,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EXEMPT_VALUE(PAA.ASSIGNMENT_ACTION_ID,     'P007_PREMIO ASISTENCIA',   'Pay Value',    'Tope'), '0')   AS  PREMIO_ASISTENCIA_EXE,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P009_COMISIONES',          'Pay Value'),   '0')    AS  COMISIONES,
+                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P010 AYUDA DE ALIMENTOS',  'Pay Value'),   '0')    AS  AYUDA_ALIMENTOS,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P012_SUBSIDIO INCAPACIDAD','Pay Value'),   '0')    AS  SUBSIDIO_INCAPACIDAD,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P011_AGUINALDO',           'Pay Value'),   '0')    AS  AGUINALDO,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P011_AGUINALDO',           'ISR Exempt'),  '0')    AS  AGUINALDO_EXE,
@@ -178,51 +161,16 @@ IS
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P042_INTERES_GANADO',      'Pay Value'),   '0')    AS  INTERES_GANADO,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P047_ISPT ANUAL A FAVOR',  'Pay Value'),   '0')    AS  ISPT_ANUAL_FAVOR,
                        NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P047_ISPT_A_FAVOR',        'Pay Value'),   '0')    AS  ISPT_A_FAVOR,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'FINAN_TRABAJO_RET',        'Pay Value'),   '0')    AS  FINANCIAMIENTO_IMSS,
-                       ---------------------------------------------------------------------------------------
-                       --                     DETALLE DE          AUSENCIAS
-                       ---------------------------------------------------------------------------------------  
---                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'A002_INCAPACIDAD GENERAL', 'Dias Normales'),'0')   AS  INC_EG,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'A003_INCAP MATERNIDAD',    'Dias Normales'),'0')   AS  INC_MA,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'A004_INCAP RIES TRABAJO',  'Dias Normales'),'0')   AS  INC_RT,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'A001_AUSENTISMO',          'Dias Normales'),'0')   AS  AUSENCIAS,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'A005_PERMISO SIN GOCE',    'Dias Normales'),'0')   AS  PERMISOS,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'A007_PERMISO PATERNIDAD',  'Dias Normales'),'0')   AS  PATERNIDAD,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'A006_SUSPENSION',          'Dias Normales'),'0')   AS  SUSPENSIONES,
                        ---------------------------------------------------------------------------------------
                        --                     DETALLE DE          DEDUCCIONES
                        ---------------------------------------------------------------------------------------  
                        NVL(PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'D055_ISPT',                'Pay Value'),   '0')    AS  ISPT, --D066_ISPT
                        NVL(PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'D056_IMSS',                'Pay Value'),   '0')    AS  IMSS,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D057_CUOTA_SINDICAL',      'Pay Value'),   '0')    AS  CUOTA_SINDICAL,
                        NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D058_INFONAVIT',           'Pay Value'),   '0')    AS  INFONAVIT,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D059_FONACOT',             'Pay Value'),   '0')    AS  FONACOT, 
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D062_FIN_CRED_INFONAVIT',  'Pay Value'),   '0')    AS  FINAN_INFONAVIT,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D065_LLAM_TELEFONICAS',    'Pay Value'),   '0')    AS  LLAMADAS,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D066_ANTICIPO_SUELDO',     'Pay Value'),   '0')    AS  ANTICIPOS,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D071_CAJA DE AHORRO',      'Pay Value'),   '0')    AS  CAJA_AHORRO,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D072_PRESTAMO CAJA DE AHORRO','Pay Value'),'0')    AS  PRESTAMO_AHORRO,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D073_CUOTA_SINDICAL_EXTRAORDINARIA','Pay Value'),   '0')    AS  CUOTA_SINDICAL_EXT, --D073_CUOTA_SINDICAL_EXT
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D074_VARIOS_QYL',          'Pay Value'),   '0')    AS  VARIOS_QYL,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D076_DESC_PENSION_ALIM',   'Pay Value'),   '0')    AS  PENSION_ALIMENTICIA,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D077_EXEDENTE_ALIMENTOS',  'Pay Value'),   '0')    AS  EXCEDENTE_ALIMENTOS,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D078_FINAN_COMPRA_GAS',    'Pay Value'),   '0')    AS  GAS,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D079_FINAN_CALZADO_IND',   'Pay Value'),   '0')    AS  CALZADO,
-                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D080_FONDO AHORRO TRABAJADOR','Pay Value'),'0')    AS  FONDO_AHO_TR,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D090_DESCUENTOS_VARIOS',   'Pay Value'),   '0')    AS  DESCUENTO_GR, --D090_DESCUENTOS_GR    
+                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D080_FONDO AHORRO TRABAJADOR','Pay Value'),'0')    AS  FONDO_AHO_TR,    
                        NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D091_FONDO DE AHORRO EMPRESA','Pay Value'),'0')    AS  FONDO_AHO_EM,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D081_REPARACION_UNIDAD',   'Pay Value'),   '0')    AS  REPARACION,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D082_FALTANTE_HUEVO',      'Pay Value'),   '0')    AS  HUEVO,          --Pendiente  
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D083_FINAN_MEDICINA',      'Pay Value'),   '0')    AS  MEDICINA,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D084_FALTANTES',           'Pay Value'),   '0')    AS  FALTANTES,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D085_FIN_ANALISIS_CLIN',   'Pay Value'),   '0')    AS  ANALISIS_CLIN,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D086_LLANTAS_DAÑADAS',     'Pay Value'),   '0')    AS  LLANTAS,        --Pendiente
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D087_FINAN_OPTICA',        'Pay Value'),   '0')    AS  OPTICA,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'I003_INFONAVIT PATRONAL',  'Pay Value'),   '0')    AS  INFONAVIT_PATRONAL,
---                       NVL(PAC_RESULT_VALUES_PKG.GET_DEDUCTION_VALUE(PAA.ASSIGNMENT_ACTION_ID,  'D092_ISPT ANUAL A CARGO',  'Pay Value'),   '0')    AS  ISPT_ANUAL_CARGO,
                        NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR Subsidy for Employment', 'ISR Subsidy for Employment'),   '0')    AS   SUBSIDIO_SEGUN_TABLA,
                        NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_SUM_VALUE(PAA.ASSIGNMENT_ACTION_ID,'ISR',                        'ISR Calculated'),   '0')                AS   ISR_SEGUN_TABLA,
-                       
                        NVL(PAC_RESULT_VALUES_PKG.GET_BALANCE(PAA.ASSIGNMENT_ACTION_ID, 
                                                              PPA.DATE_EARNED,
                                                              'ISR Tax Balance Adjustments',
@@ -277,24 +225,15 @@ IS
                                AND (PETF.ELEMENT_NAME = 'P001_SUELDO NORMAL'
                                  OR PETF.ELEMENT_NAME = 'P005_VACACIONES')
                                AND PIVF.NAME = 'Days'
-                              ),2), '0'))                                                         AS  DIAS_PAGADOS
---                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'Employer State Tax Liability','Pay Value'),'0')    AS  IMPUESTO_ESTATAL,
---                       NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'Social Security Quota Calculation ER','Pay Value'),'0')    AS  IMSS_PATRONAL,
---                       (SELECT (TO_NUMBER(REPLACE(MEANING, '%', '')) / 100)       
---                          FROM FND_LOOKUP_VALUES
---                         WHERE LOOKUP_TYPE = 'XXCALV_DETALLE_PERC_DEDUCC'
---                           AND LOOKUP_CODE = 'PORCENTAJE'
---                           AND LANGUAGE = 'ESA')                                               AS  PORCENTAJE 
+                              ),2), '0'))                                                         AS  DIAS_PAGADOS 
                   FROM PAY_PAYROLL_ACTIONS          PPA,
                        PER_TIME_PERIODS             PTP,
                        PAY_ASSIGNMENT_ACTIONS       PAA,
                        PAY_PAYROLLS_F               PPF
---                       PAY_RUN_TYPES_F              PTF
                  WHERE 1 = 1
                    AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
                    AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
                    AND PPA.PAYROLL_ID = PPF.PAYROLL_ID 
---                   AND PAA.RUN_TYPE_ID = PTF.RUN_TYPE_ID
                     ----------Parametros de Ejecucion-----------------
                    AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = P_COMPANY_ID    
                    AND PPA.PAYROLL_ID = NVL(P_PAYROLL_ID,  PPA.PAYROLL_ID)
@@ -302,11 +241,9 @@ IS
                    AND PPA.CONSOLIDATION_SET_ID = NVL(P_CONSOLIDATION_SET_ID, PPA.CONSOLIDATION_SET_ID)
                    AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')
                    AND PTP.PERIOD_NAME LIKE '%' || P_YEAR || '%'
---                   AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
                    AND (EXTRACT(MONTH FROM PTP.END_DATE) >= P_START_MONTH
                     AND EXTRACT(MONTH FROM PTP.END_DATE) <= P_END_MONTH)
                    AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
-
                    ------------------------------------------------------  
                  GROUP BY PAA.ASSIGNMENT_ID,
                           PPF.ATTRIBUTE1,
@@ -319,34 +256,26 @@ IS
                           PPA.EFFECTIVE_DATE,
                           PTP.START_DATE,
                           PTP.END_DATE,
---                          PTF.RUN_TYPE_NAME,
                           PPA.ACTION_TYPE,
                           PPA.DATE_EARNED,
                           PAA.TAX_UNIT_ID,
                           PAA.RUN_TYPE_ID,
                           PPF.PERIOD_TYPE
---                          PTF.RUN_TYPE_ID
                       )  DETAIL,
                          PAY_CONSOLIDATION_SETS     PCS,
                          PER_ALL_ASSIGNMENTS_F      PAAF
          WHERE 1 = 1
---           AND PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID) IN ('3661', '3673', '3674', '3690', '3681')
+--           AND PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID) IN ('1998')
            AND PCS.CONSOLIDATION_SET_ID = DETAIL.CONSOLIDATION_SET_ID
            AND PAAF.ASSIGNMENT_ID = DETAIL.ASSIGNMENT_ID
            AND PAAF.PAYROLL_ID = DETAIL.PAYROLL_ID
-           AND DETAIL.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
+           AND DETAIL.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE 
+                                         AND PAAF.EFFECTIVE_END_DATE
            AND PAAF.PERSON_ID = NVL(P_PERSON_ID, PAAF.PERSON_ID)
-         GROUP BY DETAIL.CLAVE_NOMINA,
-                  PAAF.PERSON_ID,
-                  DETAIL.ASSIGNMENT_ID,
+         GROUP BY PAAF.PERSON_ID,
                   DETAIL.REG_PATRONAL
---                  DETAIL.DATE_EARNED,
---                  DETAIL.ASSIGNMENT_ACTION_ID,
---                  DETAIL.CONSOLIDATION_SET_ID,
---                  DETAIL.RUN_TYPE_ID
-         ORDER BY DETAIL.CLAVE_NOMINA,                      
-                  TO_NUMBER(NUMERO_EMPLEADO);                               
-                               
+         ORDER BY TO_NUMBER(NUMERO_EMPLEADO);                               
+
                                
     
            
@@ -357,8 +286,6 @@ IS
     DETAIL  DETAILS;
              
 BEGIN
-
---    EXECUTE IMMEDIATE 'ALTER SESSION set NLS_LANGUAGE = ''AMERICAN''';
 
     dbms_output.put_line('P_COMPANY_ID : '          || P_COMPANY_ID);
     dbms_output.put_line('P_YEAR : '                || P_YEAR);
@@ -376,20 +303,7 @@ BEGIN
     fnd_file.put_line(fnd_file.log,'P_PAYROLL_ID : '          || P_PAYROLL_ID);
     fnd_file.put_line(fnd_file.log,'P_CONSOLIDATION_SET_ID : ' || P_CONSOLIDATION_SET_ID);
     
-     --Eliminacion y creacion del Archivo.
---    BEGIN
---    
---        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
---        UTL_FILE.FREMOVE(var_path, var_file_name);
---    EXCEPTION WHEN UTL_FILE.INVALID_OPERATION THEN
---        var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
---              WHEN OTHERS THEN
---        dbms_output.put_line('**Error al Limpiar el Archivo. ' || SQLERRM);
---        FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo. ' || SQLERRM);
---    END;
---    
---    var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
-    
+         
     BEGIN
     
         SELECT 
@@ -409,14 +323,14 @@ BEGIN
                var_consolidation_set_name
           FROM DUAL;
           
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'COMPAÑIA:,'               || var_company_name);
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'AÑO,'                     || P_YEAR);
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES INICIAL:,'            || P_START_MONTH);
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES FINAL:,'              || P_END_MONTH);
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'TIPO DE PERIODO:,'        || NVL(P_PERIOD_TYPE,              'TODOS'));
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'NOMINA:,'                 || NVL(var_payroll_name,           'TODAS'));
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'JUEGO DE CONSOLIDACION:,' || NVL(var_consolidation_set_name, 'TODOS')); 
-          /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, ',,');
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'COMPAÑIA:,'               || var_company_name);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'AÑO,'                     || P_YEAR);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES INICIAL:,'            || P_START_MONTH);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'MES FINAL:,'              || P_END_MONTH);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'TIPO DE PERIODO:,'        || NVL(P_PERIOD_TYPE,              'TODOS'));
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'NOMINA:,'                 || NVL(var_payroll_name,           'TODAS'));
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'JUEGO DE CONSOLIDACION:,' || NVL(var_consolidation_set_name, 'TODOS')); 
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, ',,');
     
     EXCEPTION WHEN OTHERS THEN
         dbms_output.put_line('**Error al Generar el encabezado del documento. ' || SQLERRM);
@@ -425,8 +339,7 @@ BEGIN
     
     BEGIN
         
-        var_data := 'CVE NOM,'                  ||
-                    'NUMERO,'                   ||
+        var_data := 'NUMERO,'                   ||
                     'NOMBRE,'                   ||
                     'RFC,'                      ||
                     'FECHA DE INGRESO,'         ||
@@ -446,6 +359,7 @@ BEGIN
                     'PREMIO ASISTENCIA,'        ||
                     'PREMIO ASISTENCIA EXCENTA IMSS,' ||
                     'COMISIONES,'               ||
+                    'AYUDA DE ALIMENTOS,'       ||
                     'SUBSIDIO INCAPACIDAD,'     ||
                     'AGUINALDO,'                ||
                     'AGUINALDO EXCENTO ISR,'    ||
@@ -493,7 +407,8 @@ BEGIN
                     'AJUSTE ISR SEGUN TABLA,'   ||
                     'AJUSTE SUBSIDIO SEGUN TABLA,'    ||
                     'DIAS PAGADOS';
-        /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
+        
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
     
     EXCEPTION WHEN OTHERS THEN
         dbms_output.put_line('**Error al Generar el encabezado de la tabla de detalle. ' || SQLERRM);
@@ -516,8 +431,7 @@ BEGIN
             LOOP
             
                 var_data := '';
-                var_data :=    DETAIL(rowIndex).CLAVE_NOMINA            || ',' || 
-                               DETAIL(rowIndex).NUMERO_EMPLEADO         || ',' ||
+                var_data :=    DETAIL(rowIndex).NUMERO_EMPLEADO         || ',' ||
                                DETAIL(rowIndex).NOMBRE_EMPLEADO         || ',' ||
                                DETAIL(rowIndex).RFC                     || ',' ||
                                DETAIL(rowIndex).EFFECTIVE_START_DATE    || ',' ||
@@ -537,6 +451,7 @@ BEGIN
                                DETAIL(rowIndex).PREMIO_ASISTENCIA       || ',' ||
                                DETAIL(rowIndex).PREMIO_ASISTENCIA_EXE   || ',' ||
                                DETAIL(rowIndex).COMISIONES              || ',' ||
+                               DETAIL(rowIndex).AYUDA_ALIMENTOS         || ',' ||
                                DETAIL(rowIndex).SUBSIDIO_INCAPACIDAD    || ',' ||
                                DETAIL(rowIndex).AGUINALDO               || ',' ||
                                DETAIL(rowIndex).AGUINALDO_EXE           || ',' ||
@@ -585,7 +500,7 @@ BEGIN
                                DETAIL(rowIndex).AJUSTE_SUBSIDIO_SEGUN_TABLA || ',' ||
                                DETAIL(rowIndex).DIAS_PAGADOS            || ',';
                 
-                /*UTL_FILE.PUT_LINE(var_file,*/ FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_data);
                 
             END LOOP;        
         
