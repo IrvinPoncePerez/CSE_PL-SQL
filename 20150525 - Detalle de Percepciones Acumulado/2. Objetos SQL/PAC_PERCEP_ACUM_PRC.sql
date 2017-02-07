@@ -21,9 +21,8 @@ IS
                PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID)                               AS  "NUMERO_EMPLEADO",
                PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
                PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PAAF.PERSON_ID)                         AS  RFC,
-               PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PAAF.PERSON_ID)                   AS  EFFECTIVE_START_DATE,    
-               REG_PATRONAL                                                                     AS  REG_PATRONAL,
-               PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, P_END_MONTH, P_YEAR)   AS  TYPE_MOVEMENT,
+               PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PAAF.PERSON_ID)                   AS  EFFECTIVE_START_DATE,
+               PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, P_END_MONTH, P_YEAR)     AS  TYPE_MOVEMENT,
                MAX(SUELDO_DIARIO)        AS SUELDO_DIARIO,
                MAX(SALARIO_DIARIO_INTEGRADO) AS SALARIO_DIARIO_INTEGRADO,            
                SUM(SUELDO_NORMAL)        AS SUELDO_NORMAL,      
@@ -102,12 +101,9 @@ IS
                           FROM HR_LOOKUPS 
                          WHERE LOOKUP_TYPE = 'ACTION_TYPE'
                            AND LOOKUP_CODE = PPA.ACTION_TYPE )                                  AS  ACTION_TYPE,
-                       PPF.ATTRIBUTE1                                                           AS  CLAVE_NOMINA,
                        EXTRACT(YEAR FROM PTP.END_DATE)                                          AS  ANIO,
                        EXTRACT(MONTH FROM PTP.END_DATE)                                         AS  MES,
                        PTP.PERIOD_NUM                                                           AS  NUM_NOMINA,
-                       PAC_RESULT_VALUES_PKG.GET_EMPLOYEER_REGISTRATION(PPA.DATE_EARNED,
-                                                                        PAA.ASSIGNMENT_ID)      AS  REG_PATRONAL,
                        -----------------------------------------------------------------------------------------
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'I001_SALARIO_DIARIO',      'Pay Value'), '0')    AS  SUELDO_DIARIO,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'Integrated Daily Wage',    'Pay Value'), '0')    AS  SALARIO_DIARIO_INTEGRADO,
@@ -241,26 +237,27 @@ IS
                    AND PPA.CONSOLIDATION_SET_ID = NVL(P_CONSOLIDATION_SET_ID, PPA.CONSOLIDATION_SET_ID)
                    AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')
                    AND PTP.PERIOD_NAME LIKE '%' || P_YEAR || '%'
-                   AND (EXTRACT(MONTH FROM PTP.END_DATE) >= P_START_MONTH
-                    AND EXTRACT(MONTH FROM PTP.END_DATE) <= P_END_MONTH)
+                   AND (    EXTRACT(MONTH FROM PTP.END_DATE) >= P_START_MONTH
+                        AND EXTRACT(MONTH FROM PTP.END_DATE) <= P_END_MONTH)
                    AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
                    ------------------------------------------------------  
-                 GROUP BY PAA.ASSIGNMENT_ID,
-                          PPF.ATTRIBUTE1,
-                          PTP.END_DATE,
-                          PTP.PERIOD_NUM,
-                          PPA.PAYROLL_ACTION_ID,
-                          PAA.ASSIGNMENT_ACTION_ID,
-                          PPF.PAYROLL_ID,
-                          PPA.CONSOLIDATION_SET_ID,
-                          PPA.EFFECTIVE_DATE,
-                          PTP.START_DATE,
-                          PTP.END_DATE,
-                          PPA.ACTION_TYPE,
-                          PPA.DATE_EARNED,
-                          PAA.TAX_UNIT_ID,
-                          PAA.RUN_TYPE_ID,
-                          PPF.PERIOD_TYPE
+                 GROUP  
+                    BY PAA.ASSIGNMENT_ID,
+                       PPF.ATTRIBUTE1,
+                       PTP.END_DATE,
+                       PTP.PERIOD_NUM,
+                       PPA.PAYROLL_ACTION_ID,
+                       PAA.ASSIGNMENT_ACTION_ID,
+                       PPF.PAYROLL_ID,
+                       PPA.CONSOLIDATION_SET_ID,
+                       PPA.EFFECTIVE_DATE,
+                       PTP.START_DATE,
+                       PTP.END_DATE,
+                       PPA.ACTION_TYPE,
+                       PPA.DATE_EARNED,
+                       PAA.TAX_UNIT_ID,
+                       PAA.RUN_TYPE_ID,
+                       PPF.PERIOD_TYPE
                       )  DETAIL,
                          PAY_CONSOLIDATION_SETS     PCS,
                          PER_ALL_ASSIGNMENTS_F      PAAF
@@ -272,9 +269,10 @@ IS
            AND DETAIL.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE 
                                          AND PAAF.EFFECTIVE_END_DATE
            AND PAAF.PERSON_ID = NVL(P_PERSON_ID, PAAF.PERSON_ID)
-         GROUP BY PAAF.PERSON_ID,
-                  DETAIL.REG_PATRONAL
-         ORDER BY TO_NUMBER(NUMERO_EMPLEADO);                               
+         GROUP 
+            BY PAAF.PERSON_ID
+         ORDER 
+            BY TO_NUMBER(NUMERO_EMPLEADO);                             
 
                                
     
@@ -343,7 +341,6 @@ BEGIN
                     'NOMBRE,'                   ||
                     'RFC,'                      ||
                     'FECHA DE INGRESO,'         ||
-                    'REGISTRO PATRONAL,'        ||
                     'TIPO DE MOVIMIENTO,'       ||
                     'SUELDO DIARIO BASE,'       ||
                     'SALARIO DIARIO INTEGRADO,' ||
@@ -435,7 +432,6 @@ BEGIN
                                DETAIL(rowIndex).NOMBRE_EMPLEADO         || ',' ||
                                DETAIL(rowIndex).RFC                     || ',' ||
                                DETAIL(rowIndex).EFFECTIVE_START_DATE    || ',' ||
-                               DETAIL(rowIndex).REG_PATRONAL            || ',' ||
                                DETAIL(rowIndex).TYPE_MOVEMENT           || ',' ||
                                DETAIL(rowIndex).SUELDO_DIARIO           || ',' ||
                                DETAIL(rowIndex).SALARIO_DIARIO_INTEGRADO|| ',' ||
