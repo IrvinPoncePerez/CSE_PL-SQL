@@ -961,7 +961,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         /**                         DETALLE                             */
                         /****************************************************************/
                         UTL_FILE.PUT_LINE(var_file, 'CANTID  1');
-                        UTL_FILE.PUT_LINE(var_file, 'DESCRI  PAGO DE NÓMINA');
+                        UTL_FILE.PUT_LINE(var_file, 'DESCRI  Pago de nómina');
                         UTL_FILE.PUT_LINE(var_file, 'UNIDAD  ACT');
                         UTL_FILE.PUT_LINE(var_file, 'PBRUDE  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'IMPBRU  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP), '9999990D99'));
@@ -986,7 +986,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'NOM_NUMSEG  ' || DETAIL(rowIndex).NOM_NUMSEG);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_FECREL  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECREL, 'RRRR-MM-DD'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TIPCON  ' || DETAIL(rowIndex).NOM_TIPCON);
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_SINDC   ' || DETAIL(rowIndex).NOM_SINDC);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TIPJOR  01');
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TIPREG  02');
                         UTL_FILE.PUT_LINE(var_file, 'NOM_NUMEMP  ' || DETAIL(rowIndex).NOM_NUMEMP);
@@ -1011,6 +1010,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, '!NOM_DED_TOTGRA  ' || TO_CHAR(0, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, '!NOM_DED_TOTEXE  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DESCRI  ' || DETAIL(rowIndex).NOM_DESCRI);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_SINDC   ' || DETAIL(rowIndex).NOM_SINDC);
                     
                         DECLARE 
                         
@@ -1034,7 +1034,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                 NOM_PER_DESCRI,
                                                 SUM(NOM_PER_IMPGRA) AS  NOM_PER_IMPGRA,
                                                 SUM(NOM_PER_IMPEXE) AS  NOM_PER_IMPEXE 
-                                              FROM (SELECT 
+                                              FROM (SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                         NVL((SELECT DISTINCT
                                                                     DESCRIPTION
                                                                FROM FND_LOOKUP_VALUES
@@ -1100,7 +1100,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                               PETF.ELEMENT_INFORMATION11,
                                                               PIVF.NAME
                                                     UNION
-                                                    SELECT 
+                                                    SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                         NVL((SELECT DISTINCT
                                                                     DESCRIPTION
                                                                FROM FND_LOOKUP_VALUES
@@ -1290,7 +1290,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPGRA  ' || TO_CHAR(PERCEP.NOM_PER_IMPGRA, '9999990D99'));
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPEXE  ' || TO_CHAR(PERCEP.NOM_PER_IMPEXE, '9999990D99'));
                                     
-                                    IF DETAIL(rowIndex).NOM_SINDC = 1 AND PERCEP.NOM_PER_DESCRI = 'HORAS EXTRAS' THEN
+                                    IF DETAIL(rowIndex).NOM_SINDC <> 'No' AND PERCEP.NOM_PER_DESCRI = 'HORAS EXTRAS' THEN
                                     
                                         var_extra_hours := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID,'Hours');
                                         var_extra_pay_value := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID, 'Pay Value');
@@ -1331,13 +1331,15 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             END LOOP;
                                     
                             IF isPERCEP = TRUE THEN
-                                UTL_FILE.PUT_LINE(var_file, '');
+                                NULL;
+--                                UTL_FILE.PUT_LINE(var_file, '');
 --                                UTL_FILE.PUT_LINE(var_file, 'FINPER');
                             END IF;                        
                                
                             UTL_FILE.PUT_LINE(var_file, '');
                             UTL_FILE.PUT_LINE(var_file, 'NOM_DED_OTRDED ' || TO_CHAR(DETAIL(rowIndex).MONDET, '9999990D99'));
                             UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTRET ' ||TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
+                            UTL_FILE.PUT_LINE(var_file, '');
                             
                             FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP                            
                                 FOR DEDUC IN DETAIL_DEDUCCION (ASSIGN.ASSIGNMENT_ACTION_ID) LOOP
@@ -1351,14 +1353,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TIP     ' || DEDUC.NOM_DED_TIP);
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_DED_CVE     ' || DEDUC.NOM_DED_CVE);
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_DED_DESCRI  ' || REPLACE(DEDUC.NOM_DED_DESCRI, '_', ' '));
-                                    UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPGRA  ' || TO_CHAR(DEDUC.NOM_DED_IMPGRA, '9999990D99'));
+                                    UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPGRA  ' || TO_CHAR(DEDUC.NOM_DED_IMPEXE, '9999990D99'));
+--                                    UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPGRA  ' || TO_CHAR(DEDUC.NOM_DED_IMPGRA, '9999990D99'));
 --                                    UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPEXE  ' || TO_CHAR(DEDUC.NOM_DED_IMPEXE, '9999990D99'));
                                     UTL_FILE.PUT_LINE(var_file, 'FINDED');                                        
                                 END LOOP;
                             END LOOP;                       
                                     
                             IF isDEDUC = TRUE THEN
-                                UTL_FILE.PUT_LINE(var_file, '');
+                                NULL;
+--                                UTL_FILE.PUT_LINE(var_file, '');
 --                                UTL_FILE.PUT_LINE(var_file, 'FINDED');
                             END IF;
                                 
