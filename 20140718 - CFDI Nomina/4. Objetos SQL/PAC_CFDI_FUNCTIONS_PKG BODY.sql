@@ -650,7 +650,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
             var_sequence_name := SUBSTR(REPLACE(REPLACE(var_file_name, 'NOMINA', ''), '_', ''), 0, 30);
             var_file_name := var_file_name || '.txt';
             
-        EXCEPTION WHEN OTHERS THEN        
+        EXCEPTION WHEN OTHERS THEN  
+            P_RETCODE := 1;             
             dbms_output.put_line('**Error al preparar el archivo CFDI de Nómina. ' || SQLERRM);
             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al preparar el archivo CFDI de Nómina. ' || SQLERRM); 
         END;
@@ -685,6 +686,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 WHEN UTL_FILE.INVALID_OPERATION THEN
                     var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
                 WHEN OTHERS THEN
+                    P_RETCODE := 1;       
                     dbms_output.put_line('**Error al Limpiar el Archivo.. ' || SQLERRM);
                     FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo.. ' || SQLERRM);
             END;
@@ -701,6 +703,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                               'NOCYCLE';
                               
             EXCEPTION WHEN OTHERS THEN
+                P_RETCODE := 1;       
                 dbms_output.put_line('**Error al Crear la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Crear la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
             END;
@@ -760,6 +763,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             EXECUTE 
                             IMMEDIATE   'SELECT ' || var_sequence_name || '.NEXTVAL FROM DUAL' INTO var_reg_seq;
                         EXCEPTION WHEN OTHERS THEN
+                            P_RETCODE := 1;       
                             dbms_output.put_line('**Error al Consultar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
                             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Consultar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
                         END;       
