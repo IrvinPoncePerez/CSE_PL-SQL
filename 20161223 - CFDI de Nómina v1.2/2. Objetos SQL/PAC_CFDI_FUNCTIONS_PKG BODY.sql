@@ -54,7 +54,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
                                               'P080_FONDO AHORRO TR ACUM',
                                               'P017_PRIMA DE ANTIGUEDAD',
---                                              'P032_SUBSIDIO_PARA_EMPLEO',
                                               'P047_ISPT ANUAL A FAVOR',
                                               'P026_INDEMNIZACION')
                    AND PETF.ELEMENT_NAME NOT IN (CASE 
@@ -545,9 +544,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
                     GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)                                        AS  NOM_FECREL,
                     (CASE
-                        WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 1
-                        WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 0
-                        ELSE 0
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 'Sí'
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 'No'
+                        ELSE 'No'
                      END)                                                                           AS  NOM_SINDC,
                     (CASE
                         WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX1_P' THEN
@@ -604,9 +603,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P039_DESPENSA',
                                               'Pay Value'), '0'))                                   AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
-                    MAX(NVL(GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
-                                         PPA.DATE_EARNED,
-                                         PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
                     SUM(NVL(GET_PER_TOTSUL(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSUL,
                     SUM(NVL(GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSEP,
                     SUM(NVL(GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
@@ -789,7 +785,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
             var_sequence_name := SUBSTR(REPLACE(REPLACE(var_file_name, 'NOMINA', ''), '_', ''), 0, 30);
             var_file_name := var_file_name || '.txt';
             
-        EXCEPTION WHEN OTHERS THEN        
+        EXCEPTION WHEN OTHERS THEN 
+            P_RETCODE := 1;       
             dbms_output.put_line('**Error al preparar el archivo CFDI de Nómina. ' || SQLERRM);
             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al preparar el archivo CFDI de Nómina. ' || SQLERRM); 
         END;
@@ -824,6 +821,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 WHEN UTL_FILE.INVALID_OPERATION THEN
                     var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000); 
                 WHEN OTHERS THEN
+                    P_RETCODE := 1;
                     dbms_output.put_line('**Error al Limpiar el Archivo.. ' || SQLERRM);
                     FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Limpiar el Archivo.. ' || SQLERRM);
             END;
@@ -840,6 +838,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                               'NOCYCLE';
                               
             EXCEPTION WHEN OTHERS THEN
+                P_RETCODE := 1;
                 dbms_output.put_line('**Error al Crear la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Crear la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
             END;
@@ -899,6 +898,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             EXECUTE 
                             IMMEDIATE   'SELECT ' || var_sequence_name || '.NEXTVAL FROM DUAL' INTO var_reg_seq;
                         EXCEPTION WHEN OTHERS THEN
+                            P_RETCODE := 1;
                             dbms_output.put_line('**Error al Consultar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
                             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Consultar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
                         END;       
@@ -926,7 +926,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'ESTEMI  ' || DETAIL(rowIndex).ESTEMI);
                         UTL_FILE.PUT_LINE(var_file, 'CODEMI  ' || DETAIL(rowIndex).CODEMI);
                         UTL_FILE.PUT_LINE(var_file, 'PAIEMI  ' || DETAIL(rowIndex).PAIEMI);
-                        UTL_FILE.PUT_LINE(var_file, 'REGIMEN General de Ley Personas Morales');
+                        UTL_FILE.PUT_LINE(var_file, 'REGIMEN 601');
                         
                         /****************************************************************/
                         /**                     DATOS DEL EMPLEADO                      */
@@ -952,9 +952,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'METPAG  NA');
                         UTL_FILE.PUT_LINE(var_file, 'LUGEXP  75790'); --PUE, TEHUACAN'); 
                         UTL_FILE.PUT_LINE(var_file, 'SUBTBR  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP), '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'ISRRET  ' || TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'MONDET  ' || TO_CHAR(DETAIL(rowIndex).MONDET, '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'MOTDES  Deducciones Nómina');
+                        UTL_FILE.PUT_LINE(var_file, 'MONDET  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'TIPMON  MXN');
                         UTL_FILE.PUT_LINE(var_file, 'TIPCAM  1');
                         UTL_FILE.PUT_LINE(var_file, 'TOTPAG  ' || TO_CHAR(((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP) - (DETAIL(rowIndex).ISRRET + DETAIL(rowIndex).MONDET)), '9999990D99'));
@@ -967,7 +965,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'UNIDAD  ACT');
                         UTL_FILE.PUT_LINE(var_file, 'PBRUDE  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'IMPBRU  ' || TO_CHAR((DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).SUBEMP), '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'R');
                         
                         /****************************************************************/
                         /**             COMPLEMENTO DE RECIBOS DE NÓMINA                */
@@ -980,7 +977,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DIAPAG  ' || DETAIL(rowIndex).NOM_DIAPAG);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TOTPER  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TOTDED  ' || TO_CHAR((DETAIL(rowIndex).ISRRET + DETAIL(rowIndex).MONDET), '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_TOTPAG  ' || TO_CHAR(DETAIL(rowIndex).SUBEMP, '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, '!NOM_TOTPAG  ' || TO_CHAR(DETAIL(rowIndex).SUBEMP, '9999990D99'));
                         
                         /****************************************************************/
                         /**                     DATOS DE RECEPTOR                       */
@@ -1007,13 +1004,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'NOM_REGPAT  ' || DETAIL(rowIndex).NOM_REGPAT);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TIPSAL  MIXTO');
                         UTL_FILE.PUT_LINE(var_file, 'NOM_CVENOM  ' || DETAIL(rowIndex).NOM_CVENOM);
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_FAHOACUM    ' || TO_CHAR(DETAIL(rowIndex).NOM_FAHOACUM, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTSUL  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTSUL, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTSEP  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTSEP, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTGRA  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTGRA, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTEXE  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTEXE, '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTGRA  ' || TO_CHAR(0, '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTEXE  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, '!NOM_DED_TOTGRA  ' || TO_CHAR(0, '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, '!NOM_DED_TOTEXE  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DESCRI  ' || DETAIL(rowIndex).NOM_DESCRI);
                     
                         DECLARE 
@@ -1144,9 +1140,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                        AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
                                                                                   'P080_FONDO AHORRO TR ACUM',
                                                                                   'P017_PRIMA DE ANTIGUEDAD',
---                                                                                  'P032_SUBSIDIO_PARA_EMPLEO',
-                                                                                  'P047_ISPT ANUAL A FAVOR',
-                                                                                  'P026_INDEMNIZACION')
+                                                                                  'P047_ISPT ANUAL A FAVOR')
                                                        AND PETF.ELEMENT_NAME NOT IN (CASE 
                                                                                         WHEN P_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
                                                                                         ELSE 'TODOS'
@@ -1173,7 +1167,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                             NOM_DED_DESCRI,
                                             NOM_DED_IMPGRA,
                                             NOM_DED_IMPEXE
-                                       FROM(SELECT 
+                                       FROM(SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                     NVL((SELECT DISTINCT
                                                                 DESCRIPTION
                                                            FROM FND_LOOKUP_VALUES
@@ -1220,51 +1214,51 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                        
                             CURSOR DETAIL_OTRA_PERCEPCION (P_ASSIGNMENT_ACTION_ID   NUMBER) IS
                                     SELECT 
-                                                        NVL((SELECT DISTINCT
-                                                                    DESCRIPTION
-                                                               FROM FND_LOOKUP_VALUES
-                                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                                AND MEANING LIKE PETF.ELEMENT_NAME
-                                                                AND LANGUAGE = 'ESA'), '016')       AS  NOM_OTR_TIP,
-                                                        NVL((SELECT DISTINCT
-                                                                    TAG
-                                                               FROM FND_LOOKUP_VALUES
-                                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
-                                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
-                                                                AND MEANING LIKE PETF.ELEMENT_NAME
-                                                                AND LANGUAGE = 'ESA'), '000')      AS  NOM_OTR_CVE,
-                                                        (CASE
-                                                            WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
-                                                                'REPARTO DE UTILIDADES' 
-                                                            WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
-                                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                            WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
-                                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
-                                                            ELSE
-                                                                REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
-                                                         END)                                       AS  NOM_OTR_DESCRI,
-                                                         0                                          AS  NOM_OTR_IMPEXE,
-                                                         SUM(PRRV.RESULT_VALUE)                     AS  NOM_OTR_IMPGRA
-                                                      FROM PAY_RUN_RESULTS              PRR,
-                                                           PAY_ELEMENT_TYPES_F          PETF,
-                                                           PAY_RUN_RESULT_VALUES        PRRV,
-                                                           PAY_INPUT_VALUES_F           PIVF,
-                                                           PAY_ELEMENT_CLASSIFICATIONS  PEC
-                                                     WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
-                                                       AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
-                                                       AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
-                                                       AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
-                                                       AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
-                                                       AND PETF.ELEMENT_NAME  IN ('P032_SUBSIDIO_PARA_EMPLEO')
-                                                       AND PIVF.UOM = 'M'
-                                                       AND PIVF.NAME = 'Pay Value'
-                                                       AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
-                                                       AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
-                                                     GROUP BY PETF.ELEMENT_NAME,
-                                                              PETF.REPORTING_NAME,
-                                                              PETF.ELEMENT_INFORMATION11,
-                                                              PIVF.NAME;
+                                        NVL((SELECT DISTINCT
+                                                    DESCRIPTION
+                                               FROM FND_LOOKUP_VALUES
+                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                AND MEANING LIKE PETF.ELEMENT_NAME
+                                                AND LANGUAGE = 'ESA'), '016')       AS  NOM_OTR_TIP,
+                                        NVL((SELECT DISTINCT
+                                                    TAG
+                                               FROM FND_LOOKUP_VALUES
+                                              WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
+                                                 OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
+                                                AND MEANING LIKE PETF.ELEMENT_NAME
+                                                AND LANGUAGE = 'ESA'), '000')      AS  NOM_OTR_CVE,
+                                        (CASE
+                                            WHEN PETF.ELEMENT_NAME = 'Profit Sharing' THEN
+                                                'REPARTO DE UTILIDADES' 
+                                            WHEN PETF.ELEMENT_NAME LIKE 'P0%' THEN
+                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                            WHEN PETF.ELEMENT_NAME LIKE 'A0%' THEN
+                                                REPLACE(SUBSTR(PETF.ELEMENT_NAME, 6, LENGTH(PETF.ELEMENT_NAME)), '_', ' ')
+                                            ELSE
+                                                REPLACE(UPPER(PETF.ELEMENT_NAME), '_', ' ')
+                                         END)                                       AS  NOM_OTR_DESCRI,
+                                         0                                          AS  NOM_OTR_IMPEXE,
+                                         SUM(PRRV.RESULT_VALUE)                     AS  NOM_OTR_IMPGRA
+                                      FROM PAY_RUN_RESULTS              PRR,
+                                           PAY_ELEMENT_TYPES_F          PETF,
+                                           PAY_RUN_RESULT_VALUES        PRRV,
+                                           PAY_INPUT_VALUES_F           PIVF,
+                                           PAY_ELEMENT_CLASSIFICATIONS  PEC
+                                     WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+                                       AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                                       AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                                       AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                                       AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+                                       AND PETF.ELEMENT_NAME  IN ('P032_SUBSIDIO_PARA_EMPLEO')
+                                       AND PIVF.UOM = 'M'
+                                       AND PIVF.NAME = 'Pay Value'
+                                       AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                                       AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
+                                     GROUP BY PETF.ELEMENT_NAME,
+                                              PETF.REPORTING_NAME,
+                                              PETF.ELEMENT_INFORMATION11,
+                                              PIVF.NAME;
                         
                             isPERCEP    BOOLEAN;
                             isDEDUC     BOOLEAN;
@@ -1289,7 +1283,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         isPERCEP := TRUE;
                                     END IF;
                                 
-                                    UTL_FILE.PUT_LINE(var_file, '');
+                                    UTL_FILE.PUT_LINE(var_file, 'INIPER');
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TIP     ' || PERCEP.NOM_PER_TIP);
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_CVE     ' || PERCEP.NOM_PER_CVE);
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_DESCRI  ' || REPLACE(PERCEP.NOM_PER_DESCRI, '_', ' '));
@@ -1330,6 +1324,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_INGNO      ');    
                                     
                                     END IF;
+                                    
+                                    UTL_FILE.PUT_LINE(var_file, 'FINPER');
                                 
                                 END LOOP;
                             END LOOP;
@@ -1351,13 +1347,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         isDEDUC := TRUE;   
                                     END IF;
                                 
-                                    UTL_FILE.PUT_LINE(var_file, '');
+                                    UTL_FILE.PUT_LINE(var_file, 'INIDED');
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TIP     ' || DEDUC.NOM_DED_TIP);
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_DED_CVE     ' || DEDUC.NOM_DED_CVE);
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_DED_DESCRI  ' || REPLACE(DEDUC.NOM_DED_DESCRI, '_', ' '));
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPGRA  ' || TO_CHAR(DEDUC.NOM_DED_IMPGRA, '9999990D99'));
-                                    UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPEXE  ' || TO_CHAR(DEDUC.NOM_DED_IMPEXE, '9999990D99'));
-                                    
+--                                    UTL_FILE.PUT_LINE(var_file, 'NOM_DED_IMPEXE  ' || TO_CHAR(DEDUC.NOM_DED_IMPEXE, '9999990D99'));
+                                    UTL_FILE.PUT_LINE(var_file, 'FINDED');                                        
                                 END LOOP;
                             END LOOP;                       
                                     
@@ -1374,7 +1370,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         isOTRO := TRUE;   
                                     END IF;
                                 
-                                    UTL_FILE.PUT_LINE(var_file, '');
+                                    UTL_FILE.PUT_LINE(var_file, 'INIOTR');
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_TIP     ' || OTR.NOM_OTR_TIP);
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_CVE     ' || OTR.NOM_OTR_CVE);
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_DESCRI  ' || REPLACE(OTR.NOM_OTR_DESCRI, '_', ' '));
@@ -1382,6 +1378,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_IMPEXE  ' || TO_CHAR(OTR.NOM_OTR_IMPEXE, '9999990D99'));
                                     UTL_FILE.PUT_LINE(var_file, '');    
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_SUBSID ' || GET_SUBSIDIO_EMPLEO(ASSIGN.ASSIGNMENT_ACTION_ID));
+                                    UTL_FILE.PUT_LINE(var_file, 'FINOTR');
                                     
                                 END LOOP;
                             END LOOP;
@@ -1397,6 +1394,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             FND_FILE.PUT_LINE(FND_FILE.LOG, TO_CHAR(var_reg_seq,'00000') || ' - ' || DETAIL(rowIndex).NOMREC);
                             
                         EXCEPTION WHEN OTHERS THEN
+                            P_RETCODE := 1;
                             dbms_output.put_line('**Error al Crear los Registros de Percepciones y Deducciones. ' || SQLERRM);
                             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Crear los Registros de Percepciones y Deducciones. ' || SQLERRM);
                         END;
@@ -1409,6 +1407,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         
             
             EXCEPTION WHEN OTHERS THEN
+                P_RETCODE := 1;
                 dbms_output.put_line('**Error al Recorrer el Cursor DETAIL_LIST. ' || SQLERRM);
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Recorrer el Cursor DETAIL_LIST. ' || SQLERRM);
             END;
@@ -1436,6 +1435,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 END IF;
                               
             EXCEPTION WHEN OTHERS THEN
+                P_RETCODE := 1;
                 dbms_output.put_line('**Error al Borrar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Borrar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
             END;
@@ -1690,49 +1690,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         ELSE
             P_RETCODE := 1; 
         END IF;
-        
-        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
-        
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV-Programa_Importacion_CFDI_Nom');
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-        
-            BEGIN                                                                    
-                    
-                V_REQUEST_ID :=
-                    FND_REQUEST.SUBMIT_REQUEST (
-                       APPLICATION => 'PAY',
-                       PROGRAM => 'XXCALV_UUID_NOM',
-                       DESCRIPTION => '',
-                       START_TIME => '',
-                       SUB_REQUEST => FALSE,
-                       ARGUMENT1 => TO_CHAR(var_local_directory)
-                                               );
-                STANDARD.COMMIT;                  
-                                     
-                WAITING :=
-                    FND_CONCURRENT.WAIT_FOR_REQUEST (
-                        REQUEST_ID => V_REQUEST_ID,
-                        INTERVAL => 1,
-                        MAX_WAIT => 0,
-                        PHASE => PHASE,
-                        STATUS => STATUS,
-                        DEV_PHASE => DEV_PHASE,
-                        DEV_STATUS => DEV_STATUS,
-                        MESSAGE => V_MESSAGE
-                                                );
-                        
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
-                    
-            EXCEPTION WHEN OTHERS THEN
-                dbms_output.put_line('**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
-                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la importación de los archivos XML de Nómina. ' || SQLERRM);
-            END;
-        ELSE
-            P_RETCODE := 1;
-        END IF;
-        
+                
         IF P_COMPANY_ID = '02' AND P_CONSOLIDATION_ID = 68 THEN
         
             IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
@@ -1972,9 +1930,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
                     GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)                                        AS  NOM_FECREL,
                     (CASE
-                        WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 1
-                        WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 0
-                        ELSE 0
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 'Sí'
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 'No'
+                        ELSE 'No'
                      END)                                                                           AS  NOM_SINDC,
                     (CASE
                         WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX1_P' THEN
@@ -2031,9 +1989,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'P039_DESPENSA',
                                               'Pay Value'), '0'))                                   AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
-                    MAX(NVL(GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
-                                         PPA.DATE_EARNED,
-                                         PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
                     SUM(NVL(GET_PER_TOTSUL(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSUL,
                     SUM(NVL(GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSEP,
                     SUM(NVL(GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
@@ -2178,8 +2133,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                           PPA.EFFECTIVE_DATE,
                           PTP.END_DATE
                  ORDER BY PPF.PAYROLL_NAME,
-                          PAPF.EMPLOYEE_NUMBER;
-                          
+                          PAPF.EMPLOYEE_NUMBER;                          
 
 
 
@@ -2265,7 +2219,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                 NOM_REGPAT,
                                                 NOM_SALBASE,
                                                 NOM_CVENOM,
-                                                NOM_FAHOACUM,
                                                 NOM_PER_TOTGRA,
                                                 NOM_PER_TOTEXE,
                                                 NOM_DED_TOTGRA,
@@ -2305,7 +2258,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                 DETAIL(rowIndex).NOM_REGPAT,
                                                 TO_CHAR(DETAIL(rowIndex).NOM_SALBASE, '9999990D99'),
                                                 DETAIL(rowIndex).NOM_CVENOM,
-                                                TO_CHAR(DETAIL(rowIndex).NOM_FAHOACUM, '9999990D99'),
                                                 TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTGRA, '9999990D99'),
                                                 TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTEXE, '9999990D99'),
                                                 TO_CHAR(0, '9999990D99'),
@@ -2338,7 +2290,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                             NOM_PER_DESCRI,
                                             SUM(NOM_PER_IMPGRA) AS  NOM_PER_IMPGRA,
                                             SUM(NOM_PER_IMPEXE) AS  NOM_PER_IMPEXE 
-                                          FROM (SELECT 
+                                          FROM (SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                     NVL((SELECT DISTINCT
                                                                 DESCRIPTION
                                                            FROM FND_LOOKUP_VALUES
@@ -2404,7 +2356,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                           PETF.ELEMENT_INFORMATION11,
                                                           PIVF.NAME
                                                 UNION
-                                                SELECT 
+                                                SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                     NVL((SELECT DISTINCT
                                                                 DESCRIPTION
                                                            FROM FND_LOOKUP_VALUES
@@ -2473,7 +2425,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         NOM_DED_DESCRI,
                                         NOM_DED_IMPGRA,
                                         NOM_DED_IMPEXE
-                                   FROM(SELECT 
+                                   FROM(SELECT /*+ LEADING(PEC PIVF PETF)   index(PEC  PAY_ELEMENT_CLASSIFICATION_UK2)   index(PETF  PAY_ELEMENT_TYPES_F_FK1)     index(PIVF  PAY_INPUT_VALUES_F_UK2)   */
                                                 NVL((SELECT DISTINCT
                                                             DESCRIPTION
                                                        FROM FND_LOOKUP_VALUES

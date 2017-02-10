@@ -36,9 +36,9 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
                     PAC_CFDI_FUNCTIONS_PKG.GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)                                        AS  NOM_FECREL,
                     (CASE
-                        WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 1
-                        WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 0
-                        ELSE 0
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 'Sí'
+                        WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 'No'
+                        ELSE 'No'
                      END)                                                                           AS  NOM_SINDC,
                     (CASE
                         WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX1_P' THEN
@@ -95,9 +95,6 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                                               'P039_DESPENSA',
                                               'Pay Value'), '0'))                                   AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
-                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_FAHOACUM(PAA.ASSIGNMENT_ACTION_ID,
-                                         PPA.DATE_EARNED,
-                                         PAA.TAX_UNIT_ID), '0'))                                    AS  NOM_FAHOACUM,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSUL(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSUL,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSEP,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
