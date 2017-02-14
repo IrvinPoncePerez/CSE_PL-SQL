@@ -1,3 +1,6 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+
+
             SELECT PAAF.ASS_ATTRIBUTE15                                                             AS  EMPRESA,
                    CLAVE_NOMINA,
                    (SELECT HOUV.NAME
@@ -48,6 +51,7 @@
                    SUM(DIAS_ESPECIALES)      AS DIAS_ESPECIALES,  
                    SUM(PRESTAMO_NOMINA)      AS PRESTAMO_NOMINA,  
                    SUM(PRIMA_ANTIGUEDAD)     AS PRIMA_ANTIGUEDAD, 
+                   SUM(REEMBOLSO_INFONAVIT)  AS REEMBOLSO_INFONAVIT,
                    SUM(PTU)                  AS PTU,                 
                    SUM(PTU_EXE)              AS PTU_EXE,             
                    SUM(PASAJES)              AS PASAJES,             
@@ -68,7 +72,7 @@
                    SUM(DESPENSA_EXE)         AS DESPENSA_EXE,   
                    SUM(DESPENSA_RET)         AS DESPENSA_RET,    
                    SUM(FONDO_AHO_EMP)        AS FONDO_AHO_EMP,  
-                   SUM(FONDO_AHO_EMP)        AS FONDO_AHO_EMP_RET,    
+                   SUM(FONDO_AHO_EMP_RET)    AS FONDO_AHO_EMP_RET,    
                    SUM(PERMISO_PATERNIDAD)   AS PERMISO_PATERNIDAD,
                    SUM(BONO_CUATRIMESTRAL)   AS BONO_CUATRIMESTRAL,
                    SUM(FONDO_TR_ACUMULADO)   AS FONDO_TR_ACUMULADO, 
@@ -94,6 +98,7 @@
                        SUM(DIAS_ESPECIALES)      +
                        SUM(PRESTAMO_NOMINA)      +
                        SUM(PRIMA_ANTIGUEDAD)     +
+                       SUM(REEMBOLSO_INFONAVIT)  +
                        SUM(PTU)                  +
                        SUM(PASAJES)              +
                        SUM(PREMIO_PUNTUALIDAD)   +
@@ -194,6 +199,7 @@
                        SUM(DIAS_ESPECIALES)      +
                        SUM(PRESTAMO_NOMINA)      +
                        SUM(PRIMA_ANTIGUEDAD)     +
+                       SUM(REEMBOLSO_INFONAVIT)  +
                        SUM(PTU)                  +
                        SUM(PASAJES)              +
                        SUM(PREMIO_PUNTUALIDAD)   +
@@ -391,6 +397,7 @@
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P015_DIAS ESPECIALES',     'Pay Value'),   '0')    AS  DIAS_ESPECIALES,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P016_Prestamo de Nomina',  'Pay Value'),   '0')    AS  PRESTAMO_NOMINA,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P017_PRIMA DE ANTIGUEDAD', 'Pay Value'),   '0')    AS  PRIMA_ANTIGUEDAD,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P018_REEMBOLSO INFONAVIT', 'Pay Value'),   '0')    AS  REEMBOLSO_INFONAVIT,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'Profit Sharing',           'Pay Value'),   '0')    AS  PTU,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'Profit Sharing',           'ISR Exempt'),  '0')    AS  PTU_EXE,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P021_PASAJES',             'Pay Value'),   '0')    AS  PASAJES,
