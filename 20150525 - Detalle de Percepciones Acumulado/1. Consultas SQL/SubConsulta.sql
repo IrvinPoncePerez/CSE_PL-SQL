@@ -1,4 +1,4 @@
-                SELECT DISTINCT 
+                SELECT DISTINCT --+ 
                        PAA.ASSIGNMENT_ID,
                        PPF.ATTRIBUTE1,
                        PTP.END_DATE,
