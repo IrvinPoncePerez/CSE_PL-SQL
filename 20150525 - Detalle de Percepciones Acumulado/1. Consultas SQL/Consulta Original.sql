@@ -1,4 +1,72 @@
-                SELECT DISTINCT /*+ USE_NL LEADING(PPA PTP PAA PPF) INDEX_JOIN(PTP PAY_PAYROLL_ACTIONS_FK8 PER_TIME_PERIODS_PK) INDEX_JOIN(PAA PAY_PAYROLL_ACTIONS_PK PAY_ASSIGNMENT_ACTIONS_N4) INDEX_JOIN(PPF PAY_PAYROLL_ACTIONS_N50 PAY_PAYROLLS_F_PK)*/
+        SELECT PAAF.PERSON_ID,
+               PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID)                               AS  "NUMERO_EMPLEADO",
+               PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
+               PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PAAF.PERSON_ID)                         AS  RFC,
+               PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PAAF.PERSON_ID)                   AS  EFFECTIVE_START_DATE,
+               PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, P_END_MONTH, P_YEAR)     AS  TYPE_MOVEMENT,
+               MAX(SUELDO_DIARIO)        AS SUELDO_DIARIO,
+               MAX(SALARIO_DIARIO_INTEGRADO) AS SALARIO_DIARIO_INTEGRADO,            
+               SUM(SUELDO_NORMAL)        AS SUELDO_NORMAL,      
+               SUM(HORAS_EXTRA)          AS HORAS_EXTRA,         
+               SUM(HORAS_EXTRA_EXE)      AS HORAS_EXTRA_EXE,    
+               SUM(FESTIVO_SEPTIMO_DIA)  AS FESTIVO_SEPTIMO_DIA,
+               SUM(PRIMA_DOMINICAL)      AS PRIMA_DOMINICAL,    
+               SUM(PRIMA_DOMINICAL_EXE)  AS PRIMA_DOMINICAL_EXE,
+               SUM(VACACIONES)           AS VACACIONES,        
+               SUM(PRIMA_VACACIONAL)     AS PRIMA_VACACIONAL,   
+               SUM(PRIMA_VACACIONAL_EXE) AS PRIMA_VACACIONAL_EXE,
+               SUM(PREMIO_ASISTENCIA)    AS PREMIO_ASISTENCIA,  
+               SUM(PREMIO_ASISTENCIA_EXE) AS PREMIO_ASISTENCIA_EXE,
+               SUM(COMISIONES)           AS COMISIONES,    
+               SUM(AYUDA_ALIMENTOS)      AS AYUDA_ALIMENTOS,      
+               SUM(SUBSIDIO_INCAPACIDAD) AS SUBSIDIO_INCAPACIDAD,
+               SUM(AGUINALDO)            AS AGUINALDO,           
+               SUM(AGUINALDO_EXE)        AS AGUINALDO_EXE,       
+               SUM(SALARIOS_PENDIENTES)  AS SALARIOS_PENDIENTES, 
+               SUM(RETROACTIVO)          AS RETROACTIVO,         
+               SUM(PREMIO_ANTIGUEDAD)    AS PREMIO_ANTIGUEDAD,   
+               SUM(DIAS_ESPECIALES)      AS DIAS_ESPECIALES,   
+               SUM(PRIMA_ANTIGUEDAD)     AS PRIMA_ANTIGUEDAD,  
+               SUM(PTU)                  AS PTU,                 
+               SUM(PTU_EXE)              AS PTU_EXE,             
+               SUM(PASAJES)              AS PASAJES,             
+               SUM(PREMIO_PUNTUALIDAD)   AS PREMIO_PUNTUALIDAD,  
+               SUM(PREMIO_PUNTUALIDAD_EXE) AS PREMIO_PUNTUALIDAD_EXE,
+               SUM(BONO_PRODUCTIVIDAD)   AS BONO_PRODUCTIVIDAD,  
+               SUM(GRATIFICACION)        AS GRATIFICACION,
+               SUM(AYUDA_ESCOLAR)        AS AYUDA_ESCOLAR,       
+               SUM(INDEMNIZACION)        AS INDEMNIZACION,
+               SUM(GRATIFICACION_ESPECIAL) AS GRATIFICACION_ESPECIAL,
+               SUM(SUBSIDIO_EMPLEO)      AS SUBSIDIO_EMPLEO,     
+               SUM(COMPENSACION)         AS COMPENSACION,        
+               SUM(BECA_EDUCACIONAL)     AS BECA_EDUCACIONAL,    
+               SUM(AYUDA_DEFUNCION)      AS AYUDA_DEFUNCION,    
+               SUM(VACACIONES_PAGADAS)   AS VACACIONES_PAGADAS, 
+               SUM(BONO_EXTRAORDINARIO)  AS BONO_EXTRAORDINARIO,
+               SUM(DESPENSA)             AS DESPENSA,           
+               SUM(DESPENSA_EXE)         AS DESPENSA_EXE,       
+               SUM(FONDO_AHO_EMP)        AS FONDO_AHO_EMP,      
+               SUM(PERMISO_PATERNIDAD)   AS PERMISO_PATERNIDAD,
+               SUM(BONO_CUATRIMESTRAL)   AS BONO_CUATRIMESTRAL,
+               SUM(FONDO_TR_ACUMULADO)   AS FONDO_TR_ACUMULADO, 
+               SUM(FONDO_EM_ACUMULADO)   AS FONDO_EM_ACUMULADO, 
+               SUM(INTERES_GANADO)       AS INTERES_GANADO,   
+               SUM(ISPT_ANUAL_FAVOR)     AS ISPT_ANUAL_FAVOR, 
+               SUM(ISPT_A_FAVOR)         AS ISPT_A_FAVOR,
+               SUM(ISPT)                 AS ISPT,            
+               SUM(IMSS)                 AS IMSS,
+               SUM(INFONAVIT)            AS INFONAVIT,               
+               SUM(FONDO_AHO_TR)         AS FONDO_AHO_TR,       
+               SUM(FONDO_AHO_EM)         AS FONDO_AHO_EM,       
+               SUM(ISR_GRAVADO)          AS ISR_GRAVADO,
+               SUM(SUBSIDIO_SEGUN_TABLA) AS SUBSIDIO_SEGUN_TABLA,
+               SUM(ISR_SEGUN_TABLA)      AS ISR_SEGUN_TABLA,
+               SUM(AJUSTE_ISPT)          AS AJUSTE_ISPT,
+               SUM(AJUSTE_SUBSIDIO_EMPLEO)      AS AJUSTE_SUBSIDIO_EMPLEO,
+               SUM(AJUSTE_ISR_SEGUN_TABLA)      AS AJUSTE_ISR_SEGUN_TABLA,
+               SUM(AJUSTE_SUBSIDIO_SEGUN_TABLA) AS AJUSTE_SUBSIDIO_SEGUN_TABLA, 
+               SUM(DIAS_PAGADOS)         AS DIAS_PAGADOS
+          FROM (SELECT DISTINCT
                        PAA.TAX_UNIT_ID,
                        PPA.PAYROLL_ACTION_ID,
                        PAA.ASSIGNMENT_ID,
@@ -138,20 +206,22 @@
                   FROM PAY_PAYROLL_ACTIONS          PPA,
                        PER_TIME_PERIODS             PTP,
                        PAY_ASSIGNMENT_ACTIONS       PAA,
-                       PAY_ALL_PAYROLLS_F           PPF
+                       PAY_PAYROLLS_F               PPF
                  WHERE 1 = 1
                    AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
                    AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
-                   AND PPF.PAYROLL_ID = PPA.PAYROLL_ID      
-                   AND PPA.CONSOLIDATION_SET_ID = NVL(:P_CONSOLIDATION_SET_ID, PPA.CONSOLIDATION_SET_ID)
+                   AND PPA.PAYROLL_ID = PPF.PAYROLL_ID 
+                    ----------Parametros de Ejecucion-----------------
+                   AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = P_COMPANY_ID    
+                   AND PPA.PAYROLL_ID = NVL(P_PAYROLL_ID,  PPA.PAYROLL_ID)
+                   AND PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(P_PERIOD_TYPE, PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
+                   AND PPA.CONSOLIDATION_SET_ID = NVL(P_CONSOLIDATION_SET_ID, PPA.CONSOLIDATION_SET_ID)
                    AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')
-                   AND PPA.PAYROLL_ID = NVL(:P_PAYROLL_ID,  PPA.PAYROLL_ID)
-                   AND PTP.PERIOD_NAME LIKE '%' || :P_YEAR || '%'
-                   AND (    EXTRACT(MONTH FROM PTP.END_DATE) >= :P_START_MONTH
-                        AND EXTRACT(MONTH FROM PTP.END_DATE) <= :P_END_MONTH)
+                   AND PTP.PERIOD_NAME LIKE '%' || P_YEAR || '%'
+                   AND (    EXTRACT(MONTH FROM PTP.END_DATE) >= P_START_MONTH
+                        AND EXTRACT(MONTH FROM PTP.END_DATE) <= P_END_MONTH)
                    AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
-                   AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = :P_COMPANY_ID
-                   AND PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
+                   ------------------------------------------------------  
                  GROUP  
                     BY PAA.ASSIGNMENT_ID,
                        PPF.ATTRIBUTE1,
@@ -168,5 +238,19 @@
                        PPA.DATE_EARNED,
                        PAA.TAX_UNIT_ID,
                        PAA.RUN_TYPE_ID,
-                       PPF.PERIOD_TYPE;
-                      
+                       PPF.PERIOD_TYPE
+                      )  DETAIL,
+                         PAY_CONSOLIDATION_SETS     PCS,
+                         PER_ALL_ASSIGNMENTS_F      PAAF
+         WHERE 1 = 1
+--           AND PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID) IN ('1998')
+           AND PCS.CONSOLIDATION_SET_ID = DETAIL.CONSOLIDATION_SET_ID
+           AND PAAF.ASSIGNMENT_ID = DETAIL.ASSIGNMENT_ID
+           AND PAAF.PAYROLL_ID = DETAIL.PAYROLL_ID
+           AND DETAIL.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE 
+                                         AND PAAF.EFFECTIVE_END_DATE
+           AND PAAF.PERSON_ID = NVL(P_PERSON_ID, PAAF.PERSON_ID)
+         GROUP 
+            BY PAAF.PERSON_ID
+         ORDER 
+            BY TO_NUMBER(NUMERO_EMPLEADO);                             
