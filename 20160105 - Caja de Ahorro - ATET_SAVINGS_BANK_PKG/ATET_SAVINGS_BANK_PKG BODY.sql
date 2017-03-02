@@ -11359,6 +11359,40 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_loan_amount_validate        NUMBER;
         var_interest_amount             NUMBER;
         var_interest_amount_validate    NUMBER;
+        var_loan_total_amount           NUMBER;
+        
+        var_assignment_id               NUMBER;
+        var_member_period_type          VARCHAR2(50);
+        var_payroll_id                  NUMBER;
+        var_term_periods                NUMBER;
+        
+        CURSOR DETAILS (P_PAYROLL_ID    NUMBER,
+                        P_TERM_PERIODS  NUMBER)
+            IS
+        SELECT PAYROLL_ID,
+               TIME_PERIOD_ID,
+               END_DATE,
+               PERIOD_NAME,
+               PERIOD_NUM,
+               PERIOD_SEQUENCE
+          FROM (SELECT PAYROLL_ID,
+                       TIME_PERIOD_ID,
+                       END_DATE,
+                       PERIOD_NAME,
+                       PERIOD_NUM,
+                       ROW_NUMBER ()
+                       OVER (PARTITION 
+                                    BY PAYROLL_ID 
+                                 ORDER 
+                                    BY END_DATE)
+                       PERIOD_SEQUENCE
+                  FROM PER_TIME_PERIODS
+                 WHERE PAYROLL_ID = P_PAYROLL_ID
+                   AND (    END_DATE > (SYSDATE)
+                        AND END_DATE > (SYSDATE))
+                 ORDER 
+                    BY END_DATE)
+          WHERE PERIOD_SEQUENCE <= P_TERM_PERIODS;
         
         LOAN_AMOUNT_EX                  EXCEPTION;
         INTEREST_AMOUNT_EX              EXCEPTION;
@@ -11386,12 +11420,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                                AND ASP.PARAMETER_CODE = 'INT_RATE_SAV'
                                                                AND ASP.SAVING_BANK_ID = GET_SAVING_BANK_ID) * 4)
                 END)                                INTERES,
-               ASL.LOAN_INTEREST_AMOUNT
+               ASL.LOAN_INTEREST_AMOUNT,
+               ASL.LOAN_TOTAL_AMOUNT
           INTO var_member_id,
                var_loan_amount_validate,
                var_loan_amount,
                var_interest_amount_validate,
-               var_interest_amount
+               var_interest_amount,
+               var_loan_total_amount
           FROM ATET_SB_MEMBERS              ASM,
                ATET_SB_LOANS                ASL
          WHERE 1 = 1
@@ -11402,12 +11438,110 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
            AND ASL.LOAN_ID = P_LOAN_ID;
     
         IF var_loan_amount = var_loan_amount_validate AND var_interest_amount = var_interest_amount_validate THEN
-            NULL;
+            
+            CREATE_ACCOUNT(GET_PERSON_ID(var_member_id), 
+                           'LOAN_ELEMENT_NAME', 
+                           'LOAN_SAV_CODE_COMB');
+                           
+            SET_LOAN_BALANCE(P_LOAN_ID, 
+                             var_loan_total_amount, 
+                             GET_PERSON_ID(var_member_id));			
+                             
+            SELECT PAF.ASSIGNMENT_ID,
+                   PPF.PERIOD_TYPE,
+                   PPF.PAYROLL_ID
+              INTO var_assignment_id,
+                   var_member_period_type,
+                   var_payroll_id
+              FROM PER_ASSIGNMENTS_F    PAF,
+                   PAY_PAYROLLS_F       PPF
+             WHERE 1 = 1
+               AND PAF.PAYROLL_ID = PPF.PAYROLL_ID
+               AND PAF.PERSON_ID = GET_PERSON_ID(var_member_id)
+               AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
+               AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
+               
+            IF    var_member_period_type IN ('Week', 'Semana') THEN
+                var_term_periods := 4 * P_TERM_PERIODS;
+            ELSIF var_member_period_type IN ('Semi-Month', 'Quincena') THEN
+                var_term_periods := 2 * P_TERM_PERIODS;
+            END IF;                                                                                
+        
+            DECLARE
+                var_index                   NUMBER := 0;
+                var_opening_balance         NUMBER := var_interest_amount;
+                var_payment_amount          NUMBER;
+                var_payment_interest        NUMBER;
+                var_final_balance           NUMBER;
+                var_accrual_payment_amount  NUMBER;
+            BEGIN
+                FOR detail IN DETAILS(var_payroll_id, var_term_periods) LOOP
+                    
+                    IF var_index = var_term_periods THEN
+                        NULL;
+                    ELSE
+                        NULL;
+                    END IF;    
+                    
+                    INSERT
+                      INTO ATET_SB_PAYMENTS_SCHEDULE 
+                            (
+                                LOAN_ID,
+                                PAYMENT_NUMBER,
+                                PERIOD_NUMBER,
+                                TIME_PERIOD_ID,
+                                PERIOD_NAME,
+                                PAYMENT_DATE,
+                                PAYROLL_ID,
+                                ASSIGNMENT_ID,
+                                OPENING_BALANCE,
+                                PAYMENT_AMOUNT,
+                                PAYMENT_CAPITAL,
+                                PAYMENT_INTEREST,
+                                PAYMENT_INTEREST_LATE,
+                                FINAL_BALANCE,
+                                ACCRUAL_PAYMENT_AMOUNT,
+                                STATUS_FLAG,
+                                CREATION_DATE,
+                                CREATED_BY,
+                                LAST_UPDATE_DATE,
+                                LAST_UPDATED_BY
+                            )
+                      VALUES
+                            (   
+                                P_LOAN_ID,
+                                detail.PERIOD_SEQUENCE,
+                                detail.PERIOD_NUM,
+                                detail.TIME_PERIOD_ID,
+                                detail.PERIOD_NAME,
+                                detail.END_DATE,
+                                var_payroll_id,
+                                var_assignment_id,
+                                var_opening_balance,
+                                var_payment_amount,
+                                0,
+                                var_payment_interest,
+                                0,
+                                var_final_balance,
+                                var_accrual_payment_amount,
+                                'PENDING',
+                                SYSDATE,
+                                FND_GLOBAL.USER_ID,
+                                SYSDATE,
+                                FND_GLOBAL.USER_ID
+                            );
+                
+                    var_index := var_index +1;
+                END LOOP;
+            END;
+        
         ELSIF var_loan_amount <> var_loan_amount_validate THEN
             RAISE LOAN_AMOUNT_EX;
         ELSIF var_interest_amount <> var_interest_amount_validate THEN
             RAISE INTEREST_AMOUNT_EX;
-        END IF;       
+        END IF; 
+        
+        COMMIT;      
            
     EXCEPTION 
         WHEN LOAN_AMOUNT_EX THEN
@@ -11418,7 +11552,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             P_RETCODE := 1;
             P_ERRBUF := 'El importe de intereses no es el correspondiente de 4 meses de plazo.';
             ROLLBACK;
-            
     END LOAN_REPAYMENT;
 
 END ATET_SAVINGS_BANK_PKG;
