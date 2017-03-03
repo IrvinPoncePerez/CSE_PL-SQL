@@ -11393,6 +11393,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                  ORDER 
                     BY END_DATE)
           WHERE PERIOD_SEQUENCE <= P_TERM_PERIODS;
+          
+        CURSOR ENDORSEMENTS 
+            IS
+        SELECT ASE.ENDORSEMENT_ID
+          FROM ATET_SB_ENDORSEMENTS     ASE
+         WHERE 1 = 1
+           AND ASE.LOAN_ID = P_LOAN_ID;
         
         LOAN_AMOUNT_EX                  EXCEPTION;
         INTEREST_AMOUNT_EX              EXCEPTION;
@@ -11434,7 +11441,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
            AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID
            AND ASM.IS_SAVER = 'Y'
            AND ASM.MEMBER_ID = ASL.MEMBER_ID
-           AND ASL.LOAN_STATUS_FLAG = 'ENTERED'
+           AND ASL.LOAN_STATUS_FLAG = 'APPROVED'
            AND ASL.LOAN_ID = P_LOAN_ID;
     
         IF var_loan_amount = var_loan_amount_validate AND var_interest_amount = var_interest_amount_validate THEN
@@ -11443,10 +11450,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                            'LOAN_ELEMENT_NAME', 
                            'LOAN_SAV_CODE_COMB');
                            
+                           
+                           
             SET_LOAN_BALANCE(P_LOAN_ID, 
                              var_loan_total_amount, 
                              GET_PERSON_ID(var_member_id));			
-                             
+                           
+            
+              
             SELECT PAF.ASSIGNMENT_ID,
                    PPF.PERIOD_TYPE,
                    PPF.PAYROLL_ID
@@ -11460,6 +11471,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                AND PAF.PERSON_ID = GET_PERSON_ID(var_member_id)
                AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
                AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE;
+            
+            
                
             IF    var_member_period_type IN ('Week', 'Semana') THEN
                 var_term_periods := 4 * P_TERM_PERIODS;
@@ -11467,8 +11480,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 var_term_periods := 2 * P_TERM_PERIODS;
             END IF;                                                                                
         
+        
+        
             DECLARE
-                var_index                   NUMBER := 0;
+                var_index                   NUMBER := 1;
                 var_opening_balance         NUMBER := var_interest_amount;
                 var_payment_amount          NUMBER;
                 var_payment_interest        NUMBER;
@@ -11477,10 +11492,30 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             BEGIN
                 FOR detail IN DETAILS(var_payroll_id, var_term_periods) LOOP
                     
-                    IF var_index = var_term_periods THEN
-                        NULL;
+                    IF    var_index = 1 THEN
+                    
+                        var_opening_balance := var_interest_amount;
+                        var_payment_amount := TRUNC((var_interest_amount / var_term_periods), 2);
+                        var_payment_interest := var_payment_amount;
+                        var_final_balance := var_opening_balance - var_payment_amount;
+                        var_accrual_payment_amount := var_payment_amount;
+                        
+                    ELSIF var_index = var_term_periods THEN
+                        
+                        var_opening_balance := var_final_balance;
+                        var_payment_amount := var_final_balance;
+                        var_payment_interest := var_payment_amount;
+                        var_final_balance := var_opening_balance - var_payment_amount;
+                        var_accrual_payment_amount := var_accrual_payment_amount + var_payment_amount; 
+                    
                     ELSE
-                        NULL;
+                        
+                        var_opening_balance := var_final_balance;
+                        var_payment_amount := TRUNC((var_interest_amount / var_term_periods), 2);
+                        var_payment_interest := var_payment_amount;
+                        var_final_balance := var_opening_balance - var_payment_amount;
+                        var_accrual_payment_amount := var_accrual_payment_amount + var_payment_amount; 
+                    
                     END IF;    
                     
                     INSERT
@@ -11534,6 +11569,31 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     var_index := var_index +1;
                 END LOOP;
             END;
+            
+            
+            UPDATE ATET_SB_LOANS    ASL
+               SET ASL.LOAN_STATUS_FLAG = 'ACTIVE'
+             WHERE 1 = 1
+               AND ASL.LOAN_ID = P_LOAN_ID;
+               
+               
+            UPDATE ATET_SB_MEMBERS  ASM
+               SET ASM.IS_BORROWER = 'Y'
+             WHERE 1 = 1
+               AND ASM.MEMBER_ID = var_member_id;
+               
+            
+            FOR detail IN ENDORSEMENTS LOOP
+            
+                UPDATE ATET_SB_MEMBERS  ASM
+                   SET ASM.IS_ENDORSEMENT = 'Y'
+                 WHERE 1 = 1
+                   AND ASM.MEMBER_ID = detail.ENDORSEMENT_ID; 
+            
+            END LOOP;
+            
+            
+            
         
         ELSIF var_loan_amount <> var_loan_amount_validate THEN
             RAISE LOAN_AMOUNT_EX;
