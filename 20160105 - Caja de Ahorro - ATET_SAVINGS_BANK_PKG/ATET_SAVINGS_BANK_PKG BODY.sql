@@ -11366,6 +11366,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_payroll_id                  NUMBER;
         var_term_periods                NUMBER;
         
+        var_member_account_id           NUMBER;
+        var_credit_balance              NUMBER;
+        var_debit_balance               NUMBER;
+        var_final_balance               NUMBER;
+        
+        var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
+        
         CURSOR DETAILS (P_PAYROLL_ID    NUMBER,
                         P_TERM_PERIODS  NUMBER)
             IS
@@ -11403,6 +11410,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         
         LOAN_AMOUNT_EX                  EXCEPTION;
         INTEREST_AMOUNT_EX              EXCEPTION;
+        PRINT_PREPAID_EX                EXCEPTION;
         
     BEGIN
         SELECT ASM.MEMBER_ID,
@@ -11561,20 +11569,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                 var_accrual_payment_amount,
                                 'PENDING',
                                 SYSDATE,
-                                FND_GLOBAL.USER_ID,
+                                var_user_id,
                                 SYSDATE,
-                                FND_GLOBAL.USER_ID
+                                var_user_id
                             );
                 
                     var_index := var_index +1;
                 END LOOP;
             END;
-            
-            
-            UPDATE ATET_SB_LOANS    ASL
-               SET ASL.LOAN_STATUS_FLAG = 'ACTIVE'
-             WHERE 1 = 1
-               AND ASL.LOAN_ID = P_LOAN_ID;
                
                
             UPDATE ATET_SB_MEMBERS  ASM
@@ -11593,7 +11595,96 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             END LOOP;
             
             
+            SELECT ASMA.MEMBER_ACCOUNT_ID,
+                   ASMA.CREDIT_BALANCE,
+                   ASMA.DEBIT_BALANCE,
+                   ASMA.FINAL_BALANCE
+              INTO var_member_account_id,
+                   var_credit_balance,
+                   var_debit_balance,
+                   var_final_balance
+              FROM ATET_SB_MEMBERS_ACCOUNTS     ASMA
+             WHERE 1 = 1
+               AND ASMA.MEMBER_ID = var_member_id
+               AND ASMA.LOAN_ID = P_LOAN_ID; 
             
+            
+            INSERT 
+              INTO ATET_SB_LOANS_TRANSACTIONS
+                (
+                    MEMBER_ACCOUNT_ID,
+                    MEMBER_ID,
+                    PAYROLL_RESULT_ID,
+                    LOAN_ID,
+                    PERSON_ID,
+                    EARNED_DATE,
+                    PERIOD_NAME,
+                    ELEMENT_NAME,
+                    TRANSACTION_CODE,
+                    DEBIT_AMOUNT,
+                    CREDIT_AMOUNT,
+                    ACCOUNTED_FLAG,
+                    CREATION_DATE,
+                    CREATED_BY,
+                    LAST_UPDATE_DATE,
+                    LAST_UPDATED_BY
+                )
+                VALUES
+                (
+                    var_member_account_id,
+                    var_member_id,
+                    -1,
+                    P_LOAN_ID,
+                    GET_PERSON_ID(var_member_id),
+                    TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                    'DEVOLUCION',
+                    'PAGO ANTICIPADO',
+                    'REPAYMENT_LOAN',
+                    0,
+                    var_loan_amount,
+                    'ACCOUNTED',
+                    SYSDATE,
+                    var_user_id,
+                    SYSDATE,
+                    var_user_id
+                );
+                
+
+            UPDATE ATET_SB_MEMBERS_ACCOUNTS
+               SET DEBIT_BALANCE = DEBIT_BALANCE + 0,
+                   CREDIT_BALANCE = CREDIT_BALANCE + var_loan_amount,
+                   LAST_TRANSACTION_DATE = SYSDATE               
+             WHERE MEMBER_ID = var_member_id
+               AND MEMBER_ACCOUNT_ID = var_member_account_id
+               AND LOAN_ID = P_LOAN_ID;
+               
+               
+            UPDATE ATET_SB_MEMBERS_ACCOUNTS
+               SET FINAL_BALANCE = DEBIT_BALANCE - CREDIT_BALANCE,
+                   LAST_UPDATE_DATE = SYSDATE,
+                   LAST_UPDATED_BY = var_user_id             
+             WHERE MEMBER_ID = var_member_id
+               AND MEMBER_ACCOUNT_ID = var_member_account_id
+               AND LOAN_ID = P_LOAN_ID; 
+               
+               
+            UPDATE ATET_SB_LOANS ASL
+               SET ASL.LOAN_BALANCE = ASL.LOAN_BALANCE - var_loan_amount,
+                   ASL.LAST_PAYMENT_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                   ASL.LOAN_STATUS_FLAG = 'ACTIVE',
+                   ASL.LAST_UPDATE_DATE = SYSDATE,
+                   ASL.LAST_UPDATED_BY = var_user_id
+             WHERE 1 = 1
+               AND ASL.LOAN_ID = var_loan_id;
+        
+        
+            BEGIN
+                NULL;        
+            EXCEPTION 
+                WHEN OTHERS THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                    RAISE PRINT_PREPAID_EX;
+            END;               
         
         ELSIF var_loan_amount <> var_loan_amount_validate THEN
             RAISE LOAN_AMOUNT_EX;
@@ -11611,6 +11702,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         WHEN INTEREST_AMOUNT_EX THEN
             P_RETCODE := 1;
             P_ERRBUF := 'El importe de intereses no es el correspondiente de 4 meses de plazo.';
+            ROLLBACK;
+        WHEN PRINT_PREPAID_EX THEN
+            P_RETCODE := 1;
+            P_ERRBUF := 'Error al realizar la impresión del recibo de pago anticipado';
             ROLLBACK;
     END LOAN_REPAYMENT;
 
