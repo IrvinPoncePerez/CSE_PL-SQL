@@ -333,7 +333,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
                                               'P080_FONDO AHORRO TR ACUM',
                                               'P017_PRIMA DE ANTIGUEDAD',
-                                              'P032_SUBSIDIO_PARA_EMPLEO',
                                               'P047_ISPT ANUAL A FAVOR',
                                               'P026_INDEMNIZACION')
                    AND PETF.ELEMENT_NAME NOT IN (CASE 
@@ -977,7 +976,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DIAPAG  ' || DETAIL(rowIndex).NOM_DIAPAG);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TOTPER  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TOTDED  ' || TO_CHAR((DETAIL(rowIndex).ISRRET + DETAIL(rowIndex).MONDET), '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, '!NOM_TOTPAG  ' || TO_CHAR(DETAIL(rowIndex).SUBEMP, '9999990D99'));
+                        IF DETAIL(rowIndex).SUBEMP <> 0 THEN
+                            UTL_FILE.PUT_LINE(var_file, 'NOM_TOTPAG  ' || TO_CHAR(DETAIL(rowIndex).SUBEMP, '9999990D99'));
+                        END IF;
                         
                         /****************************************************************/
                         /**                     DATOS DE RECEPTOR                       */
@@ -1003,12 +1004,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'NOM_REGPAT  ' || DETAIL(rowIndex).NOM_REGPAT);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TIPSAL  MIXTO');
                         UTL_FILE.PUT_LINE(var_file, 'NOM_CVENOM  ' || DETAIL(rowIndex).NOM_CVENOM);
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTSUL  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTSUL, '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTSUL  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTSEP  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTSEP, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTGRA  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTGRA, '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTEXE  ' || TO_CHAR(DETAIL(rowIndex).NOM_PER_TOTEXE, '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, '!NOM_DED_TOTGRA  ' || TO_CHAR(0, '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, '!NOM_DED_TOTEXE  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTGRA  ' || TO_CHAR(0, '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTEXE  ' || TO_CHAR((DETAIL(rowIndex).MONDET + DETAIL(rowIndex).ISRRET), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DESCRI  ' || DETAIL(rowIndex).NOM_DESCRI);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_SINDC   ' || DETAIL(rowIndex).NOM_SINDC);
                     
@@ -1041,7 +1042,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                               WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
                                                                  OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
                                                                 AND MEANING LIKE PETF.ELEMENT_NAME
-                                                                AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
+                                                                AND LANGUAGE = 'ESA'), '038')       AS  NOM_PER_TIP,
                                                         NVL((SELECT DISTINCT
                                                                     TAG
                                                                FROM FND_LOOKUP_VALUES
@@ -1107,7 +1108,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                               WHERE (LOOKUP_TYPE = 'XXCALV_CFDI_SAT_EARNING_CODES'
                                                                  OR  LOOKUP_TYPE = 'XXCALV_CFDI_SAT_DEDUCTION_CODE')
                                                                 AND MEANING LIKE PETF.ELEMENT_NAME
-                                                                AND LANGUAGE = 'ESA'), '016')       AS  NOM_PER_TIP,
+                                                                AND LANGUAGE = 'ESA'), '038')       AS  NOM_PER_TIP,
                                                         NVL((SELECT DISTINCT
                                                                     TAG
                                                                FROM FND_LOOKUP_VALUES
@@ -1264,6 +1265,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             isDEDUC     BOOLEAN;
                             isOTRO      BOOLEAN;
                             
+                            isOTHER     BOOLEAN;
+                            
                             var_extra_days      NUMBER;
                             var_extra_hours     NUMBER;
                             var_extra_pay_value NUMBER;
@@ -1282,6 +1285,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
 --                                        UTL_FILE.PUT_LINE(var_file, 'INIPER');
                                         isPERCEP := TRUE;
                                     END IF;
+                                    
+                                    isOTHER := FALSE;
                                 
                                     UTL_FILE.PUT_LINE(var_file, 'INIPER');
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TIP     ' || PERCEP.NOM_PER_TIP);
@@ -1290,7 +1295,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPGRA  ' || TO_CHAR(PERCEP.NOM_PER_IMPGRA, '9999990D99'));
                                     UTL_FILE.PUT_LINE(var_file, 'NOM_PER_IMPEXE  ' || TO_CHAR(PERCEP.NOM_PER_IMPEXE, '9999990D99'));
                                     
-                                    IF DETAIL(rowIndex).NOM_SINDC <> 'No' AND PERCEP.NOM_PER_DESCRI = 'HORAS EXTRAS' THEN
+                                    IF PERCEP.NOM_PER_DESCRI = 'HORAS EXTRAS' THEN
+                                    
+                                        UTL_FILE.PUT_LINE(var_file, 'FINPER');
+                                        isOTHER := TRUE;
                                     
                                         var_extra_hours := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID,'Hours');
                                         var_extra_pay_value := GET_NOM_HEX_DIAS(ASSIGN.ASSIGNMENT_ACTION_ID, 'Pay Value');
@@ -1308,10 +1316,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_TIP    01');
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_HOR    ' || TO_CHAR(var_extra_hours));
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_IMP    ' || TO_CHAR(var_extra_pay_value, '9999990D99'));
+                                        UTL_FILE.PUT_LINE(var_file, '');
                                     
                                     END IF;
                                     
                                     IF PERCEP.NOM_PER_DESCRI = 'INDEMNIZACION' THEN
+                                    
+                                        UTL_FILE.PUT_LINE(var_file, 'FINPER');
+                                        isOTHER := TRUE;
                                     
                                         var_seniority_years := TRUNC(HR_MX_UTILITY.GET_SENIORITY_SOCIAL_SECURITY(DETAIL(rowIndex).PERSON_ID, SYSDATE));
                                         var_proposed_salary := GET_PROPOSED_SALARY(DETAIL(rowIndex).ASSIGNMENT_ID);
@@ -1321,11 +1333,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_ANIO       ' || TO_CHAR(var_seniority_years));
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_UTLSUE     ' || TO_CHAR(var_proposed_salary, '9999990D99'));
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_INGACUM    ');
-                                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_INGNO      ');    
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_PER_INGNO      '); 
+                                        UTL_FILE.PUT_LINE(var_file, '');   
                                     
                                     END IF;
                                     
-                                    UTL_FILE.PUT_LINE(var_file, 'FINPER');
+                                    IF isOTHER = FALSE THEN
+                                        UTL_FILE.PUT_LINE(var_file, 'FINPER');
+                                    END IF;
                                 
                                 END LOOP;
                             END LOOP;
@@ -1338,7 +1353,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                
                             UTL_FILE.PUT_LINE(var_file, '');
                             UTL_FILE.PUT_LINE(var_file, 'NOM_DED_OTRDED ' || TO_CHAR(DETAIL(rowIndex).MONDET, '9999990D99'));
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTRET ' ||TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
+                            IF DETAIL(rowIndex).ISRRET <> 0 THEN
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTRET ' ||TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
+                            END IF;
                             UTL_FILE.PUT_LINE(var_file, '');
                             
                             FOR ASSIGN IN DETAIL_ASSIGNMENT_ACTION (DETAIL(rowIndex).ASSIGNMENT_ID, DETAIL(rowIndex).PAYROLL_ACTION_ID) LOOP                            
