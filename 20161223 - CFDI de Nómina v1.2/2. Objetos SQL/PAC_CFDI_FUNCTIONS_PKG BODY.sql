@@ -195,7 +195,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
-        RETURN 0;
+        RETURN NULL;
     END GET_DIAPAG;
     
     /*
@@ -572,7 +572,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      END)                                                                           AS  NOM_FECINI,
                     PTP.END_DATE                                                                    AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  NOM_DIAPAG,
+                    MAX(NVL(GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0.00'))                          AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     (CASE
                         WHEN HOUV.REGION_1 = 'CAMP' THEN 'CAM'
