@@ -7686,7 +7686,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                      AND ASPS.PAYMENT_SCHEDULE_ID = P_PAYMENT_SCHEDULE_ID;
                                      
         UPDATE ATET_SB_PAYMENTS_SCHEDULE    ASPS
-           SET ASPS.STATUS_FLAG = 'REFINANCED',
+           SET ASPS.STATUS_FLAG = 'PAYED',
                ASPS.LAST_UPDATE_DATE = SYSDATE,
                ASPS.LAST_UPDATED_BY = var_user_id
          WHERE 1 = 1 
@@ -11675,7 +11675,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    ASL.LAST_UPDATE_DATE = SYSDATE,
                    ASL.LAST_UPDATED_BY = var_user_id
              WHERE 1 = 1
-               AND ASL.LOAN_ID = var_loan_id;
+               AND ASL.LOAN_ID = P_LOAN_ID;
         
         
             BEGIN
