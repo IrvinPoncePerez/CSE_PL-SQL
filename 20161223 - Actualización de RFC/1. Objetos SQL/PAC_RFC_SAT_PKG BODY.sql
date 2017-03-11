@@ -18,6 +18,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_RFC_SAT_PKG AS
         var_name_combination_warning     BOOLEAN;
         var_assign_payroll_warning       BOOLEAN;
         var_orig_hire_warning            BOOLEAN;
+        var_RFC                          VARCHAR2(20) := TRIM(REPLACE(REPLACE(P_RFC, CHR(10), ''), CHR(13), ''));
     BEGIN
     
         SELECT SYSDATE,
@@ -42,7 +43,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_RFC_SAT_PKG AS
               p_person_id                  => var_person_id,
               p_object_version_number      => var_object_version_number,
               p_employee_number            => var_employee_number,
-              p_RFC_id                     => P_RFC,
+              p_RFC_id                     => var_RFC,
               p_effective_start_date       => var_effective_start_date,
               p_effective_end_date         => var_effective_end_date,
               p_full_name                  => var_full_name,
@@ -86,7 +87,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_RFC_SAT_PKG AS
         
         CURSOR DETAILS IS
             SELECT PURT.EMPLOYEE_NUMBER,
-                   PURT.EMPLOYEE_NAME,
                    PURT.RFC
               FROM PAC_UPDATE_RFC_TB    PURT;
                   
@@ -130,8 +130,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_RFC_SAT_PKG AS
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '');
                 FND_FILE.PUT_LINE(FND_FILE.LOG, 'XXCALV - Actualización de RFC SAT (Por Empleado)');
                 FND_FILE.PUT_LINE(FND_FILE.LOG, 'Parámetros : ' || TO_CHAR(RFC.EMPLOYEE_NUMBER)
-                                                                || ', '  
-                                                                || TO_CHAR(RFC.EMPLOYEE_NAME)
                                                                 || ', '
                                                                 || TO_CHAR(RFC.RFC));
                 FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
