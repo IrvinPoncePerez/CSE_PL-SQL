@@ -1314,7 +1314,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         UTL_FILE.PUT_LINE(var_file, '');
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_DIAS   ' || TO_CHAR(var_extra_days));
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_TIP    01');
-                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_HOR    ' || TO_CHAR(var_extra_hours));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_HOR    ' || TO_CHAR(ROUND(var_extra_hours)));
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_HEX_IMP    ' || TO_CHAR(var_extra_pay_value, '9999990D99'));
                                         UTL_FILE.PUT_LINE(var_file, '');
                                     
