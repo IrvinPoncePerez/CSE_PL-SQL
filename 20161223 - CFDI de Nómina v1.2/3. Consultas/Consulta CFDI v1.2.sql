@@ -65,7 +65,7 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                      END)                                                                           AS  NOM_FECINI,
                     PTP.END_DATE                                                                    AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  NOM_DIAPAG,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0.00'))                          AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     (CASE
                         WHEN HOUV.REGION_1 = 'CAMP' THEN 'CAM'
@@ -198,6 +198,26 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                    AND PPA.EFFECTIVE_DATE BETWEEN PRTX.EFFECTIVE_START_DATE AND PRTX.EFFECTIVE_END_DATE
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
                    AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%%'
+                   AND (    (CASE
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN  
+                                    PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID)
+                                ELSE 1
+                            END) <> 0
+                        OR  (CASE 
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN
+                                    PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID)
+                                ELSE 1        
+                            END) <> 0
+                        OR  (CASE 
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN
+                                    PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID)
+                                ELSE 1
+                            END) <> 0)
+                   AND (CASE
+                            WHEN PCS.CONSOLIDATION_SET_NAME IN ('NORMAL') THEN
+                                PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID)
+                            ELSE 1
+                        END) <> 0
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
