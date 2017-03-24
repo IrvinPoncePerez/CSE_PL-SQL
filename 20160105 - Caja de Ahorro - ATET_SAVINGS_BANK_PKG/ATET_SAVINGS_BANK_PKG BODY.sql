@@ -11355,6 +11355,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     P_TERM_PERIODS  NUMBER)
     IS
         var_member_id                   NUMBER;
+        var_employee_number             NUMBER;
+        var_employee_full_name          VARCHAR2(1000);
+        var_loan_number                 NUMBER;
         var_loan_amount                 NUMBER;
         var_loan_amount_validate        NUMBER;
         var_interest_amount             NUMBER;
@@ -11372,6 +11375,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_final_balance               NUMBER;
         
         var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
+        
+        var_prepaid_seq                 NUMBER;
+        
+        var_loan_transaction_id         NUMBER;
+        
+        var_header_id                   NUMBER;
+        var_not_rec_sav_code_comb       VARCHAR2(500);
+        var_not_rec_sav_account_id      NUMBER;
+        var_une_int_code_comb           VARCHAR2(500);
+        var_une_int_account_id          NUMBER;
         
         CURSOR DETAILS (P_PAYROLL_ID    NUMBER,
                         P_TERM_PERIODS  NUMBER)
@@ -11411,9 +11424,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         LOAN_AMOUNT_EX                  EXCEPTION;
         INTEREST_AMOUNT_EX              EXCEPTION;
         PRINT_PREPAID_EX                EXCEPTION;
+        CREATE_JOURNAL_EX               EXCEPTION;
         
     BEGIN
         SELECT ASM.MEMBER_ID,
+               ASM.EMPLOYEE_NUMBER,
+               ASM.EMPLOYEE_FULL_NAME,
+               ASL.LOAN_NUMBER,
                (CASE
                     WHEN ASM.ATTRIBUTE6 = 'Week' THEN
                         (ASM.AMOUNT_TO_SAVE * 4) * 4
@@ -11438,6 +11455,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                ASL.LOAN_INTEREST_AMOUNT,
                ASL.LOAN_TOTAL_AMOUNT
           INTO var_member_id,
+               var_employee_number,
+               var_employee_full_name,
+               var_loan_number,
                var_loan_amount_validate,
                var_loan_amount,
                var_interest_amount_validate,
@@ -11623,6 +11643,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     TRANSACTION_CODE,
                     DEBIT_AMOUNT,
                     CREDIT_AMOUNT,
+                    ENTRY_VALUE,
                     ACCOUNTED_FLAG,
                     CREATION_DATE,
                     CREATED_BY,
@@ -11637,10 +11658,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     P_LOAN_ID,
                     GET_PERSON_ID(var_member_id),
                     TO_DATE(SYSDATE, 'DD/MM/RRRR'),
-                    'DEVOLUCION',
+                    'PAGO ANTICIPADO',
                     'PAGO ANTICIPADO',
                     'REPAYMENT_LOAN',
                     0,
+                    var_loan_amount,
                     var_loan_amount,
                     'ACCOUNTED',
                     SYSDATE,
@@ -11649,6 +11671,17 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     var_user_id
                 );
                 
+                
+            SELECT ASLT.LOAN_TRANSACTION_ID
+              INTO var_loan_transaction_id
+              FROM ATET_SB_LOANS_TRANSACTIONS   ASLT
+             WHERE 1 = 1
+               AND MEMBER_ACCOUNT_ID = var_member_account_id
+               AND MEMBER_ID = var_member_id
+               AND LOAN_ID = P_LOAN_ID
+               AND PERIOD_NAME = 'PAGO ANTICIPADO'
+               AND TRANSACTION_CODE = 'REPAYMENT_LOAN';
+                                   
 
             UPDATE ATET_SB_MEMBERS_ACCOUNTS
                SET DEBIT_BALANCE = DEBIT_BALANCE + 0,
@@ -11679,20 +11712,101 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         
         
             BEGIN
-                NULL;        
+                
+                SELECT ATET_SB_PREPAID_SEQ.NEXTVAL
+                  INTO var_prepaid_seq
+                  FROM DUAL;
+                      
+                PRINT_PREPAID
+                    (
+                        P_LOAN_ID => P_LOAN_ID, 
+                        P_FOLIO => var_prepaid_seq,
+                        P_BONUS => 0,
+                        P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
+                    );
+                    
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
+                
             EXCEPTION 
                 WHEN OTHERS THEN
                     FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
                     RAISE PRINT_PREPAID_EX;
-            END;               
+            END;          
+            
+            
+            BEGIN
+                
+                ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER
+                    (
+                        P_ENTITY_CODE       => 'LOANS',
+                        P_EVENT_TYPE_CODE   => 'REPAYMENT_LOAN',
+                        P_BATCH_NAME        => 'DEVOLUCION DE PRESTAMO CON COBRO DE INTERESES',
+                        P_JOURNAL_NAME      => 'PRESTAMO CAJA DE AHORRO A: ' || var_employee_number || '-' || var_employee_full_name,
+                        P_HEADER_ID         => var_header_id
+                    );
+                    
+                    
+                var_not_rec_sav_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'NOT_REC_SAV_CODE_COMB');
+                var_une_int_code_comb := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'UNE_INT_CODE_COMB');
+                
+                var_not_rec_sav_account_id := GET_CODE_COMBINATION_ID(var_not_rec_sav_code_comb);
+                var_une_int_account_id := GET_CODE_COMBINATION_ID(var_une_int_code_comb);
+                
+                    
+                ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES 
+                    (
+                        P_HEADER_ID               => var_header_id,
+                        P_ROW_NUMBER              => 1,
+                        P_CODE_COMBINATION_ID     => var_not_rec_sav_account_id,
+                        P_ACCOUNTING_CLASS_CODE   => 'LOAN_CREATION',
+                        P_ACCOUNTED_DR            => var_loan_total_amount,
+                        P_ACCOUNTED_CR            => 0,
+                        P_DESCRIPTION             => 'PRESTAMO A: ' || var_employee_full_name ||  ' ' || var_loan_number,
+                        P_SOURCE_ID               => P_LOAN_ID,
+                        P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS'
+                    );
+
+               ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES 
+                    (
+                        P_HEADER_ID               => var_header_id,
+                        P_ROW_NUMBER              => 2,
+                        P_CODE_COMBINATION_ID     => var_not_rec_sav_account_id,
+                        P_ACCOUNTING_CLASS_CODE   => 'REPAYMENT_LOAN',
+                        P_ACCOUNTED_DR            => 0,
+                        P_ACCOUNTED_CR            => var_loan_amount,
+                        P_DESCRIPTION             => 'DEVOLUCION DE PRESTAMO: ' || var_employee_full_name ||  ' ' || var_loan_number,
+                        P_SOURCE_ID               => var_loan_transaction_id,
+                        P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS_TRANSACTIONS'
+                    );
+
+
+               ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES 
+                    (
+                        P_HEADER_ID               => var_header_id,
+                        P_ROW_NUMBER              => 3,
+                        P_CODE_COMBINATION_ID     => var_une_int_account_id,
+                        P_ACCOUNTING_CLASS_CODE   => 'LOAN_INTEREST',
+                        P_ACCOUNTED_DR            => 0,
+                        P_ACCOUNTED_CR            => var_interest_amount,
+                        P_DESCRIPTION             => 'INTERESES DEL PRESTAMO: ' || var_loan_number,
+                        P_SOURCE_ID               => P_LOAN_ID,
+                        P_SOURCE_LINK_TABLE       => 'ATET_SB_LOANS'
+                    );
+            
+            EXCEPTION 
+                WHEN OTHERS THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                    RAISE CREATE_JOURNAL_EX;
+            END; 
+            
+            COMMIT;
+            ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;    
         
         ELSIF var_loan_amount <> var_loan_amount_validate THEN
             RAISE LOAN_AMOUNT_EX;
         ELSIF var_interest_amount <> var_interest_amount_validate THEN
             RAISE INTEREST_AMOUNT_EX;
         END IF; 
-        
-        COMMIT;      
            
     EXCEPTION 
         WHEN LOAN_AMOUNT_EX THEN
