@@ -1,3 +1,6 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+
+
 SELECT /*+ LEADING(PAPF, PAAF, PPF, PPA, PTP, PPG, HAPF, PPD, HOU, PAA, PRR, PRRV) */ 
        FLV_C.LOOKUP_CODE                    AS  COMPANIA_CLAVE,
        FLV_C.MEANING                        AS  COMPANIA_NOMBRE,  
@@ -5,30 +8,46 @@ SELECT /*+ LEADING(PAPF, PAAF, PPF, PPA, PTP, PPG, HAPF, PPD, HOU, PAA, PRR, PRR
        FFVT_A.DESCRIPTION                   AS  AREA_NOMBRE,  
        FFV_G.FLEX_VALUE                     AS  GERENCIA_CLAVE,
        FFVT_G.DESCRIPTION                   AS  GERENCIA_NOMBRE,
-       FFV_D.FLEX_VALUE                     AS  DEPARTAMENTO_CLAVE,
-       FFVT_D.DESCRIPTION                   AS  DEPARTAMENTO_NOMBRE,
-       FFV_CC.FLEX_VALUE                    AS  CENTRO_COSTOS_CLAVE,
-       FFVT_CC.DESCRIPTION                  AS  CENTRO_COSTOS_NOMBRE,  
-       PPF.PERIOD_TYPE                      AS  PERIODO_TIPO,
-       (PTP.END_DATE+1) - PTP.START_DATE    AS  PERIODO_DIAS,
-       PPA.EFFECTIVE_DATE                   AS  PERIODO_FECHA,
-       PAPF.EMPLOYEE_NUMBER                 AS  EMPLEADO_NUMERO,    
-       PAPF.FULL_NAME                       AS  EMPLEADO_NOMBRE,
-       PAPF.SEX                             AS  EMPLEADO_SEXO,
-       PAPF.DATE_OF_BIRTH                   AS  EMPLEADO_FECHA_NACIMIENTO,
+       FFV_D.FLEX_VALUE                     AS  DEPTO_CLAVE,
+       FFVT_D.DESCRIPTION                   AS  DEPTO_NOMBRE,
+       FFV_CC.FLEX_VALUE                    AS  CCOSTO_CLAVE,
+       FFVT_CC.DESCRIPTION                  AS  CCOSTO_NOMBRE,  
+       PPD.SEGMENT3                         AS  PUESTO_CLAVE,
+       PPD.SEGMENT2                         AS  PUESTO_DEPTO,
+       PPD.SEGMENT1                         AS  PUESTO_NOMBRE,
+       PCS.CONSOLIDATION_SET_NAME           AS  "NOMINA_CONCEPTO",
        (CASE
             WHEN PETF.ELEMENT_NAME LIKE 'D0%' OR
                  PETF.ELEMENT_NAME LIKE 'P0%' THEN
                  SUBSTR(PETF.ELEMENT_NAME, 0, 4)
             ELSE PETF.ELEMENT_NAME
-        END)                                AS  NOMINA_CLAVE,
+        END)                                AS  "NOMINA_CLAVE",
        (CASE
             WHEN PETF.ELEMENT_NAME LIKE 'D0%' OR
                  PETF.ELEMENT_NAME LIKE 'P0%' THEN
                  SUBSTR(PETF.ELEMENT_NAME, 6)
             ELSE PETF.ELEMENT_NAME
-        END)                                AS  NOMINA_CONCEPTO,
-       PRRV.RESULT_VALUE                    AS  NOMINA_MONTO
+        END)                                AS  NOMINA_ELEMENTO,
+       PPA.EFFECTIVE_DATE                   AS  NOMINA_FECHA,
+       PPF.PERIOD_TYPE                      AS  NOMINA_TIPOPERIODO,
+       (PTP.END_DATE+1) - PTP.START_DATE    AS  NOMINA_DIAS,
+       PAPF.EMPLOYEE_NUMBER                 AS  EMPLEADO_NUMERO,    
+       PAPF.FULL_NAME                       AS  EMPLEADO_NOMBRE,
+       PAPF.SEX                             AS  EMPLEADO_SEXO,
+       PAPF.DATE_OF_BIRTH                   AS  EMPLEADO_FNACIMIENTO,
+       SUM(PRRV.RESULT_VALUE)               AS  NOMINA_MONTO,
+       (SELECT SUM(PPP.VALUE)
+          FROM PAY_PAYROLL_ACTIONS          PPA_PP,
+               PAY_ASSIGNMENT_ACTIONS       PAA_PP,
+               PAY_PRE_PAYMENTS             PPP
+         WHERE 1 = 1
+           AND PCS.CONSOLIDATION_SET_ID = PPA_PP.CONSOLIDATION_SET_ID
+           AND PPA.EFFECTIVE_DATE = PPA_PP.EFFECTIVE_DATE
+           AND PPA_PP.PAYROLL_ACTION_ID = PAA_PP.PAYROLL_ACTION_ID
+           AND PAA_PP.ASSIGNMENT_ID = PAAF.ASSIGNMENT_ID
+           AND PAA_PP.ASSIGNMENT_ACTION_ID = PPP.ASSIGNMENT_ACTION_ID
+           AND PPA_PP.ACTION_TYPE IN ('P')
+        )                       AS  NOMINA_TOTAL_PAGADO
   FROM PER_ALL_PEOPLE_F             PAPF,
        PER_ALL_ASSIGNMENTS_F        PAAF,
        PAY_ALL_PAYROLLS_F           PPF,
@@ -56,8 +75,12 @@ SELECT /*+ LEADING(PAPF, PAAF, PPF, PPA, PTP, PPG, HAPF, PPD, HOU, PAA, PRR, PRR
        FND_FLEX_VALUES_TL           FFVT_D,
        FND_FLEX_VALUE_SETS          FFVS_CC,
        FND_FLEX_VALUES              FFV_CC,
-       FND_FLEX_VALUES_TL           FFVT_CC
+       FND_FLEX_VALUES_TL           FFVT_CC,
+       PAY_CONSOLIDATION_SETS       PCS
  WHERE 1 = 1
+   AND PAPF.EMPLOYEE_NUMBER = 1730
+   AND PPA.EFFECTIVE_DATE BETWEEN TO_DATE('06/03/2017', 'DD/MM/RRRR')
+                              AND TO_DATE('20/03/2017', 'DD/MM/RRRR')
    AND PAPF.PERSON_ID = PAAF.PERSON_ID
    AND PPF.PAYROLL_ID = PAAF.PAYROLL_ID
    AND PPA.PAYROLL_ID = PPF.PAYROLL_ID
@@ -126,10 +149,32 @@ SELECT /*+ LEADING(PAPF, PAAF, PPF, PPA, PTP, PPG, HAPF, PPD, HOU, PAA, PRR, PRR
    AND FFVT_CC.LANGUAGE = USERENV('LANG')
    AND FFV_CC.ENABLED_FLAG = 'Y'
    AND FFV_CC.FLEX_VALUE = HOU.ATTRIBUTE7
- ORDER
+   AND PCS.CONSOLIDATION_SET_ID = PPA.CONSOLIDATION_SET_ID
+ GROUP
     BY FLV_C.LOOKUP_CODE,
+       FLV_C.MEANING,  
        PPG.SEGMENT1,
+       FFVT_A.DESCRIPTION,  
+       FFV_G.FLEX_VALUE,
+       FFVT_G.DESCRIPTION,
        FFV_D.FLEX_VALUE,
+       FFVT_D.DESCRIPTION,
+       FFV_CC.FLEX_VALUE,
+       FFVT_CC.DESCRIPTION,  
+       PPD.SEGMENT3,
+       PPD.SEGMENT2,
+       PPD.SEGMENT1,
+       PCS.CONSOLIDATION_SET_NAME,
+       PETF.ELEMENT_NAME,
        PPA.EFFECTIVE_DATE,
-       PAPF.EMPLOYEE_NUMBER,
-       PETF.ELEMENT_NAME;
+       PPF.PERIOD_TYPE,
+       PTP.END_DATE,
+       PTP.START_DATE,
+       PAPF.EMPLOYEE_NUMBER,    
+       PAPF.FULL_NAME,
+       PAPF.SEX,
+       PAPF.DATE_OF_BIRTH,
+       PCS.CONSOLIDATION_SET_ID,
+       PAAF.ASSIGNMENT_ID
+ ORDER
+    BY PTP.END_DATE;
