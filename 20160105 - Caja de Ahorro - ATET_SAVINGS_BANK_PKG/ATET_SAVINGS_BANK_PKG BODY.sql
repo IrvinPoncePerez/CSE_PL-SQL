@@ -4522,16 +4522,21 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
          WHERE 1 = 1
            AND ASL.LOAN_ID = P_LOAN_ID;
 
-             
-        MERGE INTO ATET_SB_MEMBERS      ASM
-             USING ATET_SB_ENDORSEMENTS ASE
-                ON (    ASE.LOAN_ID = P_LOAN_ID
-                    AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
-        WHEN MATCHED THEN 
-        UPDATE SET ASM.IS_ENDORSEMENT = 'N',
-                   ASM.LAST_UPDATE_DATE = SYSDATE,
-                   ASM.LAST_UPDATED_BY = var_user_id;     
-        
+         BEGIN             
+            MERGE INTO ATET_SB_MEMBERS      ASM
+                 USING ATET_SB_ENDORSEMENTS ASE
+                    ON (    ASE.LOAN_ID = P_LOAN_ID
+                        AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
+            WHEN MATCHED THEN 
+            UPDATE SET ASM.IS_ENDORSEMENT = 'N',
+                       ASM.LAST_UPDATE_DATE = SYSDATE,
+                       ASM.LAST_UPDATED_BY = var_user_id;
+        EXCEPTION 
+             WHEN OTHERS THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'MERGE AVALES: ' || SQLERRM);
+                RAISE;
+        END;     
+            
                      
         SELECT COUNT(ASL.LOAN_ID)
           INTO var_validate
@@ -4542,17 +4547,26 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
 
 
         IF var_validate = 0 THEN 
-            MERGE INTO ATET_SB_MEMBERS      ASM
-                 USING ATET_SB_ENDORSEMENTS ASE
-                    ON (    ASE.LOAN_ID = P_LOAN_ID
-                        AND ASE.MEMBER_BORROWER_ID = ASM.MEMBER_ID)
-            WHEN MATCHED THEN 
-            UPDATE SET ASM.IS_BORROWER = 'N',
-                       ASM.LAST_UPDATE_DATE = SYSDATE,
-                       ASM.LAST_UPDATED_BY = var_user_id;
+            BEGIN
+                MERGE INTO ATET_SB_MEMBERS      ASM
+                     USING ATET_SB_LOANS        ASL
+                        ON (    ASL.LOAN_ID = P_LOAN_ID
+                            AND ASL.MEMBER_ID = ASM.MEMBER_ID)
+                WHEN MATCHED THEN 
+                UPDATE SET ASM.IS_BORROWER = 'N',
+                           ASM.LAST_UPDATE_DATE = SYSDATE,
+                           ASM.LAST_UPDATED_BY = var_user_id;
+            EXCEPTION 
+             WHEN OTHERS THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'MERGE BORROWER: ' || SQLERRM);
+                RAISE;
+            END;
         END IF;
          
-               
+    EXCEPTION
+        WHEN OTHERS THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+            RAISE;
     END SETTLEMENT_LOAN;
     
     
@@ -6142,7 +6156,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             P_RETCODE := 2;
         WHEN SETTLEMENT_LOAN_EXCEPTION THEN
             ROLLBACK;
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: AL LIQUIDAR EL PRESTAMO.');
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: AL LIQUIDAR EL PRESTAMO.' || SQLERRM);
             P_RETCODE := 2;
         WHEN CREATION_GL_EXCEPTION THEN
             ROLLBACK;
