@@ -511,9 +511,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
              SELECT DISTINCT 
                     PPF.PAYROLL_NAME,
                     (CASE
-                        WHEN FLV1.LOOKUP_CODE = '02' THEN 'CS'
+                        WHEN FLV1.LOOKUP_CODE = '02' THEN 'CSUD'
                         WHEN FLV1.LOOKUP_CODE = '08' THEN 'POGA'
-                        WHEN FLV1.LOOKUP_CODE = '11' THEN 'PAC'
+                        WHEN FLV1.LOOKUP_CODE = '11' THEN 'PACUD'
                      END)                                                                           AS  SERFOL,
                     UPPER(OI.ORG_INFORMATION2)                                                      AS  RFCEMI,
                     UPPER(FLV1.MEANING)                                                             AS  NOMEMI,
