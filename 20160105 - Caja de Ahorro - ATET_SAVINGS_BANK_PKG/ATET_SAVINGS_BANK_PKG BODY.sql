@@ -11836,5 +11836,294 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             P_ERRBUF := 'Error al realizar la impresión del recibo de pago anticipado';
             ROLLBACK;
     END LOAN_REPAYMENT;
+    
+    PROCEDURE   SAVING_CHECK_REPLACEMENT(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_CHECK_ID      NUMBER)
+    IS
+        LN_BANK_ACCOUNT_ID         NUMBER;
+        LC_BANK_ACCOUNT_NAME       VARCHAR2 (150);
+        LC_BANK_ACCOUNT_NUM        VARCHAR2 (150);
+        LC_BANK_NAME               VARCHAR2 (150);
+        LC_CURRENCY_CODE           VARCHAR2 (150);
+        
+        LN_CHECK_NUMBER            NUMBER;
+        LN_CHECK_ID                NUMBER;
+        V_CHECK_ID                 NUMBER;
+        V_CHECK_NUMBER             NUMBER;
+        LN_CHECK_AMOUNT            NUMBER;
+        
+        LN_MEMBER_ID               NUMBER;
+        LC_EMPLOYEE_FULL_NAME      VARCHAR2 (300);
+        
+        INPUT_STRING               VARCHAR2 (200);
+        OUTPUT_STRING              VARCHAR2 (200);
+        ENCRYPTED_RAW              RAW (2000);   -- stores encrypted binary text
+        DECRYPTED_RAW              RAW (2000);   -- stores decrypted binary text
+        NUM_KEY_BYTES              NUMBER := 256 / 8; -- key length 256 bits (32 bytes)
+        KEY_BYTES_RAW              RAW (32);    -- stores 256-bit encryption key
+        ENCRYPTION_TYPE            PLS_INTEGER
+         :=                                           -- total encryption type
+           DBMS_CRYPTO.ENCRYPT_AES256
+            + DBMS_CRYPTO.CHAIN_CBC
+            + DBMS_CRYPTO.PAD_PKCS5;
+            
+        P_ENTITY_CODE              VARCHAR2 (150);
+        P_EVENT_TYPE_CODE          VARCHAR2 (150);
+        P_BATCH_NAME               VARCHAR2 (150);
+        P_JOURNAL_NAME             VARCHAR (150);
+        P_HEADER_ID                NUMBER;
+        LC_BANK_CODE_COMB          NUMBER;
+        
+        v_request_id NUMBER;
+        waiting     BOOLEAN;
+        phase      VARCHAR2(80 BYTE);
+        status     VARCHAR2(80 BYTE);
+        dev_phase  VARCHAR2(80 BYTE);
+        dev_status VARCHAR2(80 BYTE);
+        V_message    VARCHAR2(4000 BYTE);
+    BEGIN
+        BEGIN
+             SELECT BANK_ACCOUNT_ID,
+                    BANK_ACCOUNT_NAME,
+                    BANK_ACCOUNT_NUM,
+                    BANK_NAME,
+                    CURRENCY_CODE
+               INTO LN_BANK_ACCOUNT_ID,
+                    LC_BANK_ACCOUNT_NAME,
+                    LC_BANK_ACCOUNT_NUM,
+                    LC_BANK_NAME,
+                    LC_CURRENCY_CODE
+               FROM ATET_SB_BANK_ACCOUNTS;
+        EXCEPTION
+         WHEN OTHERS
+         THEN
+            FND_FILE.PUT_LINE (FND_FILE.LOG,'Error al buscar la cuenta bancaria');
+            DBMS_OUTPUT.PUT_LINE ('Error al buscar la cuenta bancaria');
+            RAISE;
+        END;
+        
+        BEGIN
+            SELECT MEMBER_ID
+              INTO LN_MEMBER_ID
+              FROM ATET_SB_MEMBERS ASM
+             WHERE MEMBER_ID = (SELECT MEMBER_ID
+                                  FROM ATET_SB_CHECKS_ALL ASCA
+                                 WHERE ASCA.CHECK_ID = P_CHECK_ID);
+        EXCEPTION WHEN OTHERS THEN
+           FND_FILE.PUT_LINE (FND_FILE.LOG,'Error al buscar al empleado.');
+           DBMS_OUTPUT.PUT_LINE ('Error al buscar al empleado.');
+           RAISE;
+        END;
+        
+        BEGIN
+            SELECT CHECK_ID, CHECK_NUMBER, AMOUNT
+              INTO V_CHECK_ID, V_CHECK_NUMBER, LN_CHECK_AMOUNT
+              FROM ATET_SB_CHECKS_ALL ASCA
+             WHERE CHECK_ID = P_CHECK_ID
+               AND STATUS_LOOKUP_CODE = 'CREATED';
+        EXCEPTION WHEN OTHERS THEN
+           FND_FILE.PUT_LINE (FND_FILE.LOG,'Error al buscar cheque.');
+           DBMS_OUTPUT.PUT_LINE ('Error al buscar cheque.');
+           RAISE;
+        END;
+        
+        BEGIN
+            SELECT EMPLOYEE_FULL_NAME
+              INTO LC_EMPLOYEE_FULL_NAME
+              FROM ATET_SB_MEMBERS
+             WHERE MEMBER_ID = LN_MEMBER_ID;
+        EXCEPTION
+            WHEN OTHERS
+            THEN
+                FND_FILE.PUT_LINE (FND_FILE.LOG,'Error al buscar el miembro');
+                DBMS_OUTPUT.PUT_LINE ('Error al buscar el miembro');
+                RAISE;
+        END;
+        
+        BEGIN
+            SELECT ATET_SB_CHECKS_ALL_SEQ.NEXTVAL 
+              INTO LN_CHECK_ID 
+              FROM DUAL;
+
+            SELECT ATET_SB_CHECK_NUMBER_SEQ.NEXTVAL
+              INTO LN_CHECK_NUMBER
+              FROM DUAL;
+
+            INPUT_STRING :=   TO_CHAR (LN_CHECK_AMOUNT)  || ','
+                            || LN_CHECK_ID              || ','
+                            || LN_CHECK_NUMBER          || ','
+                            || LN_MEMBER_ID             || ','
+                            || FND_GLOBAL.USER_ID       || ','
+                            || TO_CHAR (CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS.FF');
+
+            DBMS_OUTPUT.PUT_LINE ('Original string: ' || input_string);
+            key_bytes_raw := DBMS_CRYPTO.RANDOMBYTES (num_key_bytes);
+            encrypted_raw := DBMS_CRYPTO.ENCRYPT (src   => UTL_I18N.STRING_TO_RAW (input_string, 'AL32UTF8'), typ   => encryption_type, KEY   => key_bytes_raw);
+            
+            -- The encrypted value "encrypted_raw" can be used here
+            decrypted_raw := DBMS_CRYPTO.DECRYPT (src   => encrypted_raw, typ   => encryption_type, KEY   => key_bytes_raw);
+            output_string := UTL_I18N.RAW_TO_CHAR (decrypted_raw, 'AL32UTF8');
+            
+            DBMS_OUTPUT.PUT_LINE ('Cadena a encriptar: ' || input_string);
+            DBMS_OUTPUT.PUT_LINE ('Cadena encriptada: ' || encrypted_raw);
+            DBMS_OUTPUT.PUT_LINE ('LLave: ' || key_bytes_raw);
+            DBMS_OUTPUT.PUT_LINE ('Decrypted string: ' || output_string);
+
+        EXCEPTION WHEN OTHERS THEN
+           FND_FILE.PUT_LINE (FND_FILE.LOG,'Error al generar  firma digital.');
+           DBMS_OUTPUT.PUT_LINE ('Error al generar  firma digital.');
+        END;
+        
+        BEGIN
+            INSERT INTO ATET_SB_CHECKS_ALL (CHECK_ID,
+                                            AMOUNT,
+                                            BANK_ACCOUNT_ID,
+                                            BANK_ACCOUNT_NAME,
+                                            CHECK_DATE,
+                                            CHECK_NUMBER,
+                                            CURRENCY_CODE,
+                                            PAYMENT_TYPE_FLAG,
+                                            STATUS_LOOKUP_CODE,
+                                            MEMBER_ID,
+                                            MEMBER_NAME,
+                                            BANK_ACCOUNT_NUM,
+                                            DIGITAL_SIGNATURE,
+                                            DECRYPT_KEY,
+                                            LAST_UPDATED_BY,
+                                            LAST_UPDATE_DATE,
+                                            CREATED_BY,
+                                            CREATION_DATE,
+                                            PAYMENT_DESCRIPTION)
+                 VALUES (LN_CHECK_ID,
+                         LN_CHECK_AMOUNT,
+                         LN_BANK_ACCOUNT_ID,
+                         LC_BANK_ACCOUNT_NAME,
+                         SYSDATE,
+                         LN_CHECK_NUMBER,
+                         LC_CURRENCY_CODE,
+                         'CHECK_REPLACEMENT',
+                         'CREATED',
+                         LN_MEMBER_ID,
+                         LC_EMPLOYEE_FULL_NAME,
+                         LC_BANK_ACCOUNT_NUM,
+                         ENCRYPTED_RAW,
+                         KEY_BYTES_RAW,
+                         FND_GLOBAL.USER_ID,
+                         SYSDATE,
+                         FND_GLOBAL.USER_ID,
+                         SYSDATE,
+                         'REEMPLAZO DE CHEQUE '||V_CHECK_NUMBER);
+
+            --P_CHECK_ID := LN_CHECK_ID;
+            
+            COMMIT;
+         
+        EXCEPTION WHEN OTHERS THEN
+           FND_FILE.PUT_LINE (FND_FILE.LOG,'Error: '||SQLERRM);
+           DBMS_OUTPUT.PUT_LINE ('Error: ' || SQLERRM);
+           RAISE;
+        END;
+        
+        BEGIN
+            UPDATE ATET_SB_CHECKS_ALL
+               SET PAYMENT_TYPE_FLAG = 'REPLACED'
+             WHERE 1 = 1
+               AND CHECK_ID = P_CHECK_ID;
+               
+            COMMIT;               
+        END;
+        
+        BEGIN
+           P_ENTITY_CODE := 'CHECKS';
+           P_EVENT_TYPE_CODE := 'CHECK_REPLACEMENT';
+           P_BATCH_NAME := 'REEMPLAZO DE CHEQUE';
+           P_JOURNAL_NAME := 'REEMPLAZO DEL CHEQUE: ' || V_CHECK_NUMBER;
+           P_HEADER_ID := NULL;
+
+           ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (P_ENTITY_CODE,
+                                                      P_EVENT_TYPE_CODE,
+                                                      P_BATCH_NAME,
+                                                      P_JOURNAL_NAME,
+                                                      P_HEADER_ID);
+
+           FND_FILE.PUT_LINE (FND_FILE.LOG,'HEADER_ID: ' || P_HEADER_ID);
+           DBMS_OUTPUT.PUT_LINE ('HEADER_ID: ' || P_HEADER_ID);
+
+           SELECT ATET_SAVINGS_BANK_PKG.GET_CODE_COMBINATION_ID (
+                     (SELECT ATET_SB_BACK_OFFICE_PKG.GET_PARAMETER_VALUE (
+                                'BANK_CODE_COMB',
+                                (SELECT ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
+                                   FROM DUAL))
+                                CONCATENATED_SEGMENTS
+                        FROM DUAL))
+             INTO LC_BANK_CODE_COMB
+             FROM DUAL CCID;
+
+           ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES (
+              P_HEADER_ID               => P_HEADER_ID,
+              P_ROW_NUMBER              => 1,
+              P_CODE_COMBINATION_ID     => LC_BANK_CODE_COMB,
+              P_ACCOUNTING_CLASS_CODE   => P_EVENT_TYPE_CODE,
+              P_ACCOUNTED_DR            => LN_CHECK_AMOUNT,
+              P_ACCOUNTED_CR            => 0,
+              P_DESCRIPTION             => 'REEMPLAZO DEL CHEQUE: ' || V_CHECK_NUMBER || ', DE RETIRO DE AHORRO DE: ' || LC_EMPLOYEE_FULL_NAME,
+              P_SOURCE_ID               => V_CHECK_ID,
+              P_SOURCE_LINK_TABLE       => 'ATET_SB_CHECKS_ALL');
+
+           ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES (
+              P_HEADER_ID               => P_HEADER_ID,
+              P_ROW_NUMBER              => 2,
+              P_CODE_COMBINATION_ID     => LC_BANK_CODE_COMB,
+              P_ACCOUNTING_CLASS_CODE   => P_EVENT_TYPE_CODE,
+              P_ACCOUNTED_DR            => 0,
+              P_ACCOUNTED_CR            => LN_CHECK_AMOUNT,
+              P_DESCRIPTION             => 'NUEVO NÚMERO DE CHEQUE: '|| LN_CHECK_NUMBER || ', DE RETIRO DE AHORRO DE: '|| LC_EMPLOYEE_FULL_NAME,
+              P_SOURCE_ID               => LN_CHECK_ID,
+              P_SOURCE_LINK_TABLE       => 'ATET_SB_CHECKS');
+
+           COMMIT;
+            
+        EXCEPTION WHEN others THEN
+            FND_FILE.PUT_LINE (FND_FILE.LOG,'Error: '||SQLERRM);
+            DBMS_OUTPUT.PUT_LINE ('Error: ' || SQLERRM);
+            RAISE;
+        END;
+         
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+        
+        BEGIN
+--                                                 );
+              V_REQUEST_ID :=
+                 FND_REQUEST.SUBMIT_REQUEST ('PER',                        -- APPLICATION
+                                             'ATET_SB_PRINT_CHECK', -- PROGRAM SHORT NAME
+                                             '',                           -- DESCRIPTION
+                                             '',                            -- START TIME
+                                             FALSE,                        -- SUB REQUEST
+                                             TO_CHAR (LN_CHECK_ID),       -- ARGUMENT1
+                                             CHR (0)       -- REPRESENTS END OF ARGUMENTS
+                                                    );
+               STANDARD.COMMIT;
+               WAITING := FND_CONCURRENT.WAIT_FOR_REQUEST(V_REQUEST_ID,1,0,
+                                                          PHASE,
+                                                          STATUS,
+                                                          DEV_PHASE,
+                                                          DEV_STATUS,
+                                                          V_MESSAGE
+                                                         );               
+
+               FND_FILE.PUT_LINE (FND_FILE.LOG,'CHEQUE - REQUEST_ID: '||V_REQUEST_ID );
+          
+        EXCEPTION WHEN OTHERS THEN
+           FND_FILE.PUT_LINE (FND_FILE.LOG,'Error: '||SQLERRM);
+           DBMS_OUTPUT.PUT_LINE ('Error: ' || SQLERRM);
+           RAISE;
+        END;
+        
+    EXCEPTION WHEN OTHERS THEN
+            FND_FILE.PUT_LINE (FND_FILE.LOG,'Error inesperado: '||SQLERRM);
+            DBMS_OUTPUT.PUT_LINE ('Error inesperado: ' || SQLERRM);         
+    END SAVING_CHECK_REPLACEMENT;
 
 END ATET_SAVINGS_BANK_PKG;

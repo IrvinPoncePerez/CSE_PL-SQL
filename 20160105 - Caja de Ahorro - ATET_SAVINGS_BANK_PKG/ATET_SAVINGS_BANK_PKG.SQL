@@ -376,6 +376,12 @@ CREATE OR REPLACE PACKAGE APPS.ATET_SAVINGS_BANK_PKG IS
                     P_ERRBUF        OUT NOCOPY VARCHAR2,
                     P_RETCODE       OUT NOCOPY VARCHAR2,
                     P_LOAN_ID       NUMBER,
-                    P_TERM_PERIODS  NUMBER);                
+                    P_TERM_PERIODS  NUMBER);   
+                    
+    PROCEDURE   SAVING_CHECK_REPLACEMENT(
+                    P_ERRBUF        OUT NOCOPY VARCHAR2,
+                    P_RETCODE       OUT NOCOPY VARCHAR2,
+                    P_CHECK_ID      NUMBER);
+                                     
 
 END ATET_SAVINGS_BANK_PKG;
