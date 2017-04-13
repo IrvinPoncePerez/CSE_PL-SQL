@@ -142,7 +142,7 @@ from
                                     and ms.category_set_name = :P_COSTOS
                                     and mcb.segment1  in (:P_ALIMENTO,:P_HUEVO)
                                  )            
-            &P_ARTICULOS
+--            &P_ARTICULOS
             group by moq.subinventory_code, hl.name, hl.organization_id, moq.inventory_item_id, mcb.segment11, mt.parent_lot_number
             ) 
             x
@@ -290,7 +290,7 @@ from
                             and mp.attribute10 = 'PC'
                             )     
             and trunc(mt.transaction_date) = trunc(to_date(:p_date,'yyyy/mm/dd HH24:MI:SS'))
-            &P_ARTICULOS
+--            &P_ARTICULOS
             group by mt.subinventory_code, hl.name, hl.organization_id, mt.inventory_item_id, mcb.segment11--, ml.parent_lot_number
         )             x
         order by gh
