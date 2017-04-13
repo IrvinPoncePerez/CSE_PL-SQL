@@ -4418,7 +4418,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_validate            NUMBER;
     BEGIN
     
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SETTLEMENT_LOAN(P_LOAN_ID => ' || P_LOAN_ID || ')');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'SETTLEMENT_LOAN(P_LOAN_ID => ' || P_LOAN_ID || 
+                                                        'P_MEMBER_ID => ' || P_MEMBER_ID ||
+                                                        'P_PREPAID_SEQ => ' || P_PREPAID_SEQ ||
+                                                        'P_LOAN_TRANSACTION_ID => ' || P_LOAN_TRANSACTION_ID || ')');
         
         SELECT ASM.PERSON_ID,
                ASL.LOAN_BALANCE
@@ -4479,22 +4482,27 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                  SYSDATE,
                                                  var_user_id);
         
-        
-        SELECT ASLT.LOAN_TRANSACTION_ID
-          INTO P_LOAN_TRANSACTION_ID
-          FROM ATET_SB_LOANS_TRANSACTIONS ASLT 
-         WHERE 1 = 1
-           AND MEMBER_ACCOUNT_ID = var_member_account_id
-           AND MEMBER_ID = P_MEMBER_ID
-           AND PAYROLL_RESULT_ID = -1
-           AND LOAN_ID = P_LOAN_ID
-           AND PERSON_ID = var_person_id
-           AND PERIOD_NAME = 'LIQUIDACION'
-           AND ELEMENT_NAME = 'LIQUIDACION DE PRESTAMO'
-           AND TRANSACTION_CODE = 'SETTLEMENT_LOAN'
-           AND DEBIT_AMOUNT = 0
-           AND CREDIT_AMOUNT = var_loan_balance
-           AND ATTRIBUTE1 = P_PREPAID_SEQ;
+        BEGIN
+            SELECT ASLT.LOAN_TRANSACTION_ID
+              INTO P_LOAN_TRANSACTION_ID
+              FROM ATET_SB_LOANS_TRANSACTIONS ASLT 
+             WHERE 1 = 1
+               AND MEMBER_ACCOUNT_ID = var_member_account_id
+               AND MEMBER_ID = P_MEMBER_ID
+               AND PAYROLL_RESULT_ID = -1
+               AND LOAN_ID = P_LOAN_ID
+               AND PERSON_ID = var_person_id
+               AND PERIOD_NAME = 'LIQUIDACION'
+               AND ELEMENT_NAME = 'LIQUIDACION DE PRESTAMO'
+               AND TRANSACTION_CODE = 'SETTLEMENT_LOAN'
+               AND DEBIT_AMOUNT = 0
+               AND CREDIT_AMOUNT = var_loan_balance
+               AND ATTRIBUTE1 = P_PREPAID_SEQ;
+        EXCEPTION
+            WHEN OTHERS THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'SELECT ATET_SB_LOANS_TRANSACTIONS : ' || SQLERRM);
+                RAISE;
+        END;
                                                   
                                                  
         UPDATE ATET_SB_MEMBERS_ACCOUNTS
@@ -5405,6 +5413,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         INSERT_SAVING_EXCEPTION         EXCEPTION;
         SELECT_SAVING_EXCEPTION         EXCEPTION;
         UPDATE_SAVING_EXCEPTION         EXCEPTION;
+        PRE_PROCESSING_EXCEPTION        EXCEPTION;
+        INSERT_RECEIPTS_EXCEPTION       EXCEPTION;
         
         var_employee_number             VARCHAR2(100);
         var_employee_full_name          VARCHAR2(1000);
@@ -5423,10 +5433,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_aslt_payment_interest       NUMBER;
         
         var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
+        var_request_id                  NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
         
         var_validate                    NUMBER;
-        
-        var_prepaid_seq                 NUMBER;
         
         var_bank_code_comb              VARCHAR2(100);
         var_une_int_code_comb           VARCHAR2(100);
@@ -5490,6 +5499,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_saving_transaction_id       NUMBER := 0;
         var_condoned_interest_id        NUMBER;
         var_amount_saved                NUMBER;
+        
+        var_loan_receipt_seq            NUMBER := 0;
+        var_receipts_all_seq            NUMBER;
+        
+        var_banks_account_id            NUMBER;
+        var_banks_account_name          VARCHAR2(100);
+        var_banks_account_num           VARCHAR2(100);
+        var_banks_currency_code         VARCHAR2(13);
+        
+        var_deposit_date                DATE := TO_DATE(SYSDATE, 'DD/MM/RRRR');
         
     BEGIN
     
@@ -5744,24 +5763,122 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 
                 END IF;
                 
-                /*********************************************/
-                /***            IMPRESIÓN DE RECIBO        ***/
-                /*********************************************/
-                BEGIN
-                    SELECT ATET_SB_PREPAID_SEQ.NEXTVAL
-                      INTO var_prepaid_seq
-                      FROM DUAL;
-                      
-                    PRINT_PREPAID(
-                        P_LOAN_ID => P_LOAN_ID, 
-                        P_FOLIO => var_prepaid_seq,
-                        P_BONUS => var_bonus_interest
-                                 );
+                
+                IF P_IS_SAVING_RETIREMENT = 'N' THEN
+                    /*********************************************/
+                    /***            IMPRESIÓN DE RECIBO        ***/
+                    /*********************************************/
+                     BEGIN           
+                                                               
+                        SELECT ATET_SB_RECEIPT_NUMBER_SEQ.NEXTVAL
+                          INTO var_loan_receipt_seq 
+                          FROM DUAL;                         
+                         
+                         
+                        SELECT ATET_SB_RECEIPTS_ALL_SEQ.NEXTVAL
+                          INTO var_receipts_all_seq
+                          FROM DUAL;                 
+                        
+                          
+                        SELECT ASM.EMPLOYEE_NUMBER,
+                               ASM.EMPLOYEE_FULL_NAME
+                          INTO var_employee_number,
+                               var_employee_full_name
+                          FROM ATET_SB_MEMBERS  ASM
+                         WHERE ASM.MEMBER_ID = P_MEMBER_ID;    
+                         
+                                  
+                         SELECT BANK_ACCOUNT_ID,
+                                BANK_ACCOUNT_NAME,
+                                BANK_ACCOUNT_NUM,
+                                CURRENCY_CODE
+                           INTO var_banks_account_id,
+                                var_banks_account_name,
+                                var_banks_account_num,
+                                var_banks_currency_code
+                           FROM ATET_SB_BANK_ACCOUNTS
+                          WHERE 1 = 1
+                            AND ROWNUM = 1;
+                            
+                    EXCEPTION WHEN OTHERS THEN
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                        RAISE PRE_PROCESSING_EXCEPTION;
+                    END;   
                     
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
-                EXCEPTION WHEN OTHERS THEN
-                    RAISE PRINT_PREPAID_EXCEPTION;
-                END;
+                    /**********************************************************/
+                    /*******          INSERT ATET_SB_RECEIPTS_ALL          ****/
+                    /**********************************************************/
+                    
+                    BEGIN
+                    
+                        INSERT 
+                          INTO ATET_SB_RECEIPTS_ALL (RECEIPT_ID,
+                                                     RECEIPT_NUMBER,
+                                                     RECEIPT_DATE,
+                                                     STATUS_LOOKUP_CODE,
+                                                     RECEIPT_TYPE_FLAG,
+                                                     MEMBER_ID,
+                                                     MEMBER_NAME,
+                                                     CURRENCY_CODE,
+                                                     AMOUNT,
+                                                     COMMENTS,
+                                                     BANK_ACCOUNT_ID,
+                                                     BANK_ACCOUNT_NUM,
+                                                     BANK_ACCOUNT_NAME,
+                                                     DEPOSIT_DATE,
+                                                     ATTRIBUTE1,
+                                                     REQUEST_ID,
+                                                     REFERENCE_TYPE,
+                                                     REFERENCE_ID,
+                                                     LAST_UPDATED_BY,
+                                                     LAST_UPDATE_DATE,
+                                                     CREATED_BY,
+                                                     CREATION_DATE)
+                                             VALUES (var_receipts_all_seq,
+                                                     var_loan_receipt_seq,
+                                                     TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                                                     'CREATED',
+                                                     'LOANS',
+                                                     P_MEMBER_ID,
+                                                     var_employee_full_name,
+                                                     var_banks_currency_code,
+                                                     var_loan_balance,
+                                                     var_employee_number || '|' || var_employee_full_name || '|' || var_loan_balance || '|' || var_deposit_date,
+                                                     var_banks_account_id,
+                                                     var_banks_account_num,
+                                                     var_banks_account_name,
+                                                     var_deposit_date,
+                                                     var_header_id,
+                                                     var_request_id,
+                                                     'ATET_SB_LOANS_TRANSACTIONS',
+                                                     var_loan_transaction_id,
+                                                     var_user_id,
+                                                     SYSDATE,
+                                                     var_user_id,
+                                                     SYSDATE);
+                                                     
+                    EXCEPTION WHEN OTHERS THEN
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                        RAISE INSERT_RECEIPTS_EXCEPTION;
+                    END;                                                                                                                                                         
+
+                    /**********************************************************/
+                    /*******             IMPRESIÓN DE RECIBO               ****/
+                    /**********************************************************/
+                    BEGIN
+                                              
+                        PRINT_PREPAID(
+                            P_LOAN_ID => P_LOAN_ID, 
+                            P_FOLIO => var_loan_receipt_seq,
+                            P_BONUS => var_bonus_interest
+                                     );
+                        
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
+                    EXCEPTION WHEN OTHERS THEN
+                        RAISE PRINT_PREPAID_EXCEPTION;
+                    END;
+                    
+                END IF;
                           
                 /*********************************************/
                 /***         LIQUIDACIÓN DEL PRESTAMO      ***/
@@ -5770,12 +5887,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     SETTLEMENT_LOAN(
                         P_LOAN_ID => P_LOAN_ID,
                         P_MEMBER_ID => P_MEMBER_ID,
-                        P_PREPAID_SEQ => var_prepaid_seq,
+                        P_PREPAID_SEQ => var_loan_receipt_seq,
                         P_LOAN_TRANSACTION_ID => var_loan_transaction_id
                                    );
                     
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXECUTE : SETTLEMENT_LOAN');
                 EXCEPTION WHEN OTHERS THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXECUTE : SETTLEMENT_LOAN' || SQLERRM);
                     RAISE SETTLEMENT_LOAN_EXCEPTION;
                 END;
                 
@@ -6208,7 +6326,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_time_period_id          NUMBER;
         var_period_name             VARCHAR2(100);
         var_payment_schedule_id     NUMBER;
-        var_prepaid_seq             NUMBER;
         
         var_member_account_id       NUMBER;
         
@@ -6253,6 +6370,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         INSERT_SAVING_EXCEPTION         EXCEPTION;
         SELECT_SAVING_EXCEPTION         EXCEPTION;
         UPDATE_SAVING_EXCEPTION         EXCEPTION;
+        PRE_PROCESSING_EXCEPTION        EXCEPTION;
+        INSERT_RECEIPTS_EXCEPTION       EXCEPTION;
         
         CURSOR SAVINGS_DETAILS IS
             SELECT ASST.EARNED_DATE,
@@ -6297,7 +6416,18 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_saving_transaction_id       NUMBER := 0;
         var_validate                    NUMBER;
         var_user_id                     NUMBER := FND_GLOBAL.USER_ID;
+        var_request_id                  NUMBER := FND_GLOBAL.CONC_REQUEST_ID; 
         var_loan_transaction_id         NUMBER;
+        
+        var_loan_receipt_seq            NUMBER := 0;
+        var_receipts_all_seq            NUMBER;
+        
+        var_banks_account_id            NUMBER;
+        var_banks_account_name          VARCHAR2(100);
+        var_banks_account_num           VARCHAR2(100);
+        var_banks_currency_code         VARCHAR2(13);
+        
+        var_deposit_date                DATE := TO_DATE(SYSDATE, 'DD/MM/RRRR');
         
     BEGIN
     
@@ -6631,39 +6761,45 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                              
         IF var_result = 'Y' THEN
         
-            /*********************************************/
-            /***            IMPRESIÓN DE RECIBO        ***/
-            /*********************************************/
-            BEGIN
-            
-                SELECT ASLT.LOAN_TRANSACTION_ID
-                  INTO var_loan_transaction_id
-                  FROM ATET_SB_LOANS_TRANSACTIONS   ASLT
-                 WHERE 1 = 1
-                   AND ASLT.MEMBER_ID = P_MEMBER_ID
-                   AND ASLT.PERSON_ID = var_person_id
-                   AND ASLT.TIME_PERIOD_ID = var_time_period_id
-                   AND ASLT.LOAN_ID = P_LOAN_ID;
-            
-                SELECT ATET_SB_PREPAID_SEQ.NEXTVAL
-                  INTO var_prepaid_seq
-                  FROM DUAL;
-                  
-                UPDATE ATET_SB_LOANS_TRANSACTIONS   ASLT
-                   SET ASLT.ATTRIBUTE1 = var_prepaid_seq
-                 WHERE 1 = 1
-                   AND ASLT.LOAN_ID = P_LOAN_ID
-                   AND ASLT.LOAN_TRANSACTION_ID = var_loan_transaction_id;
+            IF P_IS_SAVING_RETIREMENT = 'N' THEN
+                /*********************************************/
+                /***            IMPRESIÓN DE RECIBO        ***/
+                /*********************************************/
+                BEGIN
+                
+                    SELECT ASLT.LOAN_TRANSACTION_ID
+                      INTO var_loan_transaction_id
+                      FROM ATET_SB_LOANS_TRANSACTIONS   ASLT
+                     WHERE 1 = 1
+                       AND ASLT.MEMBER_ID = P_MEMBER_ID
+                       AND ASLT.PERSON_ID = var_person_id
+                       AND ASLT.TIME_PERIOD_ID = var_time_period_id
+                       AND ASLT.LOAN_ID = P_LOAN_ID;
+                
+                    SELECT ATET_SB_RECEIPT_NUMBER_SEQ.NEXTVAL
+                      INTO var_loan_receipt_seq 
+                      FROM DUAL;                         
+                         
+                         
+                    SELECT ATET_SB_RECEIPTS_ALL_SEQ.NEXTVAL
+                      INTO var_receipts_all_seq
+                      FROM DUAL;   
                       
+                    UPDATE ATET_SB_LOANS_TRANSACTIONS   ASLT
+                       SET ASLT.ATTRIBUTE1 = var_loan_receipt_seq 
+                     WHERE 1 = 1
+                       AND ASLT.LOAN_ID = P_LOAN_ID
+                       AND ASLT.LOAN_TRANSACTION_ID = var_loan_transaction_id;
+                          
 
-                    
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
-            EXCEPTION WHEN OTHERS THEN
-                FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
-                RAISE PRINT_PREPAID_EX;
-            END;
+                        
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
+                EXCEPTION WHEN OTHERS THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                    RAISE PRINT_PREPAID_EX;
+                END;
             
-           
+            END IF; 
             
             
             /*********************************************/
@@ -6853,16 +6989,109 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                               
         IF var_result = 'Y' THEN
             COMMIT;
-            IF P_IS_SAVING_RETIREMENT = 'Y' THEN
-                PRINT_SAVING_TRANSACTION(
-                    P_SAVING_TRANSACTION_ID => var_saving_transaction_id);
-            END IF;     
-                PRINT_PREPAID(
-                    P_LOAN_ID => P_LOAN_ID, 
-                    P_FOLIO => var_prepaid_seq,
-                    P_BONUS => 0,
-                    P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
-                             );  
+            
+            IF P_IS_SAVING_RETIREMENT = 'N' THEN
+                /*********************************************/
+                /***            IMPRESIÓN DE RECIBO        ***/
+                /*********************************************/
+                 BEGIN                         
+                        
+                          
+                    SELECT ASM.EMPLOYEE_NUMBER,
+                           ASM.EMPLOYEE_FULL_NAME
+                      INTO var_employee_number,
+                           var_employee_full_name
+                      FROM ATET_SB_MEMBERS  ASM
+                     WHERE ASM.MEMBER_ID = P_MEMBER_ID;    
+                         
+                                  
+                     SELECT BANK_ACCOUNT_ID,
+                            BANK_ACCOUNT_NAME,
+                            BANK_ACCOUNT_NUM,
+                            CURRENCY_CODE
+                       INTO var_banks_account_id,
+                            var_banks_account_name,
+                            var_banks_account_num,
+                            var_banks_currency_code
+                       FROM ATET_SB_BANK_ACCOUNTS
+                      WHERE 1 = 1
+                        AND ROWNUM = 1;
+                            
+                EXCEPTION WHEN OTHERS THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                    RAISE PRE_PROCESSING_EXCEPTION;
+                END;   
+                    
+                /**********************************************************/
+                /*******          INSERT ATET_SB_RECEIPTS_ALL          ****/
+                /**********************************************************/
+                    
+                BEGIN
+                    
+                    INSERT 
+                      INTO ATET_SB_RECEIPTS_ALL (RECEIPT_ID,
+                                                 RECEIPT_NUMBER,
+                                                 RECEIPT_DATE,
+                                                 STATUS_LOOKUP_CODE,
+                                                 RECEIPT_TYPE_FLAG,
+                                                 MEMBER_ID,
+                                                 MEMBER_NAME,
+                                                 CURRENCY_CODE,
+                                                 AMOUNT,
+                                                 COMMENTS,
+                                                 BANK_ACCOUNT_ID,
+                                                 BANK_ACCOUNT_NUM,
+                                                 BANK_ACCOUNT_NAME,
+                                                 DEPOSIT_DATE,
+                                                 ATTRIBUTE1,
+                                                 REQUEST_ID,
+                                                 REFERENCE_TYPE,
+                                                 REFERENCE_ID,
+                                                 LAST_UPDATED_BY,
+                                                 LAST_UPDATE_DATE,
+                                                 CREATED_BY,
+                                                 CREATION_DATE)
+                                         VALUES (var_receipts_all_seq,
+                                                 var_loan_receipt_seq,
+                                                 TO_DATE(SYSDATE, 'DD/MM/RRRR'),
+                                                 'CREATED',
+                                                 'LOANS',
+                                                 P_MEMBER_ID,
+                                                 var_employee_full_name,
+                                                 var_banks_currency_code,
+                                                 P_PAYMENT_AMOUNT,
+                                                 var_employee_number || '|' || var_employee_full_name || '|' || P_PAYMENT_AMOUNT || '|' || var_deposit_date,
+                                                 var_banks_account_id,
+                                                 var_banks_account_num,
+                                                 var_banks_account_name,
+                                                 var_deposit_date,
+                                                 var_header_id,
+                                                 var_request_id,
+                                                 'ATET_SB_LOANS_TRANSACTIONS',
+                                                 var_loan_transaction_id,
+                                                 var_user_id,
+                                                 SYSDATE,
+                                                 var_user_id,
+                                                 SYSDATE);
+                                                     
+                EXCEPTION WHEN OTHERS THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                    RAISE INSERT_RECEIPTS_EXCEPTION;
+                END;                 
+                
+                
+                IF P_IS_SAVING_RETIREMENT = 'Y' THEN
+                    PRINT_SAVING_TRANSACTION(
+                        P_SAVING_TRANSACTION_ID => var_saving_transaction_id);
+                END IF;     
+                    PRINT_PREPAID(
+                        P_LOAN_ID => P_LOAN_ID, 
+                        P_FOLIO => var_loan_receipt_seq,
+                        P_BONUS => 0,
+                        P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
+                                 );  
+                                 
+            END IF;
             
             ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'COMMIT EJECUTADO.');
@@ -11657,6 +11886,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     TRANSACTION_CODE,
                     DEBIT_AMOUNT,
                     CREDIT_AMOUNT,
+                    PAYMENT_AMOUNT,
+                    PAYMENT_CAPITAL,
+                    PAYMENT_INTEREST,
+                    PAYMENT_INTEREST_LATE,
                     ENTRY_VALUE,
                     ACCOUNTED_FLAG,
                     CREATION_DATE,
@@ -11677,6 +11910,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     'REPAYMENT_LOAN',
                     0,
                     var_loan_amount,
+                    var_loan_amount,
+                    var_loan_amount,
+                    0,
+                    0,
                     var_loan_amount,
                     'ACCOUNTED',
                     SYSDATE,
