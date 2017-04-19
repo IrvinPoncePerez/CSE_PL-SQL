@@ -788,7 +788,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
              
             PP_CONSOLIDATION_ID := P_CONSOLIDATION_ID;
         
-            var_file_name := 'CFDI_NOMINA_';
+            var_file_name := 'CFDI_';
             
             IF P_COMPANY_ID = '02' THEN 
                 var_file_name := var_file_name || 'CS_';
