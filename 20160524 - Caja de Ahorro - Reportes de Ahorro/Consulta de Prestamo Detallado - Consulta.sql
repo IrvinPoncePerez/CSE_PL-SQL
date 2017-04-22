@@ -1,24 +1,4 @@
-ALTER SESSION SET CURRENT_SCHEMA=APPS;
-
-
-
-        SELECT D.ABREVIATE_PERIOD_TYPE,
-               D.PERIOD_TYPE,
-               D.PAYROLL_ID,
-               D.PAYROLL_NAME,
-               D.MEMBER_ID,
-               D.PERSON_ID,
-               D.EMPLOYEE_NUMBER,
-               D.EMPLOYEE_FULL_NAME,
-               D.PERSON_TYPE,
-               D.IS_SAVER,
-               D.TRANSACTION_CODE,
-               D.EARNED_DATE,
-               D.DEBIT_AMOUNT,
-               D.CREDIT_AMOUNT,
-               D.ACCOUNTED_FLAG
-          FROM (
-                SELECT DISTINCT
+SELECT DISTINCT
                         (CASE 
                          WHEN PPF.PERIOD_TYPE = 'Week' OR PPF.PERIOD_TYPE = 'Semana' THEN 'S'
                          WHEN PPF.PERIOD_TYPE = 'Quincena' OR PPF.PERIOD_TYPE = 'Semi-Month' THEN 'Q'
@@ -261,20 +241,3 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                    AND ASMA.LOAN_ID = ASLT.LOAN_ID
                    AND ASLT.MEMBER_ID = ASM.MEMBER_ID
                    AND ASLT.MEMBER_ACCOUNT_ID = ASMA.MEMBER_ACCOUNT_ID
-               ) D
-         WHERE 1 = 1
-           AND APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(D.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(D.PAYROLL_NAME))
-           AND D.PAYROLL_ID = NVL(:P_PAYROLL_ID, D.PAYROLL_ID)
-           AND D.MEMBER_ID = NVL(:P_MEMBER_ID, D.MEMBER_ID)
-           AND D.TRANSACTION_CODE = NVL(:P_TRANSACTION_CODE, D.TRANSACTION_CODE) 
-         ORDER BY D.ABREVIATE_PERIOD_TYPE,
-                  D.PAYROLL_ID,
-                  D.EMPLOYEE_NUMBER,
-                  D.EARNED_DATE
-                  
-                  ;
-          
-               
-
-                                         
-                            

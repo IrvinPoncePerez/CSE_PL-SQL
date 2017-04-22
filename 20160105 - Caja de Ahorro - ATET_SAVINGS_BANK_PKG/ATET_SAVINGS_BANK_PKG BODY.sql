@@ -4285,15 +4285,22 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
          WHERE 1 = 1
            AND ASL.LOAN_ID = var_loan_id;
 
-             
-        MERGE INTO ATET_SB_MEMBERS      ASM
-             USING ATET_SB_ENDORSEMENTS ASE
-                ON (    ASE.LOAN_ID = var_loan_id
-                    AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
-        WHEN MATCHED THEN 
-        UPDATE SET ASM.IS_ENDORSEMENT = 'N',
-                   ASM.LAST_UPDATE_DATE = SYSDATE,
-                   ASM.LAST_UPDATED_BY = var_user_id;      
+                               
+                   
+        BEGIN             
+            MERGE INTO ATET_SB_MEMBERS      ASM
+                 USING ATET_SB_ENDORSEMENTS ASE
+                    ON (    ASE.LOAN_ID = var_loan_id
+                        AND ASE.MEMBER_ENDORSEMENT_ID = ASM.MEMBER_ID)
+            WHEN MATCHED THEN 
+            UPDATE SET ASM.IS_ENDORSEMENT = 'N',
+                       ASM.LAST_UPDATE_DATE = SYSDATE,
+                       ASM.LAST_UPDATED_BY = var_user_id;
+        EXCEPTION 
+             WHEN OTHERS THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'MERGE AVALES: ' || SQLERRM);
+                RAISE;
+        END;     
                
     END SETTLEMENT_LOAN;
     
@@ -4530,7 +4537,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
          WHERE 1 = 1
            AND ASL.LOAN_ID = P_LOAN_ID;
 
-         BEGIN             
+        BEGIN             
             MERGE INTO ATET_SB_MEMBERS      ASM
                  USING ATET_SB_ENDORSEMENTS ASE
                     ON (    ASE.LOAN_ID = P_LOAN_ID
