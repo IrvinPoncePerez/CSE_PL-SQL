@@ -6915,8 +6915,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     P_ACCOUNTED_DR => 0,
                     P_ACCOUNTED_CR => var_asps_payment_amount,
                     P_DESCRIPTION => var_description,
-                    P_SOURCE_ID => P_LOAN_ID,
-                    P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS');
+                    P_SOURCE_ID => var_loan_transaction_id,
+                    P_SOURCE_LINK_TABLE => 'ATET_SB_LOANS_TRANSACTIONS');
                     
                 /*********  CARGO : INTERESES POR DEVENGAR  *********/
                 ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_LINES(
