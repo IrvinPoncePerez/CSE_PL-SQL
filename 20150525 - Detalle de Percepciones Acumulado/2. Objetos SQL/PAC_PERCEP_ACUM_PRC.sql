@@ -23,6 +23,8 @@ IS
                PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PAAF.PERSON_ID)                         AS  RFC,
                PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PAAF.PERSON_ID)                   AS  EFFECTIVE_START_DATE,
                PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, P_END_MONTH, P_YEAR)     AS  TYPE_MOVEMENT,
+               CLAVE_NOMINA,
+               REG_PATRONAL,
                MAX(SUELDO_DIARIO)        AS SUELDO_DIARIO,
                MAX(SALARIO_DIARIO_INTEGRADO) AS SALARIO_DIARIO_INTEGRADO,            
                SUM(SUELDO_NORMAL)        AS SUELDO_NORMAL,      
@@ -101,9 +103,12 @@ IS
                           FROM HR_LOOKUPS 
                          WHERE LOOKUP_TYPE = 'ACTION_TYPE'
                            AND LOOKUP_CODE = PPA.ACTION_TYPE )                                  AS  ACTION_TYPE,
+                       PPF.ATTRIBUTE1                                                           AS  CLAVE_NOMINA,    
                        EXTRACT(YEAR FROM PTP.END_DATE)                                          AS  ANIO,
                        EXTRACT(MONTH FROM PTP.END_DATE)                                         AS  MES,
                        PTP.PERIOD_NUM                                                           AS  NUM_NOMINA,
+                       PAC_RESULT_VALUES_PKG.GET_EMPLOYEER_REGISTRATION(PPA.DATE_EARNED,        
+                                                                        PAA.ASSIGNMENT_ID)      AS  REG_PATRONAL,
                        -----------------------------------------------------------------------------------------
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'I001_SALARIO_DIARIO',      'Pay Value'), '0')    AS  SUELDO_DIARIO,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'Integrated Daily Wage',    'Pay Value'), '0')    AS  SALARIO_DIARIO_INTEGRADO,
@@ -270,7 +275,9 @@ IS
                                          AND PAAF.EFFECTIVE_END_DATE
            AND PAAF.PERSON_ID = NVL(P_PERSON_ID, PAAF.PERSON_ID)
          GROUP 
-            BY PAAF.PERSON_ID
+            BY PAAF.PERSON_ID,
+               CLAVE_NOMINA,
+               REG_PATRONAL
          ORDER 
             BY TO_NUMBER(NUMERO_EMPLEADO);                             
 
@@ -337,10 +344,12 @@ BEGIN
     
     BEGIN
         
-        var_data := 'NUMERO,'                   ||
+        var_data := 'CLAVE NOMINA,'             ||
+                    'NUMERO,'                   ||
                     'NOMBRE,'                   ||
                     'RFC,'                      ||
                     'FECHA DE INGRESO,'         ||
+                    'REG PATRONAL,'             ||
                     'TIPO DE MOVIMIENTO,'       ||
                     'SUELDO DIARIO BASE,'       ||
                     'SALARIO DIARIO INTEGRADO,' ||
@@ -428,10 +437,12 @@ BEGIN
             LOOP
             
                 var_data := '';
-                var_data :=    DETAIL(rowIndex).NUMERO_EMPLEADO         || ',' ||
+                var_data :=    DETAIL(rowIndex).CLAVE_NOMINA            || ',' ||
+                               DETAIL(rowIndex).NUMERO_EMPLEADO         || ',' ||
                                DETAIL(rowIndex).NOMBRE_EMPLEADO         || ',' ||
                                DETAIL(rowIndex).RFC                     || ',' ||
                                DETAIL(rowIndex).EFFECTIVE_START_DATE    || ',' ||
+                               DETAIL(rowIndex).REG_PATRONAL            || ',' ||
                                DETAIL(rowIndex).TYPE_MOVEMENT           || ',' ||
                                DETAIL(rowIndex).SUELDO_DIARIO           || ',' ||
                                DETAIL(rowIndex).SALARIO_DIARIO_INTEGRADO|| ',' ||
