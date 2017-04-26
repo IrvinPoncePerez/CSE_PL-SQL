@@ -572,7 +572,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      END)                                                                           AS  NOM_FECINI,
                     PTP.END_DATE                                                                    AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0.00'))                          AS  NOM_DIAPAG,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '1'))                          AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     (CASE
                         WHEN HOUV.REGION_1 = 'CAMP' THEN 'CAM'
@@ -583,12 +583,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      END)                                                                           AS  NOM_ENTFED,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
-                        WHEN PPF.PAYROLL_NAME LIKE '%SEM%' THEN
-                             '02'
-                        WHEN PPF.PAYROLL_NAME LIKE '%QUIN%' THEN
-                             '04'
-                        ELSE
-                             ''
+                        WHEN PPF.PAYROLL_NAME LIKE '%SEM%' 
+                         AND PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%'
+                        THEN '02'
+                        WHEN PPF.PAYROLL_NAME LIKE '%QUIN%'
+                         AND PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' 
+                        THEN '04'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%GRATIFICACIÓN%'
+                        THEN '99'
                      END)                                                                           AS  NOM_FORPAG,
                     PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
                     APPS.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)               AS  NOM_REGPAT,
