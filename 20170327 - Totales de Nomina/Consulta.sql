@@ -1,3 +1,6 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+
+
         SELECT /*+ LEADING(PPF, PPA, PTP, PAA, PRR, PRRV) */ 
                (CASE
                     WHEN PETF.ELEMENT_NAME LIKE 'P0%'
@@ -14,7 +17,8 @@
                         TO_NUMBER (NVL (PRRV.RESULT_VALUE, 0)) * -1
                     ELSE
                         TO_NUMBER (NVL (PRRV.RESULT_VALUE, 0))
-                   END)                     AS  RESULT_VALUE
+                   END)                     AS  RESULT_VALUE,
+               :P_REQUEST_ID
           FROM PAY_ALL_PAYROLLS_F           PPF,
                PAY_PAYROLL_ACTIONS          PPA,
                PER_TIME_PERIODS             PTP,
@@ -76,7 +80,8 @@
                         TO_NUMBER (NVL (PRRV.RESULT_VALUE, 0)) * -1
                     ELSE
                         TO_NUMBER (NVL (PRRV.RESULT_VALUE, 0))
-                   END)                     AS  RESULT_VALUE
+                   END)                     AS  RESULT_VALUE,
+               :P_REQUEST_ID
           FROM PAY_ALL_PAYROLLS_F           PPF,
                PAY_PAYROLL_ACTIONS          PPA,
                PER_TIME_PERIODS             PTP,
@@ -131,7 +136,8 @@
                6666 + POPM.ORG_PAYMENT_METHOD_ID    AS  "ROWINDEX",
                POPM.ORG_PAYMENT_METHOD_NAME         AS  ELEMENT_NAME,
                PPF.ATTRIBUTE1                       AS  CVNOM,
-               SUM(PPP.VALUE)                       AS  RESULT_VALUE
+               SUM(PPP.VALUE)                       AS  RESULT_VALUE,
+               :P_REQUEST_ID
           FROM PER_ALL_ASSIGNMENTS_F        PAAF,
                PAY_ALL_PAYROLLS_F           PPF,
                PAY_PAYROLL_ACTIONS          PPA,
@@ -141,7 +147,8 @@
                PAY_ASSIGNMENT_ACTIONS       PAA_PP,
                PAY_PRE_PAYMENTS             PPP,
                PAY_ORG_PAYMENT_METHODS_F    POPM,
-               PAY_RUN_TYPES_F              PRT
+               PAY_RUN_TYPES_F              PRT,
+               PAY_CONSOLIDATION_SETS       PCS
          WHERE 1 = 1
            AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
            AND PPA.PAYROLL_ID = PPF.PAYROLL_ID
@@ -172,7 +179,13 @@
            AND PPA.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE
                                       AND PAAF.EFFECTIVE_END_DATE 
            AND PPA_PP.EFFECTIVE_DATE BETWEEN POPM.EFFECTIVE_START_DATE
-                                      AND POPM.EFFECTIVE_END_DATE   
+                                      AND POPM.EFFECTIVE_END_DATE 
+           AND PPA.CONSOLIDATION_SET_ID = PCS.CONSOLIDATION_SET_ID 
+           AND PRT.RUN_TYPE_NAME = (CASE
+                                        WHEN PCS.CONSOLIDATION_SET_NAME = 'GRATIFICACIÓN'
+                                        THEN 'Standard'
+                                        ELSE PRT.RUN_TYPE_NAME
+                                    END)
          GROUP 
             BY POPM.ORG_PAYMENT_METHOD_ID,
                POPM.ORG_PAYMENT_METHOD_NAME,

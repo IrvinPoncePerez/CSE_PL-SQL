@@ -171,7 +171,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_TOT_NOM_CONCEP_PKG IS
                PAY_ASSIGNMENT_ACTIONS       PAA_PP,
                PAY_PRE_PAYMENTS             PPP,
                PAY_ORG_PAYMENT_METHODS_F    POPM,
-               PAY_RUN_TYPES_F              PRT
+               PAY_RUN_TYPES_F              PRT,
+               PAY_CONSOLIDATION_SETS       PCS
          WHERE 1 = 1
            AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
            AND PPA.PAYROLL_ID = PPF.PAYROLL_ID
@@ -202,7 +203,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_TOT_NOM_CONCEP_PKG IS
            AND PPA.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE
                                       AND PAAF.EFFECTIVE_END_DATE 
            AND PPA_PP.EFFECTIVE_DATE BETWEEN POPM.EFFECTIVE_START_DATE
-                                      AND POPM.EFFECTIVE_END_DATE   
+                                      AND POPM.EFFECTIVE_END_DATE 
+           AND PPA.CONSOLIDATION_SET_ID = PCS.CONSOLIDATION_SET_ID 
+           AND PRT.RUN_TYPE_NAME = (CASE
+                                        WHEN PCS.CONSOLIDATION_SET_NAME = 'GRATIFICACIÓN'
+                                        THEN 'Standard'
+                                        ELSE PRT.RUN_TYPE_NAME
+                                    END)
          GROUP 
             BY POPM.ORG_PAYMENT_METHOD_ID,
                POPM.ORG_PAYMENT_METHOD_NAME,
