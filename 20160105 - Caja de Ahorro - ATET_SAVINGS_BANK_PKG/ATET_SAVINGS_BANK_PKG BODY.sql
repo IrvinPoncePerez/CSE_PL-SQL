@@ -6768,45 +6768,59 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                              
         IF var_result = 'Y' THEN
         
-            IF P_IS_SAVING_RETIREMENT = 'N' THEN
-                /*********************************************/
-                /***            IMPRESIÓN DE RECIBO        ***/
-                /*********************************************/
-                BEGIN
+
+            /*********************************************/
+            /***            IMPRESIÓN DE RECIBO        ***/
+            /*********************************************/
+            BEGIN
                 
-                    SELECT ASLT.LOAN_TRANSACTION_ID
-                      INTO var_loan_transaction_id
-                      FROM ATET_SB_LOANS_TRANSACTIONS   ASLT
-                     WHERE 1 = 1
-                       AND ASLT.MEMBER_ID = P_MEMBER_ID
-                       AND ASLT.PERSON_ID = var_person_id
-                       AND ASLT.TIME_PERIOD_ID = var_time_period_id
-                       AND ASLT.LOAN_ID = P_LOAN_ID;
+                SELECT ASLT.LOAN_TRANSACTION_ID
+                  INTO var_loan_transaction_id
+                  FROM ATET_SB_LOANS_TRANSACTIONS   ASLT
+                 WHERE 1 = 1
+                   AND ASLT.MEMBER_ID = P_MEMBER_ID
+                   AND ASLT.PERSON_ID = var_person_id
+                   AND ASLT.TIME_PERIOD_ID = var_time_period_id
+                   AND ASLT.LOAN_ID = P_LOAN_ID;
+                
+                IF P_IS_SAVING_RETIREMENT = 'N' THEN
                 
                     SELECT ATET_SB_RECEIPT_NUMBER_SEQ.NEXTVAL
                       INTO var_loan_receipt_seq 
                       FROM DUAL;                         
-                         
-                         
+                             
+                             
                     SELECT ATET_SB_RECEIPTS_ALL_SEQ.NEXTVAL
                       INTO var_receipts_all_seq
                       FROM DUAL;   
                       
-                    UPDATE ATET_SB_LOANS_TRANSACTIONS   ASLT
+                     UPDATE ATET_SB_LOANS_TRANSACTIONS   ASLT
                        SET ASLT.ATTRIBUTE1 = var_loan_receipt_seq 
                      WHERE 1 = 1
                        AND ASLT.LOAN_ID = P_LOAN_ID
                        AND ASLT.LOAN_TRANSACTION_ID = var_loan_transaction_id;
-                          
-
+                       
+                ELSIF P_IS_SAVING_RETIREMENT = 'Y'THEN
+                
+                    SELECT ATET_SB_PREPAID_SEQ.NEXTVAL
+                      INTO var_loan_receipt_seq
+                      FROM DUAL;
+                      
+                     UPDATE ATET_SB_LOANS_TRANSACTIONS   ASLT
+                       SET ASLT.ATTRIBUTE1 = var_loan_receipt_seq,
+                           ASLT.ATTRIBUTE7 = 'CON RETIRO DE AHORRO'
+                     WHERE 1 = 1
+                       AND ASLT.LOAN_ID = P_LOAN_ID
+                       AND ASLT.LOAN_TRANSACTION_ID = var_loan_transaction_id;
+                       
+                END IF;
+                      
                         
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
-                EXCEPTION WHEN OTHERS THEN
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
-                    RAISE PRINT_PREPAID_EX;
-                END;
-            
-            END IF; 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
+            EXCEPTION WHEN OTHERS THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                RAISE PRINT_PREPAID_EX;
+            END; 
             
             
             /*********************************************/
@@ -7087,18 +7101,17 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 END;                 
                 
                 
-                IF P_IS_SAVING_RETIREMENT = 'Y' THEN
+            ELSIF P_IS_SAVING_RETIREMENT = 'Y' THEN
                     PRINT_SAVING_TRANSACTION(
-                        P_SAVING_TRANSACTION_ID => var_saving_transaction_id);
-                END IF;     
-                    PRINT_PREPAID(
-                        P_LOAN_ID => P_LOAN_ID, 
-                        P_FOLIO => var_loan_receipt_seq,
-                        P_BONUS => 0,
-                        P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
-                                 );  
-                                 
+                        P_SAVING_TRANSACTION_ID => var_saving_transaction_id);  
             END IF;
+            
+            PRINT_PREPAID(
+                P_LOAN_ID => P_LOAN_ID, 
+                P_FOLIO => var_loan_receipt_seq,
+                P_BONUS => 0,
+                P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
+                         );
             
             ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'COMMIT EJECUTADO.');
