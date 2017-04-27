@@ -300,11 +300,6 @@ CREATE OR REPLACE PACKAGE APPS.ATET_SAVINGS_BANK_PKG IS
                     P_PAYMENT_AMOUNT            NUMBER,
                     P_TIME_PERIOD_ID            NUMBER,
                     P_IS_SAVING_RETIREMENT      VARCHAR2);
-    
-    PROCEDURE   PRINT_PREPAID(
-                    P_LOAN_ID                   NUMBER,
-                    P_FOLIO                     NUMBER,
-                    P_BONUS                     NUMBER);
                     
     PROCEDURE   PRINT_PREPAID(
                     P_LOAN_ID                   NUMBER,

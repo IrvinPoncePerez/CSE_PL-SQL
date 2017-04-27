@@ -5771,47 +5771,55 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 END IF;
                 
                 
-                IF P_IS_SAVING_RETIREMENT = 'N' THEN
-                    /*********************************************/
-                    /***            IMPRESIÓN DE RECIBO        ***/
-                    /*********************************************/
-                     BEGIN           
-                                                               
+                
+                /*********************************************/
+                /***            IMPRESIÓN DE RECIBO        ***/
+                /*********************************************/
+                 BEGIN           
+                             
+                    IF P_IS_SAVING_RETIREMENT = 'N' THEN                                  
                         SELECT ATET_SB_RECEIPT_NUMBER_SEQ.NEXTVAL
                           INTO var_loan_receipt_seq 
                           FROM DUAL;                         
-                         
-                         
+                             
+                             
                         SELECT ATET_SB_RECEIPTS_ALL_SEQ.NEXTVAL
                           INTO var_receipts_all_seq
-                          FROM DUAL;                 
+                          FROM DUAL;
+                    ELSIF P_IS_SAVING_RETIREMENT = 'Y' THEN
+                        SELECT ATET_SB_PREPAID_SEQ.NEXTVAL
+                          INTO var_loan_receipt_seq 
+                          FROM DUAL;
+                    END IF;                 
                         
                           
-                        SELECT ASM.EMPLOYEE_NUMBER,
-                               ASM.EMPLOYEE_FULL_NAME
-                          INTO var_employee_number,
-                               var_employee_full_name
-                          FROM ATET_SB_MEMBERS  ASM
-                         WHERE ASM.MEMBER_ID = P_MEMBER_ID;    
+                    SELECT ASM.EMPLOYEE_NUMBER,
+                           ASM.EMPLOYEE_FULL_NAME
+                      INTO var_employee_number,
+                           var_employee_full_name
+                      FROM ATET_SB_MEMBERS  ASM
+                     WHERE ASM.MEMBER_ID = P_MEMBER_ID;    
                          
                                   
-                         SELECT BANK_ACCOUNT_ID,
-                                BANK_ACCOUNT_NAME,
-                                BANK_ACCOUNT_NUM,
-                                CURRENCY_CODE
-                           INTO var_banks_account_id,
-                                var_banks_account_name,
-                                var_banks_account_num,
-                                var_banks_currency_code
-                           FROM ATET_SB_BANK_ACCOUNTS
-                          WHERE 1 = 1
-                            AND ROWNUM = 1;
+                     SELECT BANK_ACCOUNT_ID,
+                            BANK_ACCOUNT_NAME,
+                            BANK_ACCOUNT_NUM,
+                            CURRENCY_CODE
+                       INTO var_banks_account_id,
+                            var_banks_account_name,
+                            var_banks_account_num,
+                            var_banks_currency_code
+                       FROM ATET_SB_BANK_ACCOUNTS
+                      WHERE 1 = 1
+                        AND ROWNUM = 1;
                             
-                    EXCEPTION WHEN OTHERS THEN
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
-                        RAISE PRE_PROCESSING_EXCEPTION;
-                    END;   
-                    
+                EXCEPTION WHEN OTHERS THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                    RAISE PRE_PROCESSING_EXCEPTION;
+                END;   
+                
+                
+                IF P_IS_SAVING_RETIREMENT = 'N' THEN    
                     /**********************************************************/
                     /*******          INSERT ATET_SB_RECEIPTS_ALL          ****/
                     /**********************************************************/
@@ -5868,22 +5876,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                         FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
                         RAISE INSERT_RECEIPTS_EXCEPTION;
                     END;                                                                                                                                                         
-
-                    /**********************************************************/
-                    /*******             IMPRESIÓN DE RECIBO               ****/
-                    /**********************************************************/
-                    BEGIN
-                                              
-                        PRINT_PREPAID(
-                            P_LOAN_ID => P_LOAN_ID, 
-                            P_FOLIO => var_loan_receipt_seq,
-                            P_BONUS => var_bonus_interest
-                                     );
-                        
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
-                    EXCEPTION WHEN OTHERS THEN
-                        RAISE PRINT_PREPAID_EXCEPTION;
-                    END;
                     
                 END IF;
                           
@@ -5897,11 +5889,35 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                         P_PREPAID_SEQ => var_loan_receipt_seq,
                         P_LOAN_TRANSACTION_ID => var_loan_transaction_id
                                    );
+                                   
+                    IF P_IS_SAVING_RETIREMENT = 'Y' THEN
+                        UPDATE ATET_SB_LOANS_TRANSACTIONS
+                           SET ATTRIBUTE7 = 'CON RETIRO DE AHORRO'
+                         WHERE 1 = 1
+                           AND LOAN_TRANSACTION_ID = var_loan_transaction_id;
+                    END IF;                                                       
                     
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXECUTE : SETTLEMENT_LOAN');
                 EXCEPTION WHEN OTHERS THEN
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'EXECUTE : SETTLEMENT_LOAN' || SQLERRM);
                     RAISE SETTLEMENT_LOAN_EXCEPTION;
+                END;
+                
+                /**********************************************************/
+                /*******             IMPRESIÓN DE RECIBO               ****/
+                /**********************************************************/
+                BEGIN
+                                              
+                    PRINT_PREPAID(
+                        P_LOAN_ID => P_LOAN_ID, 
+                        P_FOLIO => var_loan_receipt_seq,
+                        P_BONUS => var_bonus_interest,
+                        P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
+                                 );
+                        
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
+                EXCEPTION WHEN OTHERS THEN
+                    RAISE PRINT_PREPAID_EXCEPTION;
                 END;
                 
                 /*********************************************/
@@ -7277,66 +7293,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR: OTHERS_EXCEPTION.');
             P_RETCODE := 2;
     END PROCESS_PARCIAL_PREPAYMENT;
-    
-    
-    PROCEDURE   PRINT_PREPAID(
-                    P_LOAN_ID     NUMBER,
-                    P_FOLIO       NUMBER,
-                    P_BONUS       NUMBER)
-    IS
-        add_layout_boolean   BOOLEAN;
-        v_request_id         NUMBER;
-        waiting              BOOLEAN;
-        phase                VARCHAR2 (80 BYTE);
-        status               VARCHAR2 (80 BYTE);
-        dev_phase            VARCHAR2 (80 BYTE);
-        dev_status           VARCHAR2 (80 BYTE);
-        V_message            VARCHAR2 (4000 BYTE);
-    BEGIN
-   
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT_PREPAID(P_LOAN_ID => ' || P_LOAN_ID || 
-                                                     ',P_FOLIO  => ' || P_FOLIO  || 
-                                                     ')'); 
-
-        add_layout_boolean :=
-            fnd_request.add_layout (
-               template_appl_name   => 'PER',
-               template_code        => 'ATET_SB_PRINT_PREPAID',
-               template_language    => 'Spanish', 
-               template_territory   => 'Mexico', 
-               output_format        => 'PDF' 
-                                   );
-
-
-
-        v_request_id :=
-            fnd_request.submit_request (
-               application => 'PER',
-               program => 'ATET_SB_PRINT_PREPAID',
-               description => '',
-               start_time => '',
-               sub_request => FALSE,
-               argument1 => TO_CHAR(P_LOAN_ID),
-               argument2 => TO_CHAR(P_FOLIO),
-               argument3 => TO_CHAR(P_BONUS)
-                                       );
-        
-        STANDARD.COMMIT;
-                 
-        waiting :=
-            fnd_concurrent.wait_for_request (
-                request_id => v_request_id,
-                interval => 1,
-                max_wait => 0,
-                phase => phase,
-                status => status,
-                dev_phase => dev_phase,
-                dev_status => dev_status,
-                message => V_message
-                                        );
-    EXCEPTION WHEN OTHERS THEN
-        RAISE;  
-    END PRINT_PREPAID;
     
     
     PROCEDURE   PRINT_PREPAID(
