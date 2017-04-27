@@ -6,16 +6,6 @@ CREATE OR REPLACE PROCEDURE APPS.PAC_ALTAS_FONDO_AHORRO_PRC(
 IS
     var_start_date  DATE := TRUNC(TO_DATE(P_START_DATE,'RRRR/MM/DD HH24:MI:SS'));
     var_end_date    DATE := TRUNC(TO_DATE(P_END_DATE,'RRRR/MM/DD HH24:MI:SS'));
-    var_path        VARCHAR2(250) := 'FONDO_AHORRO_ALTAS';
-    var_file_name   VARCHAR2(250) := 'FONDO_AHORRO_ALTAS.txt';
-    
-    var_header      VARCHAR(2000);
-    var_body        VARCHAR(5000);
-    var_footer      VARCHAR(2000);
-    
-    var_exe_seq     NUMBER;
-    var_detail_seq  NUMBER;
-    var_reg_serv    VARCHAR(50);
     var_detail_rows NUMBER;
     
     CURSOR DETAILS_LIST IS
