@@ -1,12 +1,11 @@
 ALTER SESSION SET CURRENT_SCHEMA=APPS;
 
-
              SELECT DISTINCT 
                     PPF.PAYROLL_NAME,
                     (CASE
-                        WHEN FLV1.LOOKUP_CODE = '02' THEN 'CS'
+                        WHEN FLV1.LOOKUP_CODE = '02' THEN 'CSUD'
                         WHEN FLV1.LOOKUP_CODE = '08' THEN 'POGA'
-                        WHEN FLV1.LOOKUP_CODE = '11' THEN 'PAC'
+                        WHEN FLV1.LOOKUP_CODE = '11' THEN 'PACUD'
                      END)                                                                           AS  SERFOL,
                     UPPER(OI.ORG_INFORMATION2)                                                      AS  RFCEMI,
                     UPPER(FLV1.MEANING)                                                             AS  NOMEMI,
@@ -65,7 +64,7 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                      END)                                                                           AS  NOM_FECINI,
                     PTP.END_DATE                                                                    AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0.00'))                          AS  NOM_DIAPAG,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '1'))                          AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     (CASE
                         WHEN HOUV.REGION_1 = 'CAMP' THEN 'CAM'
@@ -76,12 +75,14 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                      END)                                                                           AS  NOM_ENTFED,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
-                        WHEN PPF.PAYROLL_NAME LIKE '%SEM%' THEN
-                             '02'
-                        WHEN PPF.PAYROLL_NAME LIKE '%QUIN%' THEN
-                             '04'
-                        ELSE
-                             ''
+                        WHEN PPF.PAYROLL_NAME LIKE '%SEM%' 
+                         AND PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%'
+                        THEN '02'
+                        WHEN PPF.PAYROLL_NAME LIKE '%QUIN%'
+                         AND PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' 
+                        THEN '04'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%GRATIFICACIÓN%'
+                        THEN '99'
                      END)                                                                           AS  NOM_FORPAG,
                     PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
                     APPS.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)               AS  NOM_REGPAT,
@@ -259,4 +260,4 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                           PPA.EFFECTIVE_DATE,
                           PTP.END_DATE
                  ORDER BY PPF.PAYROLL_NAME,
-                          PAPF.EMPLOYEE_NUMBER;
+                          PAPF.EMPLOYEE_NUMBER; 
