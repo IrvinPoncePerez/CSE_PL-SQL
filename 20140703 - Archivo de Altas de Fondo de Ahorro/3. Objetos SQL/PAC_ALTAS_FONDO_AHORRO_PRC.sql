@@ -17,7 +17,7 @@ IS
           ,TRIM(PAPF.FIRST_NAME || ' ' || PAPF.MIDDLE_NAMES)                AS  NAMES
           ,TRIM(REPLACE(REPLACE(PEA.SEGMENT3,CHR(10), ''),CHR(13), ''))     AS  ACCOUNT_NUMBER      
           ,TRIM(SUBSTR(POPM.ORG_PAYMENT_METHOD_NAME,4))                     AS  BANK_NAME      
-          ,TRIM(REPLACE(REPLACE(PPPM.ATTRIBUTE1, CHR(10), ''), CHR(13), ''))AS  CLABE      
+          ,TRIM(REPLACE(REPLACE(PEA.SEGMENT5,CHR(10), ''),CHR(13), ''))     AS  CLABE      
           ,TRIM(PAPF.PER_INFORMATION2)                                      AS  RFC                           
           ,TRIM(PAPF.NATIONAL_IDENTIFIER)                                   AS  CURP    
           ,TO_CHAR(SYSDATE, 'RRRRMMDD')                                     AS  DATE_EXP     
@@ -39,7 +39,7 @@ IS
        AND PPT.USER_PERSON_TYPE IN ('Employee', 'Empleado')
        AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%PENSIONES%'
        AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%DESPENSA%'
-       AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%EFECTIV%'
+       AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%EFECTIVALE%'
        AND ORG_PAYMENT_METHOD_NAME NOT LIKE '%CHEQUE%'
        AND PPT.ACTIVE_FLAG = 'Y'
        AND NVL(PPOS.ADJUSTED_SVC_DATE,  
