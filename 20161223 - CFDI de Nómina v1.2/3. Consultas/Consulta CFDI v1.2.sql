@@ -1,5 +1,6 @@
 ALTER SESSION SET CURRENT_SCHEMA=APPS;
 
+
              SELECT DISTINCT 
                     PPF.PAYROLL_NAME,
                     (CASE
@@ -219,6 +220,7 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                                 PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID)
                             ELSE 1
                         END) <> 0
+                   AND PAPF.EMPLOYEE_NUMBER IN (42, 5483)
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
@@ -260,4 +262,4 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                           PPA.EFFECTIVE_DATE,
                           PTP.END_DATE
                  ORDER BY PPF.PAYROLL_NAME,
-                          PAPF.EMPLOYEE_NUMBER; 
+                          PAPF.EMPLOYEE_NUMBER;   
