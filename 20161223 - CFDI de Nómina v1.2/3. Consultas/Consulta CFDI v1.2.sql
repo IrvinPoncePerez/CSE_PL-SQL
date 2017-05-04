@@ -1,4 +1,3 @@
-ALTER SESSION SET CURRENT_SCHEMA=APPS;
 
 
              SELECT DISTINCT 
@@ -29,7 +28,8 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,  
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,   
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  TOTSEP, 
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
@@ -83,6 +83,8 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                          AND PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' 
                         THEN '04'
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%GRATIFICACIÓN%'
+                        THEN '99'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITO%'
                         THEN '99'
                      END)                                                                           AS  NOM_FORPAG,
                     PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
@@ -220,7 +222,7 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                                 PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID)
                             ELSE 1
                         END) <> 0
-                   AND PAPF.EMPLOYEE_NUMBER IN (42, 5483)
+--                   AND PAPF.EMPLOYEE_NUMBER IN (786, 3119)
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
@@ -262,4 +264,4 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                           PPA.EFFECTIVE_DATE,
                           PTP.END_DATE
                  ORDER BY PPF.PAYROLL_NAME,
-                          PAPF.EMPLOYEE_NUMBER;   
+                          PAPF.EMPLOYEE_NUMBER;  

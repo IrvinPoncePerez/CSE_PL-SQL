@@ -53,9 +53,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
                    AND PETF.ELEMENT_NAME  IN ('FINAN_TRABAJO_RET',
                                               'P080_FONDO AHORRO TR ACUM',
-                                              'P017_PRIMA DE ANTIGUEDAD',
-                                              'P047_ISPT ANUAL A FAVOR',
-                                              'P026_INDEMNIZACION')
+                                              'P047_ISPT ANUAL A FAVOR')
                    AND PETF.ELEMENT_NAME NOT IN (CASE 
                                                     WHEN PP_CONSOLIDATION_ID = 65 THEN 'P080_FONDO AHORRO TR ACUM'
                                                     ELSE 'TODOS'
@@ -100,6 +98,42 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
     EXCEPTION WHEN NO_DATA_FOUND THEN
         RETURN 0;
     END GET_SUBEMP;
+    
+    /*
+    SUMA DE PAGO POR SEPARACIÓN, PRIMA DE ANTIGÜEDAD E INDEMNIZACIÓN 
+    */
+    FUNCTION GET_TOTSEP(
+        P_ASSIGNMENT_ACTION_ID    NUMBER)
+      RETURN NUMBER
+    IS
+        var_result_value    NUMBER;
+    BEGIN
+    
+        SELECT SUM(RESULT)
+           INTO var_result_value
+           FROM(SELECT SUM(PRRV.RESULT_VALUE) AS RESULT                    
+                  FROM PAY_RUN_RESULTS              PRR,
+                       PAY_ELEMENT_TYPES_F          PETF,
+                       PAY_RUN_RESULT_VALUES        PRRV,
+                       PAY_INPUT_VALUES_F           PIVF,
+                       PAY_ELEMENT_CLASSIFICATIONS  PEC
+                 WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+                   AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+                   AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+                   AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+                   AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+                   AND PETF.ELEMENT_NAME  IN ('P017_PRIMA DE ANTIGUEDAD',
+                                              'P026_INDEMNIZACION')
+                   AND PIVF.UOM = 'M'
+                   AND PIVF.NAME = 'Pay Value'
+                   AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
+                   AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE);
+    
+        RETURN var_result_value;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RETURN 0;
+    END GET_TOTSEP;
+    
     /*
     ISR Retenido
     */    
@@ -192,6 +226,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
              OR PIVF.NAME = 'Dias Normales')
            AND SYSDATE BETWEEN PETF.EFFECTIVE_START_DATE AND PETF.EFFECTIVE_END_DATE
            AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE;
+    
+        IF var_result_value = 0 THEN
+         var_result_value := 1;
+        END IF;
     
         RETURN var_result_value;
     EXCEPTION WHEN NO_DATA_FOUND THEN
@@ -536,7 +574,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,  
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,   
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  TOTSEP, 
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
@@ -590,6 +629,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                          AND PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' 
                         THEN '04'
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%GRATIFICACIÓN%'
+                        THEN '99'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITO%'
                         THEN '99'
                      END)                                                                           AS  NOM_FORPAG,
                     PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
@@ -1002,6 +1043,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'UNIDAD  ACT');
                         UTL_FILE.PUT_LINE(var_file, 'PBRUDE  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR + 
                                                                           DETAIL(rowIndex).SUBEMP +
+                                                                          DETAIL(rowIndex).TOTSEP +
                                                                           (CASE
                                                                                WHEN DETAIL(rowIndex).ISRRET < 0 
                                                                                THEN ABS(DETAIL(rowIndex).ISRRET)
@@ -1009,6 +1051,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                                            END), '9999990D99'));
                         UTL_FILE.PUT_LINE(var_file, 'IMPBRU  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR + 
                                                                           DETAIL(rowIndex).SUBEMP +
+                                                                          DETAIL(rowIndex).TOTSEP +
                                                                           (CASE
                                                                                WHEN DETAIL(rowIndex).ISRRET < 0 
                                                                                THEN ABS(DETAIL(rowIndex).ISRRET)
@@ -1024,16 +1067,20 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         UTL_FILE.PUT_LINE(var_file, 'NOM_FECINI  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECINI, 'YYYY-MM-DD'));
                         UTL_FILE.PUT_LINE(var_file, 'NOM_FECFIN  ' || TO_CHAR(DETAIL(rowIndex).NOM_FECFIN, 'YYYY-MM-DD'));                        
                         UTL_FILE.PUT_LINE(var_file, 'NOM_DIAPAG  ' || DETAIL(rowIndex).NOM_DIAPAG);
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_TOTPER  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR, '9999990D99'));
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_TOTDED  ' || TO_CHAR(DETAIL(rowIndex).ISRRET + 
-                                                                              DETAIL(rowIndex).MONDET +
-                                                                              (CASE
-                                                                                   WHEN DETAIL(rowIndex).ISRRET < 0 
-                                                                                   THEN ABS(DETAIL(rowIndex).ISRRET)
-                                                                                   WHEN DETAIL(rowIndex).SUBEMP < 0 
-                                                                                   THEN ABS(DETAIL(rowIndex).SUBEMP)
-                                                                                   ELSE 0 
-                                                                               END), '9999990D99'));
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_TOTPER  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR + DETAIL(rowIndex).TOTSEP, '9999990D99'));
+                        IF      DETAIL(rowIndex).ISRRET <> 0 
+                           OR   DETAIL(rowIndex).MONDET <> 0 
+                           OR   DETAIL(rowIndex).SUBEMP < 0 THEN
+                            UTL_FILE.PUT_LINE(var_file, 'NOM_TOTDED  ' || TO_CHAR(DETAIL(rowIndex).ISRRET + 
+                                                                                  DETAIL(rowIndex).MONDET +
+                                                                                  (CASE
+                                                                                       WHEN DETAIL(rowIndex).ISRRET < 0 
+                                                                                       THEN ABS(DETAIL(rowIndex).ISRRET)
+                                                                                       WHEN DETAIL(rowIndex).SUBEMP < 0 
+                                                                                       THEN ABS(DETAIL(rowIndex).SUBEMP)
+                                                                                       ELSE 0 
+                                                                                   END), '9999990D99'));
+                        END IF;
                         IF  DETAIL(rowIndex).SUBEMP > 0 OR DETAIL(rowIndex).ISRRET < 0 THEN                                                                                
                             UTL_FILE.PUT_LINE(var_file, 'NOM_TOTPAG  ' || TO_CHAR((CASE
                                                                                         WHEN DETAIL(rowIndex).SUBEMP > 0
@@ -1425,12 +1472,15 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             END IF;                        
                                
                             UTL_FILE.PUT_LINE(var_file, '');
-                            UTL_FILE.PUT_LINE(var_file, 'NOM_DED_OTRDED ' || TO_CHAR(DETAIL(rowIndex).MONDET + 
-                                                                                     (CASE
-                                                                                          WHEN DETAIL(rowIndex).SUBEMP < 0
-                                                                                          THEN ABS(DETAIL(rowIndex).SUBEMP)
-                                                                                          ELSE 0
-                                                                                      END), '9999990D99'));
+                            IF      DETAIL(rowIndex).MONDET <> 0 
+                               OR   DETAIL(rowIndex).SUBEMP < 0 THEN
+                                UTL_FILE.PUT_LINE(var_file, 'NOM_DED_OTRDED ' || TO_CHAR(DETAIL(rowIndex).MONDET + 
+                                                                                         (CASE
+                                                                                              WHEN DETAIL(rowIndex).SUBEMP < 0
+                                                                                              THEN ABS(DETAIL(rowIndex).SUBEMP)
+                                                                                              ELSE 0
+                                                                                          END), '9999990D99'));
+                            END IF;
                             IF DETAIL(rowIndex).ISRRET > 0 THEN
                                 UTL_FILE.PUT_LINE(var_file, 'NOM_DED_TOTRET ' ||TO_CHAR(DETAIL(rowIndex).ISRRET, '9999990D99'));
                             END IF;
@@ -1495,7 +1545,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_IMPGRA  ' || TO_CHAR(OTR.NOM_OTR_IMPGRA, '9999990D99'));
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_IMPEXE  ' || TO_CHAR(OTR.NOM_OTR_IMPEXE, '9999990D99'));
                                         UTL_FILE.PUT_LINE(var_file, '');    
-                                        UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_SUBSID ' || GET_SUBSIDIO_EMPLEO(ASSIGN.ASSIGNMENT_ACTION_ID));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_OTR_SUBSID ' || NVL(GET_SUBSIDIO_EMPLEO(ASSIGN.ASSIGNMENT_ACTION_ID), TO_CHAR(OTR.NOM_OTR_IMPGRA, '9999990D99')));
                                         UTL_FILE.PUT_LINE(var_file, 'FINOTR');
                                     END IF;
                                     

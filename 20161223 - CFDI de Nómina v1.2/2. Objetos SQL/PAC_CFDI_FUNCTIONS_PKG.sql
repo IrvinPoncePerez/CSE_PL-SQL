@@ -13,6 +13,13 @@ CREATE OR REPLACE PACKAGE APPS.PAC_CFDI_FUNCTIONS_PKG AS
     FUNCTION GET_SUBEMP(
         P_ASSIGNMENT_ACTION_ID    NUMBER)
       RETURN NUMBER;
+      
+    /*
+    Suma de pago por separación, prima de antigüedad e indemnización 
+    */
+    FUNCTION GET_TOTSEP(
+        P_ASSIGNMENT_ACTION_ID    NUMBER)
+      RETURN NUMBER;
 
     /*
     ISR Retenido
