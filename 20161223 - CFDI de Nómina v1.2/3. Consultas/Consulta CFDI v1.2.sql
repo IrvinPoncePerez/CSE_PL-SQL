@@ -1,5 +1,3 @@
-
-
              SELECT DISTINCT 
                     PPF.PAYROLL_NAME,
                     (CASE
@@ -29,7 +27,8 @@
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,  
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,  
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  TOTSEP, 
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  TOTSEP_ANT, 
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  TOTSEP_IND,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
@@ -49,21 +48,30 @@
                     (CASE
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
                             CASE 
-                                WHEN :P_PERIOD_TYPE = 'Week' OR :P_PERIOD_TYPE = 'Semana' THEN
+                                WHEN P_PERIOD_TYPE = 'Week' OR P_PERIOD_TYPE = 'Semana' THEN
                                      PTP.END_DATE + 4
                                 ELSE
                                      PTP.END_DATE
                             END
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' THEN
+                            PTP.END_DATE + 1
                         ELSE
                             PTP.END_DATE
                      END)                                                                           AS  NOM_FECPAG,       
                     (CASE
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
-                            PTP.START_DATE 
+                            PTP.START_DATE
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' THEN
+                            PTP.END_DATE + 1 
                         ELSE 
                             PTP.END_DATE
                      END)                                                                           AS  NOM_FECINI,
-                    PTP.END_DATE                                                                    AS  NOM_FECFIN,
+                    (CASE
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' THEN
+                            PTP.END_DATE + 1
+                        ELSE 
+                            PTP.END_DATE
+                     END)                                                                           AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
                     MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '1'))                          AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
@@ -100,7 +108,6 @@
                                               'Pay Value'), '0'))                                   AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSUL(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSUL,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSEP,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
                     PAC_CFDI_FUNCTIONS_PKG.GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,
@@ -165,7 +172,7 @@
                        PER_ADDRESSES                PAD
                  WHERE 1 = 1
                    AND FLV1.LOOKUP_TYPE = 'NOMINAS POR EMPLEADOR LEGAL'
-                   AND FLV1.LOOKUP_CODE = :P_COMPANY_ID
+                   AND FLV1.LOOKUP_CODE = P_COMPANY_ID
                    AND FLV1.LANGUAGE = USERENV('LANG')
                    AND AOU.NAME = FLV1.MEANING
                    AND LA.LOCATION_ID = AOU.LOCATION_ID
@@ -176,14 +183,14 @@
                    AND FLV2.LOOKUP_TYPE = 'MX_STATE'
                    AND FLV2.LANGUAGE = USERENV('LANG')
                    AND SUBSTR(PPF.PAYROLL_NAME,1,2) = FLV1.LOOKUP_CODE
-                   AND APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
-                   AND PPF.PAYROLL_ID = NVL(:P_PAYROLL_ID, PPF.PAYROLL_ID) 
+                   AND APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(P_PERIOD_TYPE, APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
+                   AND PPF.PAYROLL_ID = NVL(P_PAYROLL_ID, PPF.PAYROLL_ID) 
                    AND PPF.PAYROLL_ID = PPA.PAYROLL_ID
-                   AND PPA.CONSOLIDATION_SET_ID  = NVL(:P_CONSOLIDATION_ID, PPA.CONSOLIDATION_SET_ID)
+                   AND PPA.CONSOLIDATION_SET_ID  = NVL(P_CONSOLIDATION_ID, PPA.CONSOLIDATION_SET_ID)
                    AND PTP.PAYROLL_ID = PPF.PAYROLL_ID
-                   AND (EXTRACT(YEAR FROM PTP.END_DATE) = :P_YEAR 
-                    AND EXTRACT(MONTH FROM PTP.END_DATE) = :P_MONTH)
-                   AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
+                   AND (EXTRACT(YEAR FROM PTP.END_DATE) = P_YEAR 
+                    AND EXTRACT(MONTH FROM PTP.END_DATE) = P_MONTH)
+                   AND PTP.PERIOD_NAME = NVL(P_PERIOD_NAME, PTP.PERIOD_NAME)
                    AND PPA.EFFECTIVE_DATE BETWEEN PTP.START_DATE AND PTP.END_DATE
                    AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID   
                    AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
@@ -222,7 +229,7 @@
                                 PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID)
                             ELSE 1
                         END) <> 0
---                   AND PAPF.EMPLOYEE_NUMBER IN (786, 3119)
+--                   AND PAPF.EMPLOYEE_NUMBER IN (283)
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
@@ -264,4 +271,4 @@
                           PPA.EFFECTIVE_DATE,
                           PTP.END_DATE
                  ORDER BY PPF.PAYROLL_NAME,
-                          PAPF.EMPLOYEE_NUMBER;  
+                          PAPF.EMPLOYEE_NUMBER;                          
