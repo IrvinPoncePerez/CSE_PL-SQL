@@ -1,3 +1,6 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+
+
              SELECT DISTINCT 
                     PPF.PAYROLL_NAME,
                     (CASE
@@ -13,7 +16,11 @@
                     UPPER(FLV2.MEANING)                                                             AS  ESTEMI,
                     LA.POSTAL_CODE                                                                  AS  CODEMI,
                     UPPER(FT1.NLS_TERRITORY)                                                        AS  PAIEMI,
-                    REPLACE(PAPF.PER_INFORMATION2, '-', '')                                         AS  RFCREC,
+                    (CASE
+                        WHEN PAPF.EMPLOYEE_NUMBER = 5646
+                        THEN 'GAÑU980724L34'
+                        ELSE REPLACE(PAPF.PER_INFORMATION2, '-', '')
+                     END)                                                                           AS  RFCREC,
                     UPPER(PAPF.LAST_NAME        || ' ' || 
                           PAPF.PER_INFORMATION1 || ' ' || 
                           PAPF.FIRST_NAME       || ' ' || 
@@ -48,7 +55,7 @@
                     (CASE
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
                             CASE 
-                                WHEN P_PERIOD_TYPE = 'Week' OR P_PERIOD_TYPE = 'Semana' THEN
+                                WHEN :P_PERIOD_TYPE = 'Week' OR :P_PERIOD_TYPE = 'Semana' THEN
                                      PTP.END_DATE + 4
                                 ELSE
                                      PTP.END_DATE
@@ -172,7 +179,7 @@
                        PER_ADDRESSES                PAD
                  WHERE 1 = 1
                    AND FLV1.LOOKUP_TYPE = 'NOMINAS POR EMPLEADOR LEGAL'
-                   AND FLV1.LOOKUP_CODE = P_COMPANY_ID
+                   AND FLV1.LOOKUP_CODE = :P_COMPANY_ID
                    AND FLV1.LANGUAGE = USERENV('LANG')
                    AND AOU.NAME = FLV1.MEANING
                    AND LA.LOCATION_ID = AOU.LOCATION_ID
@@ -183,14 +190,14 @@
                    AND FLV2.LOOKUP_TYPE = 'MX_STATE'
                    AND FLV2.LANGUAGE = USERENV('LANG')
                    AND SUBSTR(PPF.PAYROLL_NAME,1,2) = FLV1.LOOKUP_CODE
-                   AND APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(P_PERIOD_TYPE, APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
-                   AND PPF.PAYROLL_ID = NVL(P_PAYROLL_ID, PPF.PAYROLL_ID) 
+                   AND APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
+                   AND PPF.PAYROLL_ID = NVL(:P_PAYROLL_ID, PPF.PAYROLL_ID) 
                    AND PPF.PAYROLL_ID = PPA.PAYROLL_ID
-                   AND PPA.CONSOLIDATION_SET_ID  = NVL(P_CONSOLIDATION_ID, PPA.CONSOLIDATION_SET_ID)
+                   AND PPA.CONSOLIDATION_SET_ID  = NVL(:P_CONSOLIDATION_ID, PPA.CONSOLIDATION_SET_ID)
                    AND PTP.PAYROLL_ID = PPF.PAYROLL_ID
-                   AND (EXTRACT(YEAR FROM PTP.END_DATE) = P_YEAR 
-                    AND EXTRACT(MONTH FROM PTP.END_DATE) = P_MONTH)
-                   AND PTP.PERIOD_NAME = NVL(P_PERIOD_NAME, PTP.PERIOD_NAME)
+                   AND (EXTRACT(YEAR FROM PTP.END_DATE) = :P_YEAR 
+                    AND EXTRACT(MONTH FROM PTP.END_DATE) = :P_MONTH)
+                   AND PTP.PERIOD_NAME = NVL(:P_PERIOD_NAME, PTP.PERIOD_NAME)
                    AND PPA.EFFECTIVE_DATE BETWEEN PTP.START_DATE AND PTP.END_DATE
                    AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID   
                    AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
@@ -210,17 +217,17 @@
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
                    AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%%'
                    AND (    (CASE
-                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN  
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU', 'NORMAL') THEN  
                                     PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID)
                                 ELSE 1
                             END) <> 0
                         OR  (CASE 
-                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU', 'NORMAL') THEN
                                     PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID)
                                 ELSE 1        
                             END) <> 0
                         OR  (CASE 
-                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU', 'NORMAL') THEN
                                     PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID)
                                 ELSE 1
                             END) <> 0)
@@ -229,7 +236,7 @@
                                 PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID)
                             ELSE 1
                         END) <> 0
---                   AND PAPF.EMPLOYEE_NUMBER IN (283)
+--                   AND PAPF.EMPLOYEE_NUMBER IN (1233)
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,

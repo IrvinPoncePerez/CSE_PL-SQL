@@ -632,7 +632,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     UPPER(FLV2.MEANING)                                                             AS  ESTEMI,
                     LA.POSTAL_CODE                                                                  AS  CODEMI,
                     UPPER(FT1.NLS_TERRITORY)                                                        AS  PAIEMI,
-                    REPLACE(PAPF.PER_INFORMATION2, '-', '')                                         AS  RFCREC,
+                    (CASE
+                        WHEN PAPF.EMPLOYEE_NUMBER = 5646
+                        THEN 'GAÑU980724L34'
+                        ELSE REPLACE(PAPF.PER_INFORMATION2, '-', '')
+                     END)                                                                           AS  RFCREC,
                     UPPER(PAPF.LAST_NAME        || ' ' || 
                           PAPF.PER_INFORMATION1 || ' ' || 
                           PAPF.FIRST_NAME       || ' ' || 
@@ -829,17 +833,17 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
                    AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%%'
                    AND (    (CASE
-                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN  
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU', 'NORMAL') THEN  
                                     PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID)
                                 ELSE 1
                             END) <> 0
                         OR  (CASE 
-                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU', 'NORMAL') THEN
                                     PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID)
                                 ELSE 1        
                             END) <> 0
                         OR  (CASE 
-                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU', 'NORMAL') THEN
                                     PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID)
                                 ELSE 1
                             END) <> 0)
@@ -2177,9 +2181,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
              SELECT DISTINCT 
                     PPF.PAYROLL_NAME,
                     (CASE
-                        WHEN FLV1.LOOKUP_CODE = '02' THEN 'CS'
+                        WHEN FLV1.LOOKUP_CODE = '02' THEN 'CSUD'
                         WHEN FLV1.LOOKUP_CODE = '08' THEN 'POGA'
-                        WHEN FLV1.LOOKUP_CODE = '11' THEN 'PAC'
+                        WHEN FLV1.LOOKUP_CODE = '11' THEN 'PACUD'
                      END)                                                                           AS  SERFOL,
                     UPPER(OI.ORG_INFORMATION2)                                                      AS  RFCEMI,
                     UPPER(FLV1.MEANING)                                                             AS  NOMEMI,
@@ -2189,7 +2193,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     UPPER(FLV2.MEANING)                                                             AS  ESTEMI,
                     LA.POSTAL_CODE                                                                  AS  CODEMI,
                     UPPER(FT1.NLS_TERRITORY)                                                        AS  PAIEMI,
-                    REPLACE(PAPF.PER_INFORMATION2, '-', '')                                         AS  RFCREC,
+                    (CASE
+                        WHEN PAPF.EMPLOYEE_NUMBER = 5646
+                        THEN 'GAÑU980724L34'
+                        ELSE REPLACE(PAPF.PER_INFORMATION2, '-', '')
+                     END)                                                                           AS  RFCREC,
                     UPPER(PAPF.LAST_NAME        || ' ' || 
                           PAPF.PER_INFORMATION1 || ' ' || 
                           PAPF.FIRST_NAME       || ' ' || 
@@ -2202,7 +2210,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,  
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,   
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  TOTSEP_ANT, 
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  TOTSEP_IND,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
@@ -2227,18 +2237,27 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                 ELSE
                                      PTP.END_DATE
                             END
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' THEN
+                            PTP.END_DATE + 1
                         ELSE
                             PTP.END_DATE
                      END)                                                                           AS  NOM_FECPAG,       
                     (CASE
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
-                            PTP.START_DATE 
+                            PTP.START_DATE
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' THEN
+                            PTP.END_DATE + 1 
                         ELSE 
                             PTP.END_DATE
                      END)                                                                           AS  NOM_FECINI,
-                    PTP.END_DATE                                                                    AS  NOM_FECFIN,
+                    (CASE
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' THEN
+                            PTP.END_DATE + 1
+                        ELSE 
+                            PTP.END_DATE
+                     END)                                                                           AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '0.00'))                          AS  NOM_DIAPAG,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '1'))                          AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     (CASE
                         WHEN HOUV.REGION_1 = 'CAMP' THEN 'CAM'
@@ -2249,12 +2268,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                      END)                                                                           AS  NOM_ENTFED,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
                     (CASE
-                        WHEN PPF.PAYROLL_NAME LIKE '%SEM%' THEN
-                             '02'
-                        WHEN PPF.PAYROLL_NAME LIKE '%QUIN%' THEN
-                             '04'
-                        ELSE
-                             ''
+                        WHEN PPF.PAYROLL_NAME LIKE '%SEM%' 
+                         AND PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%'
+                        THEN '02'
+                        WHEN PPF.PAYROLL_NAME LIKE '%QUIN%'
+                         AND PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' 
+                        THEN '04'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%GRATIFICACIÓN%'
+                        THEN '99'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITO%'
+                        THEN '99'
                      END)                                                                           AS  NOM_FORPAG,
                     PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
                     APPS.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)               AS  NOM_REGPAT,
@@ -2269,7 +2292,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                               'Pay Value'), '0'))                                   AS  GROCERIES_VALUE,
                     PPF.ATTRIBUTE1                                                                  AS  NOM_CVENOM,  
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSUL(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSUL,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTSEP,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTGRA(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTGRA,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTEXE(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  NOM_PER_TOTEXE,  
                     PAC_CFDI_FUNCTIONS_PKG.GET_NOM_DESCRI(PPA.PAYROLL_ACTION_ID)                                           AS  NOM_DESCRI,
@@ -2372,17 +2394,17 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    AND PPA.EFFECTIVE_DATE BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
                    AND PAC_CFDI_FUNCTIONS_PKG.GET_PAYMENT_METHOD(PAA.ASSIGNMENT_ID) LIKE '%%'
                    AND (    (CASE
-                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN  
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU', 'NORMAL') THEN  
                                     PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID)
                                 ELSE 1
                             END) <> 0
                         OR  (CASE 
-                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU', 'NORMAL') THEN
                                     PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID)
                                 ELSE 1        
                             END) <> 0
                         OR  (CASE 
-                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU') THEN
+                                WHEN PCS.CONSOLIDATION_SET_NAME IN ('GRATIFICACIÓN', 'PTU', 'NORMAL') THEN
                                     PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID)
                                 ELSE 1
                             END) <> 0)
@@ -2391,6 +2413,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                 PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID)
                             ELSE 1
                         END) <> 0
+--                   AND PAPF.EMPLOYEE_NUMBER IN (1233)
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
