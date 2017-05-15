@@ -1,5 +1,6 @@
 CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_READ_XMLFILE_PAY_PKG
 AS
+   
 /*********************************************************************************************
  * Nombre : XXCALV_READ_XMLFILE_PAY_PKG.pkb          *
  * Creador : Condor Consulting Team (FJQR)           *
@@ -44,6 +45,13 @@ AS
    g_directory_destination VARCHAR2(100) := 'XX_REPOSITORY_XMLFILES_PAY_BK';
    g_retcode NUMBER := 0;
 
+    
+    /*iponce 15-MAY-2017*/
+   PROCEDURE debug_read_xml(message varchar2)
+   IS
+   BEGIN
+      fnd_file.put_line(fnd_file.log, message);
+   END debug_read_xml;
 
  --Procedure for printing errors in the log or predefined messages for development
    PROCEDURE log_error (p_error IN VARCHAR2)
@@ -355,6 +363,9 @@ IS
     l_file_name VARCHAR2(2000) := NULL;
 BEGIN
 
+    /* iponce 15-MAY-2017 */
+    debug_read_xml('valid_file_exists : p_file_name : ' || p_file_name);
+    
      SELECT file_name
         INTO l_file_name
         FROM APPS.XXCALV_UUID_NOM
@@ -513,7 +524,7 @@ BEGIN
         REGEXP_SUBSTR(paa.ASSIGNMENT_NUMBER,'[^-]+', 1,1),
         pro.PAYROLL_NAME;
         IF p_num_emp <> l_num_empleado THEN
-            log_error ('Error en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
+            log_error ('Error E01 en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
             RETURN (FALSE);
          ELSIF p_tipo_nom <> l_tipo_nomina THEN
          IF p_tipo_nom = 'EJEC' AND (l_tipo_nomina = '02_QUIN - EJEC CONFIANZA' OR l_tipo_nomina = '11_QUIN - PACQ CONFIANZA') THEN
@@ -526,7 +537,7 @@ BEGIN
         RETURN (TRUE);
     ELSE
         IF p_num_emp <> l_num_empleado THEN
-            log_error ('Error en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
+            log_error ('Error E02 en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
             RETURN (FALSE);
          ELSIF p_tipo_nom <> l_tipo_nomina THEN
          IF p_tipo_nom = 'EJEC' AND (l_tipo_nomina = '02_QUIN - EJEC CONFIANZA' OR l_tipo_nomina = '11_QUIN - PACQ CONFIANZA') THEN
@@ -546,7 +557,7 @@ EXCEPTION
           IF valid_Fechas2(p_date,p_num_emp ) THEN
             log_error ('Error en el Periodo en el archivo '||p_file_name);
           ELSE
-            log_error ('Error en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
+            log_error ('Error E03 en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
           END IF;
         RETURN FALSE;
     WHEN Others THEN
@@ -559,6 +570,9 @@ FUNCTION valid_JuegoCon_lookup ( p_jego_con IN VARCHAR2,
 IS
     --Variables
 BEGIN
+
+/* iponce 15-MAY-2017 */
+debug_read_xml('valid_JuegoCon_lookup : p_jego_con : ' || p_jego_con); 
 
 SELECT  description
     INTO g_columns_pay.juego_con
@@ -590,6 +604,16 @@ IS
     l_num_empleado VARCHAR2(300):='';
     l_tipo_nomina varchar(300):='';
 BEGIN
+
+    /* iponce 15-MAY-2017 */
+    debug_read_xml('valid_JuegoCon : p_jego_con : ' || p_jego_con);
+    debug_read_xml('valid_JuegoCon : p_file_name : ' || p_file_name);
+    debug_read_xml('valid_JuegoCon : p_date : ' || to_char(p_date));
+    debug_read_xml('valid_JuegoCon : p_beneficiario : ' || p_beneficiario);
+    debug_read_xml('valid_JuegoCon : p_num_emp : ' || p_num_emp);
+    debug_read_xml('valid_JuegoCon : p_tipo_nom : ' || p_tipo_nom);
+
+
     EXECUTE IMMEDIATE 'ALTER SESSION SET NLS_LANGUAGE = ''Latin American Spanish''';
     SELECT
         pay_payroll_actions_pkg.v_name (pac1.payroll_action_id ,pac1.action_type ,pac1.consolidation_set_id ,pac1.display_run_number ,pac1.element_set_id ,pac1.assignment_set_id ,pac1.effective_date) name,
@@ -609,9 +633,15 @@ BEGIN
         AND REGEXP_SUBSTR(paa.ASSIGNMENT_NUMBER,'[^-]+', 1,1) = p_num_emp
         AND pay_payroll_actions_pkg.v_name (pac1.payroll_action_id ,pac1.action_type ,pac1.consolidation_set_id ,pac1.display_run_number ,pac1.element_set_id ,pac1.assignment_set_id ,pac1.effective_date) = p_jego_con
         ;
+        
+        /* iponce 15-MAY-2017 */
+        debug_read_xml('valid_JuegoCon : l_juego_con : ' || l_juego_con);
+        debug_read_xml('valid_JuegoCon : l_num_empleado : ' || l_num_empleado); 
+        debug_read_xml('valid_JuegoCon : l_tipo_nomina : ' || l_tipo_nomina);
+        
         IF p_jego_con <> 'FINIQUITOS' AND p_jego_con <> 'PTU' AND p_jego_con <> 'GRATIFICACION'
         AND p_num_emp <> l_num_empleado THEN
-            log_error ('Error en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
+            log_error ('Error E04 en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
             RETURN (FALSE);
         END IF;
         IF p_jego_con <> 'FINIQUITOS' AND p_jego_con <> 'PTU' AND p_jego_con <> 'GRATIFICACION'
@@ -629,6 +659,9 @@ EXCEPTION
         log_error ('Error Function valid_JuegoCon de Consolidacio  Existen mas de un Registro: ' || SQLERRM || '  ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE );
         RETURN (FALSE);
     WHEN No_Data_Found THEN
+    
+        /* iponce 15-MAY-2017 */
+        debug_read_xml('EXCEPTION valid_JuegoCon : p_jego_con : ' || p_jego_con); 
 
         IF p_jego_con <> 'FINIQUITOS' AND p_jego_con <> 'PTU' AND p_jego_con <> 'GRATIFICACION' THEN
            IF valid_num_empleado ( p_jego_con, p_file_name ,p_date ,p_num_emp ) THEN
@@ -636,7 +669,7 @@ EXCEPTION
            ELSIF valid_Fechas ( p_jego_con, p_file_name ,p_date ,p_num_emp ) THEN
             log_error ('Error en el Periodo en el archivo '||p_file_name);
            ELSE
-            log_error ('Error en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
+            log_error ('Error E05 en el Número de Empleado  '||p_num_emp ||' en el archivo '||p_file_name);
            END IF;
            -- RETURN (FALSE);
         END IF;
@@ -687,9 +720,16 @@ END valid_CtaDest;
    BEGIN
 
        IF valid_file_exists( p_file_name ) THEN
+       
+          /* iponce 15-MAY-2017 */
+          debug_read_xml('valid_file_exists : valid'); 
 
           g_columns_pay := get_data_xml ( p_data_xml, p_file_name ) ;
           g_columns_pay.juego_con := get_Nemonicos('NOM_DESCRI',p_data_xml,1);
+          
+          /* iponce 15-MAY-2017 */
+          debug_read_xml('insert_xml : g_columns_pay.juego_con : ' || g_columns_pay.juego_con);
+          
           g_columns_pay.METODO_PAGO := get_Nemonicos('METPAG',p_data_xml,2);
           g_columns_pay.tipo_nomina := get_Nemonicos('NOM_CVENOM',p_data_xml,1);
           v_lookup_juego := valid_JuegoCon_lookup ( g_columns_pay.juego_con,
@@ -915,6 +955,9 @@ END count_rows_load;
          l_src_offset := 1;
          l_dest_offset := 1;
          l_file_name := i.filename;
+         
+         /* iponce 15-MAY-2017 */
+         debug_read_xml('read_xml : l_file_name' || l_file_name);
 
          l_count_rows := l_count_rows + 1;
          --find file
@@ -1029,6 +1072,10 @@ END count_rows_load;
    IS
       l_src_path         VARCHAR2 (250);
    BEGIN
+   
+      /* iponce 15-MAY-2017 */
+      debug_read_xml('main : lsrc_path : ' || l_src_path);
+      
       -- get source directory path
       write_output('Begin... ');
       l_src_path := get_path ( g_directory_source );
@@ -1052,13 +1099,6 @@ END count_rows_load;
          log_error ('Error in Procedure MAIN :' || SQLERRM );
          ROLLBACK;
    END MAIN;
-
-   /*iponce 15-MAY-2017*/
-   PROCEDURE debug_read_xml(message varchar2)
-   IS
-   BEGIN
-      fnd_file.put_line(fnd_file.log, message);
-   END debug_read_xml;
 
 END XXCALV_READ_XMLFILE_PAY_PKG;
 /
