@@ -515,7 +515,11 @@ BEGIN
         pay_payroll_actions pac1
         ,PAY_ASSIGNMENT_ACTIONS_V paa
         WHERE 1= 1
-        AND TO_DATE(paa.EFFECTIVE_DATE,'DD/MM/YYYY') = TO_DATE(p_date,'DD/MM/YYYY')
+        AND TO_DATE(paa.EFFECTIVE_DATE,'DD/MM/YYYY') = (CASE
+                                                            WHEN p_jego_con = 'FINIQUITOS'
+                                                            THEN TO_DATE(p_date,'DD/MM/YYYY') -1
+                                                            ELSE TO_DATE(p_date,'DD/MM/YYYY')
+                                                        END)
         AND pac1.ACTION_TYPE = 'Q'
         AND pac1.payroll_action_id = paa.PAYROLL_ACTION_ID
         AND pro.PAYROLL_ID = pac1.PAYROLL_ID
