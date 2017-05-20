@@ -208,7 +208,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCALV_TOT_NOM_CONCEP_PKG IS
            AND PRT.RUN_TYPE_NAME = (CASE
                                         WHEN PCS.CONSOLIDATION_SET_NAME = 'GRATIFICACIÓN'
                                         THEN 'Standard'
-                                        ELSE PRT.RUN_TYPE_NAME
+                                        WHEN PCS.CONSOLIDATION_SET_NAME = 'PTU'
+                                        THEN 'Standard'
+                                        ELSE 'Standard'
                                     END)
          GROUP 
             BY POPM.ORG_PAYMENT_METHOD_ID,
