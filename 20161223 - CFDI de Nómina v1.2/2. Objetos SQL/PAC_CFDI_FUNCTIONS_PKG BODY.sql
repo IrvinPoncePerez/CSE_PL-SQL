@@ -598,7 +598,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         P_CONSOLIDATION_ID      NUMBER,
         P_YEAR                  NUMBER,
         P_MONTH                 NUMBER,
-        P_PERIOD_NAME           VARCHAR2)
+        P_PERIOD_NAME           VARCHAR2,
+        P_EARNED_DATE           VARCHAR2)
     IS
         var_path            VARCHAR2(250) := 'CFDI_NOMINA';
         var_file_name       VARCHAR2(250);
@@ -613,6 +614,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         var_user_id         NUMBER := FND_GLOBAL.USER_ID;
         var_validate        NUMBER;
         var_request_id      NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
+        var_earned_date     DATE := TRUNC(TO_DATE(P_EARNED_DATE,'RRRR/MM/DD HH24:MI:SS'));
         
         MIN_WAGE            NUMBER;
                 
@@ -668,19 +670,19 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX2_E' THEN
                             '03'
                      END)                                                                           AS  NOM_TIPCON,
-                    (CASE
-                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
-                            CASE 
-                                WHEN P_PERIOD_TYPE = 'Week' OR P_PERIOD_TYPE = 'Semana' THEN
-                                     PTP.END_DATE + 4
-                                ELSE
-                                     PTP.END_DATE
-                            END
-                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' THEN
-                            PTP.END_DATE + 1
-                        ELSE
-                            PTP.END_DATE
-                     END)                                                                           AS  NOM_FECPAG,       
+                    NVL(var_earned_date, (CASE
+                                            WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
+                                                CASE 
+                                                    WHEN P_PERIOD_TYPE = 'Week' OR P_PERIOD_TYPE = 'Semana' THEN
+                                                         PTP.END_DATE + 4
+                                                    ELSE
+                                                         PTP.END_DATE
+                                                END
+                                            WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' THEN
+                                                PTP.END_DATE + 1
+                                            ELSE
+                                                PTP.END_DATE
+                                          END))                                                     AS  NOM_FECPAG,       
                     (CASE
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
                             PTP.START_DATE
@@ -716,6 +718,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%GRATIFICACIÓN%'
                         THEN '99'
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITO%'
+                        THEN '99'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%PTU%'
+                        THEN '99'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%AGUINALDO%'
+                        THEN '99'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FONDO DE AHORRO%'
                         THEN '99'
                      END)                                                                           AS  NOM_FORPAG,
                     PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
@@ -1744,7 +1752,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         P_CONSOLIDATION_ID      NUMBER,
         P_YEAR                  NUMBER,
         P_MONTH                 NUMBER,
-        P_PERIOD_NAME           VARCHAR2)
+        P_PERIOD_NAME           VARCHAR2,
+        P_EARNED_DATE           VARCHAR2)
     IS
         
         V_REQUEST_ID            NUMBER;
@@ -1785,7 +1794,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                    ARGUMENT4 => TO_CHAR(P_CONSOLIDATION_ID),
                    ARGUMENT5 => TO_CHAR(P_YEAR),
                    ARGUMENT6 => TO_CHAR(P_MONTH),
-                   ARGUMENT7 => TO_CHAR(P_PERIOD_NAME)
+                   ARGUMENT7 => TO_CHAR(P_PERIOD_NAME),
+                   ARGUMENT8 => TO_CHAR(P_EARNED_DATE)
                                            );
             STANDARD.COMMIT;                                          
                          
@@ -3058,6 +3068,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         var_uuid        VARCHAR2(500);
     BEGIN
     
+        DBMS_OUTPUT.PUT_LINE( P_EMPLOYEE_NUMBER || ':' || to_char(P_START_DATE)      || ':' || to_char(P_END_DATE)        || ':' || P_CONSOLIDATION_SET_NAME);
     
         SELECT UNIQUE
                UUID.UUID
@@ -3066,17 +3077,17 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
          WHERE 1 = 1 
            AND UUID.NUMEMPLOYEE = P_EMPLOYEE_NUMBER 
            AND REPLACE(UUID.PERIOD, ' ', '') = (CASE 
-                                                    WHEN P_CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
+                                                    WHEN P_CONSOLIDATION_SET_NAME LIKE 'NORMAL' THEN
                                                          TO_CHAR(TO_DATE(P_START_DATE, 'DD/MM/RRRR'), 'DD-MON-RR') || TO_CHAR(TO_DATE(P_END_DATE,'DD/MM/RRRR'), 'DD-MON-RR')
                                                     ELSE 
-                                                         REPLACE(UUID.PERIOD, ' ', '')
+                                                         TO_CHAR(TO_DATE(P_END_DATE, 'DD/MM/RRRR'), 'DD-MON-RR') || TO_CHAR(TO_DATE(P_END_DATE,'DD/MM/RRRR'), 'DD-MON-RR')
                                                 END)
            AND UUID.JUEGO_CONSOLIDACION = (CASE
-                                               WHEN P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACION_MAYO' OR P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACIÓN' THEN
-                                                    'GRATIFICACION MARZO'
-                                               WHEN P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACION_MAYO_PTU' THEN
-                                                    'GRATIFICACION MAYO PTU'
-                                               WHEN P_CONSOLIDATION_SET_NAME LIKE '%AHORRO%' THEN 
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACIÓN' THEN
+                                                    'GRATIFICACIÓN'
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE 'PTU' THEN
+                                                    'PTU'
+                                               WHEN P_CONSOLIDATION_SET_NAME LIKE 'FONDO DE AHORRO' THEN 
                                                     'FONDO DE AHORRO'
                                                WHEN P_CONSOLIDATION_SET_NAME LIKE '%ORDINARIA%' THEN 
                                                     'PAGO DE NOMINA'
@@ -3089,10 +3100,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         WHEN NO_DATA_FOUND THEN
             RETURN ' ';
         WHEN TOO_MANY_ROWS THEN
-            DBMS_OUTPUT.PUT_LINE(P_EMPLOYEE_NUMBER || ':' ||
-                                    P_START_DATE      || ':' ||
-                                    P_END_DATE        || ':' ||
-                                    P_CONSOLIDATION_SET_NAME);
+            NULL;
     END GET_UUID;
     
     FUNCTION GET_SUBSIDIO_EMPLEO(

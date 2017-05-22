@@ -94,7 +94,8 @@ CREATE OR REPLACE PACKAGE APPS.PAC_CFDI_FUNCTIONS_PKG AS
         P_CONSOLIDATION_ID      NUMBER,
         P_YEAR                  NUMBER,
         P_MONTH                 NUMBER,
-        P_PERIOD_NAME           VARCHAR2);
+        P_PERIOD_NAME           VARCHAR2,
+        P_EARNED_DATE           VARCHAR2);
         
     PROCEDURE FILE_CFDI_NOMINA(
         P_ERRBUF    OUT NOCOPY  VARCHAR2,
@@ -105,7 +106,8 @@ CREATE OR REPLACE PACKAGE APPS.PAC_CFDI_FUNCTIONS_PKG AS
         P_CONSOLIDATION_ID      NUMBER,
         P_YEAR                  NUMBER,
         P_MONTH                 NUMBER,
-        P_PERIOD_NAME           VARCHAR2);
+        P_PERIOD_NAME           VARCHAR2,
+        P_EARNED_DATE           VARCHAR2);
 
     PROCEDURE REPORT_CFDI_NOMINA(
         P_COMPANY_ID            VARCHAR2,
