@@ -38,6 +38,7 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  TOTSEP_IND,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
                     SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_VIATICAL(PAA.ASSIGNMENT_ACTION_ID), '0'))                           AS  VIATICAL,
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
                     PAC_CFDI_FUNCTIONS_PKG.GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)                                        AS  NOM_FECREL,
