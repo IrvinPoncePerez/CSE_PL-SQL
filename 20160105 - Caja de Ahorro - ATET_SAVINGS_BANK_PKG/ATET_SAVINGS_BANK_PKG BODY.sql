@@ -11627,8 +11627,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                        PERIOD_SEQUENCE
                   FROM PER_TIME_PERIODS
                  WHERE PAYROLL_ID = P_PAYROLL_ID
-                   AND (    END_DATE > (SYSDATE)
-                        AND END_DATE > (SYSDATE))
+                   AND (    END_DATE-2 > (SYSDATE)
+                        AND END_DATE-2 > (SYSDATE))
                  ORDER 
                     BY END_DATE)
           WHERE PERIOD_SEQUENCE <= P_TERM_PERIODS;
@@ -11727,6 +11727,32 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 var_term_periods := 2 * P_TERM_PERIODS;
             END IF;                                                                                
         
+        
+            INSERT 
+              INTO ATET_LOAN_PAYMENTS_ALL
+                 ( 
+                   AMOUNT,
+                   CHECK_ID,
+                   LOAN_ID,
+                   PAYMENT_NUM,
+                   PAYMENT_TYPE,
+                   LAST_UPDATED_BY,
+                   LAST_UPDATE_DATE,
+                   CREATED_BY,
+                   CREATION_DATE
+                 )
+            VALUES
+                 (
+                   var_loan_total_amount,
+                   -1,
+                   P_LOAN_ID,
+                   1,
+                   'LOAN_CHECK',
+                   var_user_id,
+                   SYSDATE,
+                   var_user_id,
+                   SYSDATE
+                 );
         
         
             DECLARE
