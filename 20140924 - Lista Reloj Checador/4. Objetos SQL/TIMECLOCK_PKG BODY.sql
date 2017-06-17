@@ -119,5 +119,18 @@ CREATE OR REPLACE PACKAGE BODY APPS.TIMECLOCK_PKG IS
         
     END; 
     
+    FUNCTION  GET_BONUS(
+                P_PERSON_ID         NUMBER,
+                P_START_DATE        DATE,
+                P_END_DATE          DATE)
+    RETURN VARCHAR2
+    IS
+        var_result      NUMBER;
+    BEGIN
+    
+        
+        RETURN '';
+    END GET_BONUS;
+    
 END TIMECLOCK_PKG;
 /

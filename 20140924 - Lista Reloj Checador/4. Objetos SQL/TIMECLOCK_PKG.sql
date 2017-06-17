@@ -37,7 +37,13 @@ CREATE OR REPLACE PACKAGE APPS.TIMECLOCK_PKG IS
     FUNCTION  TIMECLOCK_ABSENCE_DESC(
                 P_PERSON_ID         NUMBER,
                 P_CHECK_DATE        DATE)
-    RETURN VARCHAR2;              
+    RETURN VARCHAR2;    
+    
+    FUNCTION  GET_BONUS(
+                P_PERSON_ID         NUMBER,
+                P_START_DATE        DATE,
+                P_END_DATE          DATE)
+    RETURN VARCHAR2;                        
 
 END TIMECLOCK_PKG;
 /
