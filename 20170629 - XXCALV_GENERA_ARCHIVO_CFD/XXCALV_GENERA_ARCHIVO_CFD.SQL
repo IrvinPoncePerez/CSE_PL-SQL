@@ -1160,10 +1160,23 @@ BEGIN
                                 var_cveunidad       VARCHAR2(10);
                             BEGIN
                             
-
-                                                  
-                                FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || var_cveunidad);                                         
+                                IF  V_UNIDAD NOT IN('SERVICIOS', 'NA') THEN
                                 
+                                
+                                    SELECT ATTRIBUTE1
+                                      INTO var_cveunidad
+                                      FROM MTL_UNITS_OF_MEASURE UOM
+                                     WHERE 1 = 1
+                                       AND UOM.UOM_CODE = NVL(NVL(LIN_REC.UOM, LIN_REC.UOM2), LIN_REC.UOM_LINE);
+                                                  
+                                    FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || var_cveunidad);
+                                
+                                ELSE
+                                    FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || 'EA');
+                                END IF;                                         
+                                
+                            EXCEPTION WHEN OTHERS THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || 'EA');
                             END;
                             
                             /*************************************************************/
@@ -1186,8 +1199,11 @@ BEGIN
                                    AND MIC.CATEGORY_ID = MC.CATEGORY_ID;
                             
                                 FILE_PUT_LINE (V_MANEJADOR, 'CVEPRODSERV    ' || var_cveprodserv);
+                                        
                                 
                             EXCEPTION WHEN OTHERS THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'CVEPRODSERV    ' || '01010101');
+                            
                                 FND_FILE.PUT_LINE(FND_FILE.LOG, 'Error - CVEPRODSERV - ' || SQLERRM);
                             END;
                             
