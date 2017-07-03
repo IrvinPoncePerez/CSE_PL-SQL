@@ -46,6 +46,7 @@ IS
    
    --variables para taras, totales y direcci?n del CEDIS emisor
    v_iva_total NUMBER := 0;
+   v_isr_global NUMBER := 0;    --IPONCE 2017.07.03
    v_isr_ret_total number := 0; 
    v_iva_ret_total number := 0;   
    v_iva_global NUMBER := 0;
@@ -443,6 +444,7 @@ IS
    BEGIN
         UTL_FILE.PUT_LINE (P_MANEJADOR, P_STRING_LINE);
         FND_FILE.PUT_LINE(FND_FILE.LOG, P_STRING_LINE);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, P_STRING_LINE);
    END FILE_PUT_LINE;
 
 BEGIN
@@ -1226,9 +1228,13 @@ BEGIN
                                 FILE_PUT_LINE (V_MANEJADOR, 'CDECON  '||'0');  --S(3) C?DIGO DEL DESCUENTO
                                 FILE_PUT_LINE (V_MANEJADOR, 'VALUNI  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.PRECIO_UNITARIO));  --N PRECIO UNITARIO NETO
                                 FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.PRECIO_NETO));  --N IMPORTE NETO DE LA PARTIDA
+                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIPETR  '|| 'Tasa');     --iponce 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TASA_IMPUESTO));  --N % DEL IVA TRASLADADO DE LA PARTIDA
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TASA_IMPUESTO) / 100, '9D99'));      --IPONCE 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TTL_IMPUESTO)); --N  MONTO DE IVA TRASLADADO DE LA PARTIDA
+                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIEPTR  '|| 'Tasa');     --iponce 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'TASIEP  '||'0');  --N % DEL IEPS TRASLADADO DE LA PARTIDA
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIEP  ' || '0.00');        --IPONCE 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'MONIEP  '||'0');  --N MONTO DE IEPS TRASLADADO DE LA PARTIDA
                                 FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_TOTAL_LIN);  --N N?MERO DE L?ENA DE LA FACTURA
                                 FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||XXCALV_ROUND_TWO_DECIMAL((LIN_REC.CANT_FACTURADA + LIN_REC.TARA))); --PESO BRUTO
@@ -1275,9 +1281,13 @@ BEGIN
                                 END IF;
                                 FILE_PUT_LINE (V_MANEJADOR, 'VALUNI  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.PRECIO_UNITARIO));  --N PRECIO UNITARIO NETO
                                 FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.PRECIO_NETO));  --N IMPORTE NETO DE LA PARTIDA
+                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIPETR  '|| 'Tasa');     --iponce 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TASA_IMPUESTO));  --N % DEL IVA TRASLADADO DE LA PARTIDA
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TASA_IMPUESTO) / 100, '9D99'));      --IPONCE 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TTL_IMPUESTO)); --N  MONTO DE IVA TRASLADADO DE LA PARTIDA
+                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIEPTR  '|| 'Tasa');     --iponce 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'TASIEP  '||'0');  --N % DEL IEPS TRASLADADO DE LA PARTIDA
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIEP  ' || '0.00');        --IPONCE 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'MONIEP  '||'0');  --N MONTO DE IEPS TRASLADADO DE LA PARTIDA
                                 FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_TOTAL_LIN);  --N N?MERO DE L?ENA DE LA FACTURA
                                 FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.CANT_FACTURADA + LIN_REC.TARA)); --PESO BRUTO
@@ -1289,6 +1299,7 @@ BEGIN
                             --TOTALES POR FACTURA
                             V_IVA_GLOBAL := V_IVA_GLOBAL + LIN_REC.TASA_IMPUESTO;           -- SUMA DE LAS TASAS DE IVA DE CADA L?NEA
                             V_IVA_TOTAL := V_IVA_TOTAL + LIN_REC.TTL_IMPUESTO;              -- SUMA DE CANTIDADADES DE IVA DE CADA L?NEA
+                            V_ISR_GLOBAL := V_ISR_GLOBAL + LIN_REC.TASA_ISR_RET;            --IPONCE 2017.07.03
                             V_ISR_RET_TOTAL := V_ISR_RET_TOTAL + ABS(LIN_REC.TTL_ISR_RET); 
                             V_IVA_RET_TOTAL := V_IVA_RET_TOTAL + ABS(LIN_REC.TTL_IVA_RET);
                             V_IMPORTE_TOTAL := V_IMPORTE_TOTAL + LIN_REC.PRECIO_NETO;       -- SUMA DE LOS IMPORTES DE LAS L?NEAS
@@ -1338,10 +1349,22 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||XXCALV_ROUND_TWO_DECIMAL(0));  --N  TASA IVA GLOBAL
                     END IF;
                         
-                    FILE_PUT_LINE (V_MANEJADOR, 'IVATRA  '||XXCALV_ROUND_TWO_DECIMAL(ROUND(V_IVA_TOTAL,2)));--N  MONTO TOTAL DE IVA TRASLADADO, IVATRA1, IVATRA2, IVATRA3  
-                    FILE_PUT_LINE (V_MANEJADOR, 'TATIEP  '||'0'); --N  TASA IEPS GLOBAL
-                    FILE_PUT_LINE (V_MANEJADOR, 'IEPTRA  '||'0'); --N  MONTO TOTAL DE IEPS GLOBAL
-                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET  '||ROUND(ABS(V_IVA_RET_TOTAL),2)); --N  IVA RETENIDO (LA SUMA DE IVARET_D)
+                    
+                    FILE_PUT_LINE (V_MANEJADOR, 'TIPIVARE   ' || 'Tasa');   --iponce   2017.07.03
+                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET_P   ' || V_IVA_GLOBAL);     --iponce   2017.07.03
+                    FILE_PUT_LINE (V_MANEJADOR, 'FCTIVARET_P    ' || TO_CHAR((V_IVA_GLOBAL/100), '9D99'));      --iponce   2017.07.03
+                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET_D   ' || ROUND(ABS(V_IVA_RET_TOTAL),2));    --iponce   2017.07.03
+                    
+                    FILE_PUT_LINE (V_MANEJADOR, 'TIPISRRE   ' || 'Tasa');   --iponce   2017.07.03
+                    FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_P   ' || V_ISR_GLOBAL);     --iponce   2017.07.03
+                    FILE_PUT_LINE (V_MANEJADOR, 'FCTISRRET_P    ' || TO_CHAR((V_ISR_GLOBAL/100), '9D99'));      --iponce   2017.07.03
+                    FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_D   ' || ROUND(ABS(V_ISR_RET_TOTAL), 2));   --iponce   2017.07.03
+                    
+                    
+--                    FILE_PUT_LINE (V_MANEJADOR, 'IVATRA  '||XXCALV_ROUND_TWO_DECIMAL(ROUND(V_IVA_TOTAL,2)));--N  MONTO TOTAL DE IVA TRASLADADO, IVATRA1, IVATRA2, IVATRA3  --iponce   2017.07.03
+--                    FILE_PUT_LINE (V_MANEJADOR, 'TATIEP  '||'0'); --N  TASA IEPS GLOBAL   --iponce   2017.07.03
+--                    FILE_PUT_LINE (V_MANEJADOR, 'IEPTRA  '||'0'); --N  MONTO TOTAL DE IEPS GLOBAL     --iponce   2017.07.03
+--                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET  '||ROUND(ABS(V_IVA_RET_TOTAL),2)); --N  IVA RETENIDO (LA SUMA DE IVARET_D)   --iponce   2017.07.03
 --                    FILE_PUT_LINE (V_MANEJADOR, 'ISRRET  '||ROUND(ABS(V_ISR_RET_TOTAL),2)); --N  ISR RETENIDO (LA SUMA DE ISRRET_D)   --iponce    2017.06.29
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG  '||XXCALV_ROUND_TWO_DECIMAL(V_TOTAL - ABS(NVL(V_IVA_RET_TOTAL,0)) - ABS(NVL(V_ISR_RET_TOTAL,0))));--N  TOTAL A PAGAR
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG_ORI  '||XXCALV_ROUND_TWO_DECIMAL(V_TOTAL - ABS(NVL(V_IVA_RET_TOTAL,0)) - ABS(NVL(V_ISR_RET_TOTAL,0))));--N  TOTAL A PAGAR
