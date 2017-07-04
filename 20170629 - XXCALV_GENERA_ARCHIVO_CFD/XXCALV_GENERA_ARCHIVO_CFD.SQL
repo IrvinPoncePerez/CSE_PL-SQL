@@ -47,6 +47,7 @@ IS
    --variables para taras, totales y direcci?n del CEDIS emisor
    v_iva_total NUMBER := 0;
    v_isr_global NUMBER := 0;    --IPONCE 2017.07.03
+   v_iva_ret_global NUMBER := 0;    --iponce 2017.07.04
    v_isr_ret_total number := 0; 
    v_iva_ret_total number := 0;   
    v_iva_global NUMBER := 0;
@@ -1089,7 +1090,7 @@ BEGIN
                             -- 25/09/2012 ARS
                             -- Solicitud de modificaci?n para mostrar c?digo 
                             -- de barras de cajas 180
-                            --===============================================--
+                            --===============================================-- 
                             IF (LIN_REC.INV_ITEM_ID = 879378) AND (HED_REC.TIPO_ADENDA = 'SORIANA') THEN
                                 SELECT meaning
                                   INTO v_ean
@@ -1114,7 +1115,7 @@ BEGIN
                                V_UNIDAD := LIN_REC.UOM_LINE;
                             END IF;
                             --=========================--
-                            IF (V_UNIDAD IS NULL) AND (HED_REC.TIPO_TRANSACCION1 IN (1,2,3)) THEN
+                            IF (V_UNIDAD IS NULL) AND (HED_REC.TIPO_TRANSACCION1 IN ('I','E')) THEN
                                IF (p_org_id = 85) OR (p_org_id = 84 AND P_ORIGEN = 1493) OR (p_org_id = 83 AND P_ORIGEN = 1356) THEN
                                     V_UNIDAD := 'SERVICIOS';
                                ELSE
@@ -1301,6 +1302,7 @@ BEGIN
                             V_IVA_TOTAL := V_IVA_TOTAL + LIN_REC.TTL_IMPUESTO;              -- SUMA DE CANTIDADADES DE IVA DE CADA L?NEA
                             V_ISR_GLOBAL := V_ISR_GLOBAL + LIN_REC.TASA_ISR_RET;            --IPONCE 2017.07.03
                             V_ISR_RET_TOTAL := V_ISR_RET_TOTAL + ABS(LIN_REC.TTL_ISR_RET); 
+                            V_IVA_RET_GLOBAL := V_IVA_RET_GLOBAL + ABS(LIN_REC.TASA_IVA_RET);
                             V_IVA_RET_TOTAL := V_IVA_RET_TOTAL + ABS(LIN_REC.TTL_IVA_RET);
                             V_IMPORTE_TOTAL := V_IMPORTE_TOTAL + LIN_REC.PRECIO_NETO;       -- SUMA DE LOS IMPORTES DE LAS L?NEAS
                             V_CANTIDAD_TOTAL := V_CANTIDAD_TOTAL +  LIN_REC.CANT_FACTURADA; -- SUMA DE CANTIDADES DE LAS L?NEAS
@@ -1312,7 +1314,7 @@ BEGIN
                     
                     END LOOP;
 
-                    --PARA SABER SI EL IVA ES EL MISMO PARA TODAS LAS L?NEAS DE LA FACTURA
+                    --PARA SABER SI EL IVA ES EL MISMO PARA TODAS LAS L?NEAS DE LA 
                     V_IVA_GLOBAL := V_IVA_GLOBAL/V_TOTAL_LIN;
 
                     FND_FILE.PUT_LINE (FND_FILE.LOG,'Escribiendo totales');
@@ -1353,12 +1355,22 @@ BEGIN
                     FILE_PUT_LINE (V_MANEJADOR, 'TIPIVARE   ' || 'Tasa');   --iponce   2017.07.03
                     FILE_PUT_LINE (V_MANEJADOR, 'IVARET_P   ' || V_IVA_GLOBAL);     --iponce   2017.07.03
                     FILE_PUT_LINE (V_MANEJADOR, 'FCTIVARET_P    ' || TO_CHAR((V_IVA_GLOBAL/100), '9D99'));      --iponce   2017.07.03
-                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET_D   ' || ROUND(ABS(V_IVA_RET_TOTAL),2));    --iponce   2017.07.03
+                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET_D   ' || ROUND(ABS(V_IVA_TOTAL),2));    --iponce   2017.07.03
                     
                     FILE_PUT_LINE (V_MANEJADOR, 'TIPISRRE   ' || 'Tasa');   --iponce   2017.07.03
                     FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_P   ' || V_ISR_GLOBAL);     --iponce   2017.07.03
                     FILE_PUT_LINE (V_MANEJADOR, 'FCTISRRET_P    ' || TO_CHAR((V_ISR_GLOBAL/100), '9D99'));      --iponce   2017.07.03
                     FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_D   ' || ROUND(ABS(V_ISR_RET_TOTAL), 2));   --iponce   2017.07.03
+                    
+                    FILE_PUT_LINE (V_MANEJADOR, 'TIPIEPRE   ' || 'Tasa');   --IPONCE 2017.07.04
+                    FILE_PUT_LINE (V_MANEJADOR, 'IEPRET_P   ' || '0');      --IPONCE 2017.07.04
+                    FILE_PUT_LINE (V_MANEJADOR, 'FACIEPRET_P    ' || '0.00');   --IPONCE 2017.07.04
+                    FILE_PUT_LINE (V_MANEJADOR, 'IEPRET_D   ' || '0');      --IPONCE 2017.07.04
+                    
+                    FILE_PUT_LINE (V_MANEJADOR, 'TIPFACIVA1 ' || 'Tasa');
+                    FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA1    ' || V_IVA_RET_GLOBAL);
+                    FILE_PUT_LINE (V_MANEJADOR, 'FCTTOTIVA1     ' || TO_CHAR((V_IVA_RET_GLOBAL/100), '9D99'));
+                    FILE_PUT_LINE (V_MANEJADOR, 'IVATRA1    ' || ROUND(ABS(V_IVA_RET_TOTAL), 2));
                     
                     
 --                    FILE_PUT_LINE (V_MANEJADOR, 'IVATRA  '||XXCALV_ROUND_TWO_DECIMAL(ROUND(V_IVA_TOTAL,2)));--N  MONTO TOTAL DE IVA TRASLADADO, IVATRA1, IVATRA2, IVATRA3  --iponce   2017.07.03
