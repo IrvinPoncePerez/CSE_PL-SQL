@@ -4180,6 +4180,38 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
            AND ASPS.LOAN_ID = P_LOAN_ID
            AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL');
         
+         MERGE 
+          INTO ATET_SB_PAYMENTS_SCHEDULE    ASPS
+         USING (SELECT DISTINCT ASL.LOAN_ID
+                  FROM ATET_SB_MEMBERS              ASM,
+                       ATET_SB_LOANS                ASL,
+                       PER_ALL_PEOPLE_F             PAPF,
+                       PER_PERSON_TYPES             PPT,
+                       ATET_SB_PAYMENTS_SCHEDULE    ASPS
+                 WHERE 1 = 1
+                   AND ASM.SAVING_BANK_ID = 2
+                   AND ASM.MEMBER_ID = ASL.MEMBER_ID
+                   AND PAPF.PERSON_ID = ASM.PERSON_ID
+                   AND SYSDATE BETWEEN PAPF.EFFECTIVE_START_DATE
+                                   AND PAPF.EFFECTIVE_END_DATE
+                   AND PPT.PERSON_TYPE_ID = PAPF.PERSON_TYPE_ID
+                   AND PPT.USER_PERSON_TYPE IN ('Ex-empleado', 'Ex-employee')
+                   AND ASL.LOAN_STATUS_FLAG IN ('ACTIVE')
+                   AND ASL.LOAN_ID = ASPS.LOAN_ID
+                   AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL', 'PENDING')
+                   AND (   ASPS.PAYMENT_INTEREST_LATE > 0
+                        OR ASPS.PAYED_INTEREST_LATE > 0
+                        OR ASPS.OWED_INTEREST_LATE > 0) 
+                   AND ASM.PERSON_ID = P_PERSON_ID
+                   AND ASL.LOAN_ID = P_LOAN_ID ) D 
+            ON (    ASPS.LOAN_ID = D.LOAN_ID
+                AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL', 'PENDING')
+                AND (   ASPS.PAYMENT_INTEREST_LATE > 0
+                     OR ASPS.PAYED_INTEREST_LATE > 0
+                     OR ASPS.OWED_INTEREST_LATE > 0))
+          WHEN MATCHED THEN
+        UPDATE 
+           SET ASPS.PAYMENT_INTEREST_LATE = 0;
          
     EXCEPTION WHEN OTHERS THEN
         ROLLBACK;
