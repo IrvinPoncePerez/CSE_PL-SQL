@@ -4189,7 +4189,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                        PER_PERSON_TYPES             PPT,
                        ATET_SB_PAYMENTS_SCHEDULE    ASPS
                  WHERE 1 = 1
-                   AND ASM.SAVING_BANK_ID = 2
+                   AND ASM.SAVING_BANK_ID = GET_SAVING_BANK_ID
                    AND ASM.MEMBER_ID = ASL.MEMBER_ID
                    AND PAPF.PERSON_ID = ASM.PERSON_ID
                    AND SYSDATE BETWEEN PAPF.EFFECTIVE_START_DATE
