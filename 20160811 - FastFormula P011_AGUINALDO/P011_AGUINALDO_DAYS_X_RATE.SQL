@@ -214,14 +214,14 @@ IF nDiasTrab = DiasAño THEN
 /* ===== CALCULATION SECTION END ===== */
 
 mesg2 = 'P011_AGUINALDO : ' +
-       ' DiasCorrespon: ' + to_char(DiasCorrespon) +
-       ' nDiasTrab: '  + to_char(nDiasTrab) +
-       ' dias_prestacion: ' + to_char(dias_prestacion) + 
-       ' DiasAño: ' + to_char(DiasAño) + 
-       ' Ausentismos: ' + to_char(Ausentismos) +
-       ' Fecha_Inicio_Calc: ' + to_char(Fecha_Inicio_Calc) + 
-       ' Fecha_Fin_Calc: ' + to_char(Fecha_Fin_Calc) +
-       ' earnings_amount: ' + to_char(earnings_amount)
+       ' DiasCorrespon: ' + to_char(trunc(DiasCorrespon,2)) +
+       ' nDiasTrab: '  + to_char(trunc(nDiasTrab,2)) +
+       ' dias_prestacion: ' + to_char(trunc(dias_prestacion,2)) + 
+       ' DiasAño: ' + to_char(trunc(DiasAño,2)) + 
+       ' Ausentismos: ' + to_char(trunc(Ausentismos,2)) +
+       ' Fecha_Inicio_Calc: ' + to_char(Fecha_Inicio_Calc, 'DD/MM/RRRR') + 
+       ' Fecha_Fin_Calc: ' + to_char(Fecha_Fin_Calc, 'DD/MM/RRRR')  +
+       ' earnings_amount: ' + to_char(trunc(earnings_amount,2))
 
 /* ======ISR Subject calculation begins ======= */
 
