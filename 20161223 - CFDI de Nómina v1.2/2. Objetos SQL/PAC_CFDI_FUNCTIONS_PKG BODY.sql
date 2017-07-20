@@ -545,7 +545,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
            AND ROWNUM = 1;    
     
         RETURN var_result_value;
-    
+    EXCEPTION
+        WHEN OTHERS THEN 
+            RETURN 1;
     END GET_NOM_PER_ANIO;
     
     FUNCTION GET_NOM_PER_ULTSUE(
