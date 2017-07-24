@@ -6,14 +6,14 @@ ATET_SB_CREATE_ELEMENT_ENTRIES
 SELECT MEMBER_ID,
              PPF.PERIOD_TYPE,
              asm.attribute6,
-             amount_to_save,
+             amount_to_save,                                  
              paaf.PERSON_ID,
              pAAf.PAYROLL_ID
         FROM PER_ALL_ASSIGNMENTS_F PAAF,
              ATET_SB_MEMBERS ASM,
              PAY_PAYROLLS_F PPF
        WHERE ASM.PERSON_ID = PAAF.PERSON_ID
-             AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
+             AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID                                                                               
              AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE
                              AND PPF.EFFECTIVE_END_DATE
              AND SYSDATE BETWEEN PAAF.EFFECTIVE_START_DATE
@@ -85,8 +85,8 @@ SELECT PAYROLL_ID,
                    PER_TIME_PERIODS  PTP_PPF
              WHERE PTP.PAYROLL_ID = PTP_PPF.PAYROLL_ID
                AND PTP_PPF.TIME_PERIOD_ID = :CP_TIME_PERIOD_ID
-               AND (    PTP.END_DATE > TO_DATE(:CP_ACTUAL_DATE_EARNED)
-                    AND PTP.END_DATE > TO_DATE(:CP_ACTUAL_DATE_EARNED))
+               AND (    PTP.END_DATE >= TO_DATE(:CP_ACTUAL_DATE_EARNED))
+--                    AND PTP.END_DATE > TO_DATE(:CP_ACTUAL_DATE_EARNED))
              ORDER BY PTP.END_DATE)
      WHERE 1 = 1
        AND PERIOD_SEQUENCE <= :CP_TERM_PERIODS
@@ -202,8 +202,7 @@ DECLARE
                    PER_TIME_PERIODS  PTP_PPF
              WHERE PTP.PAYROLL_ID = PTP_PPF.PAYROLL_ID
                AND PTP_PPF.TIME_PERIOD_ID = CP_TIME_PERIOD_ID
-               AND (    PTP.END_DATE > TO_DATE(CP_ACTUAL_DATE_EARNED)
-                    AND PTP.END_DATE > TO_DATE(CP_ACTUAL_DATE_EARNED))
+               AND PTP.END_DATE >= TO_DATE(CP_ACTUAL_DATE_EARNED)
              ORDER BY PTP.END_DATE)
      WHERE 1 = 1
        AND PERIOD_SEQUENCE <= CP_TERM_PERIODS
@@ -280,8 +279,8 @@ BEGIN
                      WHERE 1 = 1
                        AND PTP.PERIOD_TYPE = CHANGES.PERIOD_TYPE
                        AND PTP.PAYROLL_ID = CHANGES.PAYROLL_ID
-                       AND SYSDATE+3 BETWEEN PTP.START_DATE
-                                         AND PTP.END_DATE;      
+                       AND SYSDATE BETWEEN PTP.START_DATE
+                                       AND PTP.END_DATE;      
                                          
                     dbms_output.put_line(var_time_period_id || ' ' || var_earned_date || ' ' || var_count_term_periods);                                                          
             
