@@ -307,7 +307,21 @@ AS
                   paying_account_number,
                   supplier_clabe_account,
                   operation_currency;
+                  
+                  
+    --IPONCE    2017.07.27
+    --Variables de BANAMEX
+    
+    var_bank_account_name       PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NAME%TYPE;                  
    BEGIN
+   
+    SELECT PEBH.BANK_ACCOUNT_NAME       --  IPONCE 2017.07.27
+      INTO var_bank_account_name        --  IPONCE 2017.07.27
+      FROM PAC_EFT_BATCH_HEADER PEBH    --  IPONCE 2017.07.27
+     WHERE 1 = 1                        --  IPONCE 2017.07.27
+       AND PEBH.BATCH_ID = P_BATCH_ID;  --  IPONCE 2017.07.27
+        
+    IF  var_bank_account_name LIKE '%BANCOMER%' THEN --IPONCE 2017.07.24
       BEGIN
          BEGIN
             SELECT COUNT (supplier_clabe_account)
@@ -534,6 +548,16 @@ AS
                'Se ha producido un error inesperado: ' || SQLERRM);
             output_msg := 'Se ha producido un error inesperado: ' || SQLERRM;
       END;
+    ELSIF   var_bank_account_name LIKE '%BANAMEX%' THEN --  IPONCE 2017.07.27
+        /*************************************************************************/
+        /*BEGIN     Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
+        
+        
+        
+        
+        /*END       Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
+        /*************************************************************************/
+    END IF; --IPONCE 2017.07.24
    END;
 --PROCEDURE increase_sal(employee_id NUMBER, salary_incr NUMBER) IS
 --   curr_sal NUMBER;

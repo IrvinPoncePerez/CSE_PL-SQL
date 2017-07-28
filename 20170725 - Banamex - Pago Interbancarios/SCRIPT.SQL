@@ -1,3 +1,31 @@
+ SELECT tsc_supplier_name,
+                  supplier_account_number,
+                  paying_account_number,
+                  supplier_clabe_account,
+                  operation_currency,
+                  SUM (operation_amount) operation_amount
+             FROM PAC_EFT_BATCH_LINES
+            WHERE batch_id = :p_batch_id
+         GROUP BY tsc_supplier_name,
+                  supplier_account_number,
+                  paying_account_number,
+                  supplier_clabe_account,
+                  operation_currency;
+ 
+SELECT COUNT (supplier_clabe_account)
+--              INTO l_bbva_mix
+              FROM (  SELECT SUBSTR (supplier_clabe_account, 1, 3)
+                                supplier_clabe_account
+                        FROM PAC_EFT_BATCH_LINES
+                       WHERE batch_id = :p_batch_id
+                    GROUP BY SUBSTR (supplier_clabe_account, 1, 3)); 
+ 
+ 
+ 
+ 
+ dba_directories
+ 
+ 
  SELECT bank_account_name, cba.bank_account_num, cba.currency_code
 --          INTO l_bank_account_name, l_bank_account_num, l_currency_code
           FROM CE_BANK_ACCOUNTS cba, CE_BANK_ACCT_USES_ALL cbaua
@@ -74,3 +102,19 @@ SELECT UNIQUE aps.vendor_name vendor_name,
 
 --DELETE FROM LOG_TB;
 --COMMIT;
+
+
+
+ SELECT tsc_supplier_name,
+                  supplier_account_number,
+                  paying_account_number,
+                  supplier_clabe_account,
+                  operation_currency,
+                  SUM (operation_amount) operation_amount
+             FROM PAC_EFT_BATCH_LINES
+            WHERE batch_id = :p_batch_id
+         GROUP BY tsc_supplier_name,
+                  supplier_account_number,
+                  paying_account_number,
+                  supplier_clabe_account,
+                  operation_currency;
