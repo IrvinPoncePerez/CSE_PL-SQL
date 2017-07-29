@@ -1,52 +1,4 @@
- SELECT tsc_supplier_name,
-                  supplier_account_number,
-                  paying_account_number,
-                  supplier_clabe_account,
-                  operation_currency,
-                  SUM (operation_amount) operation_amount
-             FROM PAC_EFT_BATCH_LINES
-            WHERE batch_id = :p_batch_id
-         GROUP BY tsc_supplier_name,
-                  supplier_account_number,
-                  paying_account_number,
-                  supplier_clabe_account,
-                  operation_currency;
- 
-SELECT COUNT (supplier_clabe_account)
---              INTO l_bbva_mix
-              FROM (  SELECT SUBSTR (supplier_clabe_account, 1, 3)
-                                supplier_clabe_account
-                        FROM PAC_EFT_BATCH_LINES
-                       WHERE batch_id = :p_batch_id
-                    GROUP BY SUBSTR (supplier_clabe_account, 1, 3)); 
- 
- 
- 
- 
- dba_directories
- 
- 
- SELECT bank_account_name, cba.bank_account_num, cba.currency_code
---          INTO l_bank_account_name, l_bank_account_num, l_currency_code
-          FROM CE_BANK_ACCOUNTS cba, CE_BANK_ACCT_USES_ALL cbaua
-         WHERE     cba.bank_account_id = cbaua.bank_account_id
---               AND cba.bank_account_id = p_bank_account_id
-               AND org_id = 82
-      ORDER BY cba.bank_account_name;
-      
-      
-      
-SELECT cba.bank_account_num, cba.currency_code
---          INTO l_bank_account_number, l_currency_code
-          FROM CE_BANK_ACCOUNTS cba, CE_BANK_ACCT_USES_ALL cbaua
-         WHERE     cba.bank_account_id = cbaua.bank_account_id
-               AND cba.bank_account_id = :l_bank_account_id
-               AND org_id = 82
-      ORDER BY cba.bank_account_name;
-      
-      
-      
-      
+     
 SELECT UNIQUE aps.vendor_name vendor_name,
              aps.segment1 vendor_num,
              aia.invoice_num,
@@ -54,6 +6,8 @@ SELECT UNIQUE aps.vendor_name vendor_name,
              apsa.amount_remaining - NVL (apsa.discount_amount_available, 0)
                 amount_remaining,
              ieba.BANK_ACCOUNT_NUM,
+             ieb.BANK_NAME,
+             ieb.BANK_NAME_ALT,
              pac_eft_pkg.extract_account_number (ieba.BANK_ACCOUNT_NUM),
              aia.invoice_currency_code currency
 --        INTO l_vendor_name,
@@ -84,24 +38,9 @@ SELECT UNIQUE aps.vendor_name vendor_name,
              AND ieba.branch_id = iebb.branch_party_id
              AND ieba.bank_id = ieb.bank_party_id
              AND uses.instrument_id = ieba.ext_bank_account_id
---             AND uses.end_date IS NULL
+             AND uses.end_date IS NULL
              ;      
-      
-      
---      create or replace procedure pac_log_prc(p_id    number, p_message varchar2)
---      is
---        PRAGMA AUTONOMOUS_TRANSACTION;
---      begin
---      
---        insert into log_tb(id, message) values(p_id,p_message);
---        
---        commit;
---            
---      end;
-
-
---DELETE FROM LOG_TB;
---COMMIT;
+     
 
 
 
@@ -110,11 +49,13 @@ SELECT UNIQUE aps.vendor_name vendor_name,
                   paying_account_number,
                   supplier_clabe_account,
                   operation_currency,
-                  SUM (operation_amount) operation_amount
+                  SUM (operation_amount) operation_amount,
+                  invoice_id
              FROM PAC_EFT_BATCH_LINES
             WHERE batch_id = :p_batch_id
          GROUP BY tsc_supplier_name,
                   supplier_account_number,
                   paying_account_number,
                   supplier_clabe_account,
-                  operation_currency;
+                  operation_currency,
+                  invoice_id;

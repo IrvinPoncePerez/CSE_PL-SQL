@@ -497,7 +497,39 @@ AS
             DBMS_OUTPUT.put_line (linebuf);
          END LOOP;
 
-         UTL_FILE.Fclose (out_file);
+        
+      EXCEPTION
+         WHEN NO_DATA_FOUND
+         THEN
+            UTL_FILE.Fclose (out_file);
+            output_msg := 'NO DATA FOUND';
+         WHEN UTL_FILE.WRITE_ERROR
+         THEN
+            DBMS_OUTPUT.PUT_LINE (
+               'Operating system error occurred during the write operation.');
+            output_msg :=
+               'Operating system error occurred during the write operation.';
+         WHEN OTHERS
+         THEN
+            DBMS_OUTPUT.put_line (
+               'Se ha producido un error inesperado: ' || SQLERRM);
+            output_msg := 'Se ha producido un error inesperado: ' || SQLERRM;
+      END;
+    ELSIF   var_bank_account_name LIKE '%BANAMEX%' THEN --  IPONCE 2017.07.27
+        /*************************************************************************/
+        /*BEGIN     Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
+        
+        
+        
+        
+        
+        /*END       Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
+    
+    END IF; --IPONCE 2017.07.24
+    
+    /*************************************************************************/
+    
+        UTL_FILE.Fclose (out_file);
 
          UPDATE PAC_EFT_BATCH_LINES
             SET LINE_STATUS = 'EN CURSO'
@@ -531,33 +563,9 @@ AS
          END;
 
          COMMIT;
-      EXCEPTION
-         WHEN NO_DATA_FOUND
-         THEN
-            UTL_FILE.Fclose (out_file);
-            output_msg := 'NO DATA FOUND';
-         WHEN UTL_FILE.WRITE_ERROR
-         THEN
-            DBMS_OUTPUT.PUT_LINE (
-               'Operating system error occurred during the write operation.');
-            output_msg :=
-               'Operating system error occurred during the write operation.';
-         WHEN OTHERS
-         THEN
-            DBMS_OUTPUT.put_line (
-               'Se ha producido un error inesperado: ' || SQLERRM);
-            output_msg := 'Se ha producido un error inesperado: ' || SQLERRM;
-      END;
-    ELSIF   var_bank_account_name LIKE '%BANAMEX%' THEN --  IPONCE 2017.07.27
-        /*************************************************************************/
-        /*BEGIN     Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
-        
-        
-        
-        
-        /*END       Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
-        /*************************************************************************/
-    END IF; --IPONCE 2017.07.24
+    
+    /*************************************************************************/
+    
    END;
 --PROCEDURE increase_sal(employee_id NUMBER, salary_incr NUMBER) IS
 --   curr_sal NUMBER;
