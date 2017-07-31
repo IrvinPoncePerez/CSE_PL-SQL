@@ -299,20 +299,24 @@ AS
                   paying_account_number,
                   supplier_clabe_account,
                   operation_currency,
-                  SUM (operation_amount) operation_amount
+                  SUM (operation_amount) operation_amount,
+                  INVOICE_ID         --  IPONCE 2017.07.31
              FROM PAC_EFT_BATCH_LINES
             WHERE batch_id = p_batch_id
          GROUP BY tsc_supplier_name,
                   supplier_account_number,
                   paying_account_number,
                   supplier_clabe_account,
-                  operation_currency;
+                  operation_currency,
+                  INVOICE_ID;        --  IPONCE 2017.07.31
                   
                   
     --IPONCE    2017.07.27
     --Variables de BANAMEX
     
-    var_bank_account_name       PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NAME%TYPE;                  
+    var_bank_account_name       PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NAME%TYPE;    
+    var_bank_name               APPS.IBY_EXT_BANKS_V.BANK_NAME_ALT%TYPE;
+    var_branch_number           APPS.CE_BANK_BRANCHES_V.BRANCH_NUMBER%TYPE;           
    BEGIN
    
     SELECT PEBH.BANK_ACCOUNT_NAME       --  IPONCE 2017.07.27
@@ -519,8 +523,55 @@ AS
         /*************************************************************************/
         /*BEGIN     Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
         
-        
-        
+         FOR export_rec IN export_cur LOOP
+            
+            SELECT UNIQUE UPPER(IEB.BANK_NAME_ALT) 
+              INTO var_bank_name
+              FROM AP_PAYMENT_SCHEDULES_ALL apsa,
+                   ap_invoices_all aia,
+                   apps.ap_suppliers aps,
+                   ap.ap_supplier_sites_all apss,
+                   apps.iby_ext_bank_accounts ieba,
+                   apps.iby_account_owners iao,
+                   apps.iby_ext_banks_v ieb,
+                   apps.iby_ext_bank_branches_v iebb
+             WHERE     1 = 1
+                   AND aia.VENDOR_ID = aps.VENDOR_ID
+                   AND apsa.invoice_id = aia.invoice_id
+                   AND aia.invoice_id = export_rec.invoice_id
+                   AND aps.vendor_id = apss.vendor_id
+                   AND iao.account_owner_party_id = aps.party_id
+                   AND ieba.ext_bank_account_id = iao.ext_bank_account_id
+                   AND ieb.bank_party_id = iebb.bank_party_id
+                   AND ieba.branch_id = iebb.branch_party_id
+                   AND ieba.bank_id = ieb.bank_party_id;
+                   
+
+            filename :=
+                     'pago_'
+                  || p_batch_id
+                  || '_banamex_'
+                  || TO_CHAR (SYSDATE, 'DDMONRRRR')
+                  || '.txt';
+
+            out_file := UTL_FILE.Fopen ('EFT_BANAMEX', filename, 'w');    
+            
+            SELECT CBB.BRANCH_NUMBER
+              INTO var_branch_number
+              FROM CE_BANK_BRANCHES_V   CBB
+             WHERE 1 = 1
+               AND UPPER(CBB.BANK_NAME_ALT) = 'BANAMEX';
+            
+            IF var_bank_name <> 'BANAMEX' THEN
+                linebuf := '0301';
+            ELSE
+                linebuf := '0901';
+            END IF;             
+            
+            linebuf := linebuf || TRIM(LPAD(var_branch_number, 4, 0));
+                               
+                   
+         END LOOP;
         
         
         /*END       Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
