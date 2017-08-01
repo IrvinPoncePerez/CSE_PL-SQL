@@ -316,7 +316,9 @@ AS
     
     var_bank_account_name       PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NAME%TYPE;    
     var_bank_name               APPS.IBY_EXT_BANKS_V.BANK_NAME_ALT%TYPE;
-    var_branch_number           APPS.CE_BANK_BRANCHES_V.BRANCH_NUMBER%TYPE;           
+    var_branch_number           APPS.CE_BANK_BRANCHES_V.BRANCH_NUMBER%TYPE;     
+    var_account_number          PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NUM%TYPE;
+          
    BEGIN
    
     SELECT PEBH.BANK_ACCOUNT_NAME       --  IPONCE 2017.07.27
@@ -561,6 +563,12 @@ AS
               FROM CE_BANK_BRANCHES_V   CBB
              WHERE 1 = 1
                AND UPPER(CBB.BANK_NAME_ALT) = 'BANAMEX';
+               
+            SELECT PEBH.BANK_ACCOUNT_NUM
+              INTO var_account_number
+              FROM PAC_EFT_BATCH_HEADER PEBH
+             WHERE 1 = 1
+               AND BATCH_ID = p_batch_id;
             
             IF var_bank_name <> 'BANAMEX' THEN
                 linebuf := '0301';
@@ -569,7 +577,21 @@ AS
             END IF;             
             
             linebuf := linebuf || TRIM(LPAD(var_branch_number, 4, 0));
-                               
+            linebuf := linebuf || TRIM(LPAD(var_account_number, 20, 0));
+            
+            IF var_bank_name = 'BANAMEX' THEN
+                IF    export_rec.supplier_clabe_account < 16 THEN
+                    linebuf := linebuf || '06';
+                ELSIF export_rec.supplier_clabe_account > 16 THEN
+                    linebuf := linebuf || '03';
+                END IF;
+                
+                linebuf := linebuf || '0000';
+                linebuf := linebuf || TRIM(LPAD(export_rec.supplier_clabe_account, 20, 0));
+                
+            END IF;     
+            
+            linebuf := linebuf ||                                       
                    
          END LOOP;
         

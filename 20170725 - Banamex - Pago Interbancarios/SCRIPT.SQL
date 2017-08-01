@@ -3,7 +3,7 @@
      
      
      
-      SELECT UNIQUE ieb.*
+      SELECT UNIQUE *
         FROM AP_PAYMENT_SCHEDULES_ALL apsa,
              ap_invoices_all aia,
              apps.ap_suppliers aps,
@@ -15,13 +15,13 @@
        WHERE     1 = 1
              AND aia.VENDOR_ID = aps.VENDOR_ID
              AND apsa.invoice_id = aia.invoice_id
-             AND aia.invoice_id = :p_invoice_id
              AND aps.vendor_id = apss.vendor_id
              AND iao.account_owner_party_id = aps.party_id
              AND ieba.ext_bank_account_id = iao.ext_bank_account_id
              AND ieb.bank_party_id = iebb.bank_party_id
              AND ieba.branch_id = iebb.branch_party_id
-             AND ieba.bank_id = ieb.bank_party_id;
+             AND ieba.bank_id = ieb.bank_party_id
+             and IEb.bank_name_alt = 'BANAMEX';
      
 
 
