@@ -94,6 +94,7 @@ IS
                        AND ASM.ATTRIBUTE6 = PPF.PERIOD_TYPE
                        AND IS_SAVER = 'Y'          
                        --                            AND MEMBER_ID = 1765
+                       AND ATET_SAVINGS_BANK_PKG.GET_PERSON_TYPE(ASM.MEMBER_ID) IN ('Employee', 'Empleado')
                        AND SAVING_BANK_ID = ATET_SAVINGS_BANK_PKG.GET_SAVING_BANK_ID
                        ) MEMBERS
               LEFT OUTER JOIN
