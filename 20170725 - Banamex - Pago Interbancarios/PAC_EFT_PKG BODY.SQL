@@ -299,8 +299,26 @@ AS
                   paying_account_number,
                   supplier_clabe_account,
                   operation_currency,
+                  SUM (operation_amount) operation_amount                
+             FROM PAC_EFT_BATCH_LINES
+            WHERE batch_id = p_batch_id
+         GROUP BY tsc_supplier_name,
+                  supplier_account_number,
+                  paying_account_number,
+                  supplier_clabe_account,
+                  operation_currency;                     
+                  
+                  
+    CURSOR export_cur_BANAMEX
+      IS
+           SELECT tsc_supplier_name,
+                  supplier_account_number,
+                  paying_account_number,
+                  supplier_clabe_account,
+                  operation_currency,
                   SUM (operation_amount) operation_amount,
-                  INVOICE_ID         --  IPONCE 2017.07.31
+                  INVOICE_ID,                           --  IPONCE 2017.07.31
+                  PAYMENT_DESCRIPTION                   --  IPONCE 2017.08.02                  
              FROM PAC_EFT_BATCH_LINES
             WHERE batch_id = p_batch_id
          GROUP BY tsc_supplier_name,
@@ -308,7 +326,8 @@ AS
                   paying_account_number,
                   supplier_clabe_account,
                   operation_currency,
-                  INVOICE_ID;        --  IPONCE 2017.07.31
+                  INVOICE_ID,                           --  IPONCE 2017.07.31
+                  PAYMENT_DESCRIPTION;                  --  IPONCE 2017.08.02                        
                   
                   
     --IPONCE    2017.07.27
@@ -318,6 +337,7 @@ AS
     var_bank_name               APPS.IBY_EXT_BANKS_V.BANK_NAME_ALT%TYPE;
     var_branch_number           APPS.CE_BANK_BRANCHES_V.BRANCH_NUMBER%TYPE;     
     var_account_number          PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NUM%TYPE;
+        
           
    BEGIN
    
@@ -525,7 +545,7 @@ AS
         /*************************************************************************/
         /*BEGIN     Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
         
-         FOR export_rec IN export_cur LOOP
+         FOR export_rec IN export_cur_BANAMEX LOOP
             
             SELECT UNIQUE UPPER(IEB.BANK_NAME_ALT) 
               INTO var_bank_name
@@ -591,7 +611,24 @@ AS
                 
             END IF;     
             
-            linebuf := linebuf ||                                       
+            linebuf := linebuf || TRIM(LPAD(TRUNC(export_rec.operation_amount), 12, 0));    
+            linebuf := linebuf || RPAD(SUBSTR(TO_CHAR(TRUNC(export_rec.operation_amount,2), '999999999999.99'), INSTR(TO_CHAR(TRUNC(export_rec.operation_amount, 2), '999999999999.99'), '.')+1), 2,0);
+            
+            IF var_bank_name = 'BANAMEX' THEN
+                IF      var_bank_account_name = 'BANAMEX MXN' THEN
+                    linebuf := linebuf || '001';
+                ELSIF   var_bank_account_name = 'BANAMEX DLS' THEN
+                    linebuf := linebuf || '005';
+                END IF;
+            ELSE
+                linebuf := linebuf || '001';
+            END IF;     
+            
+            IF var_bank_name = 'BANAMEX' THEN
+                NULL;
+            ELSE
+                NULL;
+            END IF;                                                     
                    
          END LOOP;
         

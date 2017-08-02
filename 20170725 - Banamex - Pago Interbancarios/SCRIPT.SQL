@@ -1,4 +1,7 @@
-   
+select :p_decimal,
+       TRIM(LPAD(TRUNC(:P_DECIMAL), 12, 0)),
+       RPAD(SUBSTR(TO_CHAR(TRUNC(:P_DECIMAL,2), '999999999999.99'), INSTR(TO_CHAR(TRUNC(:P_DECIMAL, 2), '999999999999.99'), '.')+1), 2,0)     
+from dual;   
      
      
      
@@ -41,3 +44,12 @@
                   supplier_clabe_account,
                   operation_currency,
                   invoice_id;
+                  
+                  
+                  
+SELECT :P_DESC,
+       REGEXP_SUBSTR(:P_DESC, '\(?([0-9A-Za-z]+)\)?')
+ FROM DUAL;                  
+ 
+ 
+ 
