@@ -893,7 +893,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                 PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID)
                             ELSE 1
                         END) <> 0
---                   AND PAPF.EMPLOYEE_NUMBER IN (2202) -- PrBueba 17.05.30
+                   AND PAPF.EMPLOYEE_NUMBER NOT IN (5646) -- PrBueba 17.05.30
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
