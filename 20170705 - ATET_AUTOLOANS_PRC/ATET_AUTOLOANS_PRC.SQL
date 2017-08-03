@@ -150,7 +150,7 @@ BEGIN
                    autoloans.term_periods,                  --term_periods
                    2,                                       --normal_interest_rate
                    5,                                       --late_interest_rate
-                   SYSDATE,                                 --transaction_date
+                   TO_CHAR(SYSDATE,'DD/MM/RRRR'),           --transaction_date
                    TO_DATE(NULL),                           --payment_deadline
                    autoloans.period_type,                   --period_type
                    'ACTIVE',                                --loan_status_flag
@@ -239,7 +239,7 @@ BEGIN
                                                             '',                           -- description
                                                             '',                            -- start time
                                                             FALSE,                        -- sub request
-                                                            TO_CHAR (v_loan_number),       -- argument1
+                                                            TO_CHAR (v_loan_id),       -- argument1
                                                             CHR (0)       -- represents end of arguments
                                                            );
                 COMMIT;
@@ -313,7 +313,12 @@ BEGIN
            raise;
         end;                
 */                
-    END LOOP;                           
+    END LOOP;    
+    
+    
+    ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;
+    
+                           
 EXCEPTION WHEN others THEN
     dbms_output.put_line('Código de error: '||SQLERRM);
     fnd_file.put_line (fnd_file.LOG, 'Código de error: '||SQLERRM);
