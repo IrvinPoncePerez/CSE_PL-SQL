@@ -11836,7 +11836,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
            AND ASL.LOAN_STATUS_FLAG = 'APPROVED'
            AND ASL.LOAN_ID = P_LOAN_ID;
     
-        IF var_loan_amount = var_loan_amount_validate AND var_interest_amount = var_interest_amount_validate THEN
+        IF 1 = 1 THEN--var_loan_amount = var_loan_amount_validate AND var_interest_amount = var_interest_amount_validate THEN
             
             CREATE_ACCOUNT(GET_PERSON_ID(var_member_id), 
                            'LOAN_ELEMENT_NAME', 
@@ -11866,12 +11866,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             
             
                
-            IF    var_member_period_type IN ('Week', 'Semana') THEN
-                var_term_periods := 4 * P_TERM_PERIODS;
-            ELSIF var_member_period_type IN ('Semi-Month', 'Quincena') THEN
-                var_term_periods := 2 * P_TERM_PERIODS;
-            END IF;                                                                                
+--            IF    var_member_period_type IN ('Week', 'Semana') THEN
+--                var_term_periods := 4 * P_TERM_PERIODS;
+--            ELSIF var_member_period_type IN ('Semi-Month', 'Quincena') THEN
+--                var_term_periods := 2 * P_TERM_PERIODS;
+--            END IF;                                                                                
         
+            var_term_periods := P_TERM_PERIODS;
         
             INSERT 
               INTO ATET_LOAN_PAYMENTS_ALL
