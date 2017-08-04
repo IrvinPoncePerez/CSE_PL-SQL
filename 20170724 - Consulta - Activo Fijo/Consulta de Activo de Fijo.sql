@@ -17,9 +17,9 @@ SELECT   fab.asset_number AS numero,
          ffvt_cc.description AS centro_costos,
          fb.date_placed_in_service AS fecha_en_servicio,
          fb.COST AS costo
-    FROM fa_additions_b fab,
-         fa_additions_tl fat,
-         fa_distribution_history fdh,
+    FROM fa_additions_b fab,--
+         fa_additions_tl fat,--
+         fa_distribution_history fdh,--
          gl_code_combinations gcc,
          fnd_flex_value_sets ffvs_cc,
          fnd_flex_values ffv_cc,
