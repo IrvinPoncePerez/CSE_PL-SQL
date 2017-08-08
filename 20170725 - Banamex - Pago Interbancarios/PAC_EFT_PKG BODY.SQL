@@ -318,7 +318,7 @@ AS
                   operation_currency,
                   SUM (operation_amount) operation_amount,
                   INVOICE_ID,                           --  IPONCE 2017.07.31
-                  PAYMENT_DESCRIPTION                   --  IPONCE 2017.08.02                  
+                  PAYMENT_DESCRIPTION                   --  IPONCE 2017.08.02           
              FROM PAC_EFT_BATCH_LINES
             WHERE batch_id = p_batch_id
          GROUP BY tsc_supplier_name,
@@ -625,7 +625,12 @@ AS
             END IF;     
             
             IF var_bank_name = 'BANAMEX' THEN
-                NULL;
+                linebuf := linebuf || TRIM(RPAD(TRANSLATE(export_rec.PAYMENT_DESCRIPTION,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),24,' '));
+                linebuf := linebuf || TRIM(RPAD(TRANSLATE(export_rec.TSC_SUPPLIER_NAME,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),34,' '));
+                linebuf := linebuf || TRIM(LPAD(TO_CHAR(SYSDATE,'DDMMRRRR'),10,0));
+                linebuf := linebuf || '000';
+                linebuf := linebuf || '000000';
+                linebuf := linebuf || '0000';
             ELSE
                 NULL;
             END IF;                                                     
@@ -641,38 +646,38 @@ AS
     
         UTL_FILE.Fclose (out_file);
 
-         UPDATE PAC_EFT_BATCH_LINES
-            SET LINE_STATUS = 'EN CURSO'
-          WHERE batch_id = p_batch_id;
+--         UPDATE PAC_EFT_BATCH_LINES
+--            SET LINE_STATUS = 'EN CURSO'
+--          WHERE batch_id = p_batch_id;
 
-         UPDATE PAC_EFT_BATCH_HEADER
-            SET BATCH_STATUS = 'Y'
-          WHERE batch_id = p_batch_id;
+--         UPDATE PAC_EFT_BATCH_HEADER
+--            SET BATCH_STATUS = 'Y'
+--          WHERE batch_id = p_batch_id;
 
-         output_msg := 'S';
+--         output_msg := 'S';
 
-         v_file := filename;
+--         v_file := filename;
 
-         BEGIN
-            p_file := filename;
-            DBMS_LOB.createtemporary (dst_blob, TRUE);
-            b_file := BFILENAME ('EFT_BANCOMER', p_file);
-            DBMS_LOB.open (b_file, DBMS_LOB.lob_readonly);
-            b_file_length := DBMS_LOB.getlength (b_file);
-            DBMS_OUTPUT.put_line (TO_CHAR (b_file_length));
-            DBMS_OUTPUT.put_line ( (p_file));
+--         BEGIN
+--            p_file := filename;
+--            DBMS_LOB.createtemporary (dst_blob, TRUE);
+--            b_file := BFILENAME ('EFT_BANCOMER', p_file);
+--            DBMS_LOB.open (b_file, DBMS_LOB.lob_readonly);
+--            b_file_length := DBMS_LOB.getlength (b_file);
+--            DBMS_OUTPUT.put_line (TO_CHAR (b_file_length));
+--            DBMS_OUTPUT.put_line ( (p_file));
 
 
-            DBMS_LOB.loadfromfile (dst_blob, b_file, b_file_length);
+--            DBMS_LOB.loadfromfile (dst_blob, b_file, b_file_length);
 
-            UPDATE PAC_EFT_BATCH_HEADER
-               SET OUTPUT_BLOB_FILE = dst_blob
-             WHERE batch_id = p_batch_id;
+--            UPDATE PAC_EFT_BATCH_HEADER
+--               SET OUTPUT_BLOB_FILE = dst_blob
+--             WHERE batch_id = p_batch_id;
 
-            DBMS_LOB.fileclose (b_file);
-         END;
+--            DBMS_LOB.fileclose (b_file);
+--         END;
 
-         COMMIT;
+--         COMMIT;
     
     /*************************************************************************/
     
