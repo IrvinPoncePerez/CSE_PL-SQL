@@ -3305,9 +3305,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    ASST.MEMBER_ID,
                    ASM.EMPLOYEE_FULL_NAME,
                    ASST.PERSON_ID,
-                   ASST.ENTRY_VALUE,
-                   ASST.DEBIT_AMOUNT,
-                   ASST.CREDIT_AMOUNT
+                   TRUNC(ASST.ENTRY_VALUE,2)    ENTRY_VALUE,
+                   TRUNC(ASST.DEBIT_AMOUNT,2)   DEBIT_AMOUNT,
+                   TRUNC(ASST.CREDIT_AMOUNT,2)  CREDIT_AMOUNT
               FROM ATET_SB_SAVINGS_TRANSACTIONS ASST,
                    ATET_SB_MEMBERS              ASM,
                    ATET_SB_MEMBERS_ACCOUNTS     ASMA,
@@ -3334,7 +3334,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    ASLT.MEMBER_ID,
                    ASM.EMPLOYEE_FULL_NAME,
                    ASLT.PERSON_ID,
-                   ASLT.PAYMENT_AMOUNT,
+                   TRUNC(ASLT.PAYMENT_AMOUNT, 2) PAYMENT_AMOUNT,
                    ASL.LOAN_NUMBER
               FROM ATET_SB_LOANS_TRANSACTIONS   ASLT,
                    ATET_SB_MEMBERS              ASM,
@@ -3365,7 +3365,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    ASLT.MEMBER_ID,
                    ASM.EMPLOYEE_FULL_NAME,
                    ASLT.PERSON_ID,
-                   ASLT.PAYMENT_INTEREST,
+                   TRUNC(ASLT.PAYMENT_INTEREST,2) PAYMENT_INTEREST,
                    ASL.LOAN_NUMBER
               FROM ATET_SB_LOANS_TRANSACTIONS   ASLT,
                    ATET_SB_MEMBERS              ASM,
@@ -3395,7 +3395,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    ASLT.MEMBER_ID,
                    ASM.EMPLOYEE_FULL_NAME,
                    ASLT.PERSON_ID,
-                   ASLT.PAYMENT_INTEREST_LATE,
+                   TRUNC(ASLT.PAYMENT_INTEREST_LATE,2) PAYMENT_INTEREST_LATE,
                    ASL.LOAN_NUMBER
               FROM ATET_SB_LOANS_TRANSACTIONS   ASLT,
                    ATET_SB_MEMBERS              ASM,
