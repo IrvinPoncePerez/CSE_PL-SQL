@@ -263,6 +263,7 @@ AS
                                    output_msg      OUT VARCHAR2)
    IS
       out_file                UTL_FILE.File_Type;
+      
       linebuf                 VARCHAR2 (1999);
       v_total                 NUMBER := 1;
       v_database              VARCHAR2 (30);
@@ -574,9 +575,9 @@ AS
                   || p_batch_id
                   || '_banamex_'
                   || TO_CHAR (SYSDATE, 'DDMONRRRR')
-                  || '.txt';
+                  || '.txt';            
 
-            out_file := UTL_FILE.Fopen ('EFT_BANAMEX', filename, 'w');    
+            out_file := UTL_FILE.Fopen ('EFT_BANAMEX', filename, 'w');       
             
             SELECT CBB.BRANCH_NUMBER
               INTO var_branch_number
@@ -632,7 +633,18 @@ AS
                 linebuf := linebuf || '000000';
                 linebuf := linebuf || '0000';
             ELSE
-                NULL;
+                IF       export_rec.supplier_clabe_account < 16 THEN
+                    linebuf := linebuf || '01';
+                ELSIF    export_rec.supplier_clabe_account = 16 THEN
+                    linebuf := linebuf || '03';
+                ELSIF export_rec.supplier_clabe_account > 16 THEN
+                    linebuf := linebuf || '40';
+                END IF;
+                
+                linebuf := linebuf || TRIM(LPAD(export_rec.supplier_clabe_account, 20, 0));
+                linebuf := linebuf || TRIM(RPAD(TRANSLATE(export_rec.PAYMENT_DESCRIPTION,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),40,' '));
+                linebuf := linebuf || TRIM(LPAD(TO_CHAR(SYSDATE,'DDMMRRRR'),7,0));
+                                
             END IF;                                                     
                    
          END LOOP;
