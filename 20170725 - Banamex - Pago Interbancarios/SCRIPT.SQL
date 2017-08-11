@@ -1,7 +1,20 @@
-
- 
- SELECT REGEXP_REPLACE(:P_DESC, '[^0-9]+', '')
-FROM DUAL;
- 
- 
- select translate(:p_desc,'0*~!#$%^()_-+=&#124}]{{/?.,><','0') from dual
+SELECT PV.VENDOR_NAME,
+       PV.ATTRIBUTE1,
+       PV.ATTRIBUTE2,
+       PV.ATTRIBUTE3,
+       PV.NUM_1099
+  FROM AP_INVOICES_ALL      AIA,
+       PO_VENDORS           PV,
+       PAC_EFT_BATCH_LINES  PEBL
+ WHERE 1 = 1
+   AND AIA.INVOICE_ID = PEBL.INVOICE_ID
+   AND AIA.VENDOR_ID = PV.VENDOR_ID;
+   
+   
+SELECT *
+  FROM PO_VENDORS
+ WHERE 1 = 1
+   AND VENDOR_ID = 1261;
+   
+   
+   

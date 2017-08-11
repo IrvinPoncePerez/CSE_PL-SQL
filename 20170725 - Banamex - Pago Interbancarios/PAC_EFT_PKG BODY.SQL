@@ -334,11 +334,16 @@ AS
     --IPONCE    2017.07.27
     --Variables de BANAMEX
     
-    var_bank_account_name       PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NAME%TYPE;    
-    var_bank_name               APPS.IBY_EXT_BANKS_V.BANK_NAME_ALT%TYPE;
-    var_branch_number           APPS.CE_BANK_BRANCHES_V.BRANCH_NUMBER%TYPE;     
-    var_account_number          PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NUM%TYPE;
-        
+    var_bank_account_name       PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NAME%TYPE;    --  IPONCE  2017.08.11  
+    var_bank_name               APPS.IBY_EXT_BANKS_V.BANK_NAME_ALT%TYPE;        --  IPONCE  2017.08.11
+    var_branch_number           APPS.CE_BANK_BRANCHES_V.BRANCH_NUMBER%TYPE;     --  IPONCE  2017.08.11    
+    var_account_number          PAC_EFT_BATCH_HEADER.BANK_ACCOUNT_NUM%TYPE;     --  IPONCE  2017.08.11
+    
+    var_bussiness_name          VARCHAR2(1000);     --  IPONCE  2017.08.11
+    var_first_name              VARCHAR2(1000);     --  IPONCE  2017.08.11
+    var_last_name               VARCHAR2(1000);     --  IPONCE  2017.08.11
+    var_second_last_name        VARCHAR2(1000);     --  IPONCE  2017.08.11
+    var_taxpayer_id             VARCHAR2(100);      --  IPONCE  2017.08.11
           
    BEGIN
    
@@ -644,6 +649,24 @@ AS
                 linebuf := linebuf || TRIM(LPAD(export_rec.supplier_clabe_account, 20, 0));
                 linebuf := linebuf || TRIM(RPAD(TRANSLATE(export_rec.PAYMENT_DESCRIPTION,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),40,' '));
                 linebuf := linebuf || TRIM(LPAD(TO_CHAR(SYSDATE,'DDMMRRRR'),7,0));
+                
+                
+                SELECT PV.VENDOR_NAME,
+                       PV.ATTRIBUTE1,
+                       PV.ATTRIBUTE2,
+                       PV.ATTRIBUTE3,
+                       PV.NUM_1099
+                  INTO var_bussiness_name,
+                       var_first_name,
+                       var_last_name,
+                       var_second_last_name,
+                       var_taxpayer_id
+                  FROM AP_INVOICES_ALL      AIA,
+                       PO_VENDORS           PV
+                 WHERE 1 = 1
+                   AND AIA.INVOICE_ID = export_rec.invoice_id
+                   AND AIA.VENDOR_ID = PV.VENDOR_ID;
+                
                                 
             END IF;                                                     
                    

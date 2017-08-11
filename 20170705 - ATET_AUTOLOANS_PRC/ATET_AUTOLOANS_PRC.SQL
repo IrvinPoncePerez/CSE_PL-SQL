@@ -221,6 +221,12 @@ BEGIN
             fnd_file.put_line (fnd_file.LOG, 'Error en código Sam 1.');
             RAISE;
         END;
+        
+        -- Actualización de estatus IS_BORROWER.
+        UPDATE ATET_SB_MEMBERS  ASM
+           SET IS_BORROWER = 'Y'
+         WHERE 1 = 1
+           AND MEMBER_ID = autoloans.MEMBER_ID;
 
         COMMIT;
             
