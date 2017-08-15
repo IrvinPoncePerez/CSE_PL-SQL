@@ -344,6 +344,7 @@ AS
     var_last_name               VARCHAR2(1000);     --  IPONCE  2017.08.11
     var_second_last_name        VARCHAR2(1000);     --  IPONCE  2017.08.11
     var_taxpayer_id             VARCHAR2(100);      --  IPONCE  2017.08.11
+    var_tax_amount              NUMBER;             --  IPONCE  2017.08.11
           
    BEGIN
    
@@ -551,6 +552,16 @@ AS
         /*************************************************************************/
         /*BEGIN     Bloque para pagos interbancarios BANAMEX    IPONCE 2017.07.27*/
         
+        filename :=
+                 'pago_'
+              || p_batch_id
+              || '_banamex_'
+              || TO_CHAR (SYSDATE, 'DDMONRRRR')
+              || '.txt';            
+
+        out_file := UTL_FILE.Fopen ('EFT_BANAMEX', filename, 'w');   
+        
+        
          FOR export_rec IN export_cur_BANAMEX LOOP
             
             SELECT UNIQUE UPPER(IEB.BANK_NAME_ALT) 
@@ -575,14 +586,7 @@ AS
                    AND ieba.bank_id = ieb.bank_party_id;
                    
 
-            filename :=
-                     'pago_'
-                  || p_batch_id
-                  || '_banamex_'
-                  || TO_CHAR (SYSDATE, 'DDMONRRRR')
-                  || '.txt';            
-
-            out_file := UTL_FILE.Fopen ('EFT_BANAMEX', filename, 'w');       
+                
             
             SELECT CBB.BRANCH_NUMBER
               INTO var_branch_number
@@ -596,28 +600,28 @@ AS
              WHERE 1 = 1
                AND BATCH_ID = p_batch_id;
             
-            IF var_bank_name <> 'BANAMEX' THEN
+            IF var_bank_name = 'BANAMEX' THEN
                 linebuf := '0301';
             ELSE
                 linebuf := '0901';
             END IF;             
             
-            linebuf := linebuf || TRIM(LPAD(var_branch_number, 4, 0));
-            linebuf := linebuf || TRIM(LPAD(var_account_number, 20, 0));
+            linebuf := linebuf || TRIM(LPAD(var_branch_number, 4, '0'));
+            linebuf := linebuf || TRIM(LPAD(var_account_number, 20, '0'));
             
             IF var_bank_name = 'BANAMEX' THEN
-                IF    export_rec.supplier_clabe_account < 16 THEN
+                IF    LENGTH(export_rec.supplier_clabe_account) < 16 THEN
                     linebuf := linebuf || '06';
-                ELSIF export_rec.supplier_clabe_account > 16 THEN
+                ELSIF LENGTH(export_rec.supplier_clabe_account) > 16 THEN
                     linebuf := linebuf || '03';
                 END IF;
                 
                 linebuf := linebuf || '0000';
-                linebuf := linebuf || TRIM(LPAD(export_rec.supplier_clabe_account, 20, 0));
+                linebuf := linebuf || TRIM(LPAD(export_rec.supplier_clabe_account, 20, '0'));
                 
             END IF;     
             
-            linebuf := linebuf || TRIM(LPAD(TRUNC(export_rec.operation_amount), 12, 0));    
+            linebuf := linebuf || TRIM(LPAD(TRUNC(export_rec.operation_amount), 12, '0'));    
             linebuf := linebuf || RPAD(SUBSTR(TO_CHAR(TRUNC(export_rec.operation_amount,2), '999999999999.99'), INSTR(TO_CHAR(TRUNC(export_rec.operation_amount, 2), '999999999999.99'), '.')+1), 2,0);
             
             IF var_bank_name = 'BANAMEX' THEN
@@ -631,23 +635,23 @@ AS
             END IF;     
             
             IF var_bank_name = 'BANAMEX' THEN
-                linebuf := linebuf || TRIM(RPAD(TRANSLATE(export_rec.PAYMENT_DESCRIPTION,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),24,' '));
-                linebuf := linebuf || TRIM(RPAD(TRANSLATE(export_rec.TSC_SUPPLIER_NAME,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),34,' '));
+                linebuf := linebuf || RPAD(TRANSLATE(export_rec.PAYMENT_DESCRIPTION,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),24,' ');
+                linebuf := linebuf || RPAD(TRANSLATE(export_rec.TSC_SUPPLIER_NAME,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),34,' ');
                 linebuf := linebuf || TRIM(LPAD(TO_CHAR(SYSDATE,'DDMMRRRR'),10,0));
                 linebuf := linebuf || '000';
                 linebuf := linebuf || '000000';
                 linebuf := linebuf || '0000';
             ELSE
-                IF       export_rec.supplier_clabe_account < 16 THEN
+                IF       LENGTH(export_rec.supplier_clabe_account) < 16 THEN
                     linebuf := linebuf || '01';
-                ELSIF    export_rec.supplier_clabe_account = 16 THEN
+                ELSIF    LENGTH(export_rec.supplier_clabe_account) = 16 THEN
                     linebuf := linebuf || '03';
-                ELSIF export_rec.supplier_clabe_account > 16 THEN
+                ELSIF    LENGTH(export_rec.supplier_clabe_account) > 16 THEN
                     linebuf := linebuf || '40';
                 END IF;
                 
                 linebuf := linebuf || TRIM(LPAD(export_rec.supplier_clabe_account, 20, 0));
-                linebuf := linebuf || TRIM(RPAD(TRANSLATE(export_rec.PAYMENT_DESCRIPTION,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),40,' '));
+                linebuf := linebuf || RPAD(TRANSLATE(NVL(export_rec.PAYMENT_DESCRIPTION, ' '),'0*~!#$%^()_-+=&#124}]{{/?.,><','0'),40,' ');
                 linebuf := linebuf || TRIM(LPAD(TO_CHAR(SYSDATE,'DDMMRRRR'),7,0));
                 
                 
@@ -655,20 +659,46 @@ AS
                        PV.ATTRIBUTE1,
                        PV.ATTRIBUTE2,
                        PV.ATTRIBUTE3,
-                       PV.NUM_1099
+                       PV.NUM_1099,
+                       AIA.TOTAL_TAX_AMOUNT
                   INTO var_bussiness_name,
                        var_first_name,
                        var_last_name,
                        var_second_last_name,
-                       var_taxpayer_id
+                       var_taxpayer_id,
+                       var_tax_amount
                   FROM AP_INVOICES_ALL      AIA,
                        PO_VENDORS           PV
                  WHERE 1 = 1
                    AND AIA.INVOICE_ID = export_rec.invoice_id
                    AND AIA.VENDOR_ID = PV.VENDOR_ID;
                 
+                IF      var_first_name IS NULL
+                    AND var_last_name IS NULL
+                    AND var_second_last_name IS NULL THEN
+                
+                    linebuf := linebuf || RPAD(',' || TRANSLATE(var_bussiness_name,'0*~!#$%^()_-+=&#124}]{{/?.,><','0') || '/', 55, ' ');
+                
+                ELSE
+                
+                    linebuf := linebuf || RPAD(TRANSLATE(var_first_name,'0*~!#$%^()_-+=&#124}]{{/?.,><','0') || ',' || 
+                                               TRANSLATE(var_last_name,'0*~!#$%^()_-+=&#124}]{{/?.,><','0') || '/' || 
+                                               TRANSLATE(var_second_last_name,'0*~!#$%^()_-+=&#124}]{{/?.,><','0'), 55, ' '); 
+                
+                END IF;
+                
+                linebuf := linebuf || '00';
+                linebuf := linebuf || RPAD(REPLACE(var_taxpayer_id, '-', ''), 14, ' ');
+                linebuf := linebuf || TRIM(LPAD(TRUNC(var_tax_amount), 10, 0));    
+                linebuf := linebuf || RPAD(SUBSTR(TO_CHAR(TRUNC(var_tax_amount,2), '999999999999.99'), INSTR(TO_CHAR(TRUNC(var_tax_amount, 2), '999999999999.99'), '.')+1), 2,0);
+                linebuf := linebuf || LPAD(SUBSTR (export_rec.supplier_clabe_account, 1, 3), 3, '0');
+                linebuf := linebuf || '000000';
+                linebuf := linebuf || '0000';
                                 
-            END IF;                                                     
+            END IF;      
+            
+            UTL_FILE.Put_line (out_file, linebuf);
+            DBMS_OUTPUT.put_line (linebuf);                                               
                    
          END LOOP;
         
