@@ -12,6 +12,7 @@ verbose off
 prompt off
 user ftpuser Oracle123
 cd $param1
+pwd
 bin
 mget *.xml
 bin
@@ -23,6 +24,7 @@ verbose off
 prompt off
 user developer oracle
 cd $param2
+pwd
 bin
 mput *.xml
 bye
@@ -32,15 +34,25 @@ verbose off
 prompt off
 user ftpuser Oracle123
 cd /$param3/Out
+pwd
 rename $param4 $param5
-cd $param1
+cd /$param1
+pwd
 mkdir $param5
-cd $param1/$param5
+cd /$param1/$param5
+pwd
 bin
 mput *.xml
 bin
 mput *.pdf
-cd $param1
+cd /$param3/Error
+pwd
+rename $param4 $param5
+cd /$param3/Log
+pwd
+rename "MasterEDI.MasProcesaXMLWin_"$param4".txt" $param5".txt"
+cd /$param1
+pwd
 mdelete *.xml
 mdelete *.pdf
 bye
