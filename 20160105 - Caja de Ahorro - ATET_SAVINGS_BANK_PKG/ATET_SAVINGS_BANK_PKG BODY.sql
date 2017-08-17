@@ -1795,8 +1795,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                   var_user_id);
                                                   
         UPDATE ATET_SB_MEMBERS_ACCOUNTS
-           SET DEBIT_BALANCE = DEBIT_BALANCE + P_DEBIT_AMOUNT,
-               CREDIT_BALANCE = CREDIT_BALANCE + P_CREDIT_AMOUNT,
+           SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(P_DEBIT_AMOUNT,2),
+               CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(P_CREDIT_AMOUNT,2),
                LAST_TRANSACTION_DATE = SYSDATE               
          WHERE MEMBER_ID = var_member_id
            AND MEMBER_ACCOUNT_ID = var_member_account_id;
@@ -2608,8 +2608,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 
                                                    
         UPDATE ATET_SB_MEMBERS_ACCOUNTS
-           SET DEBIT_BALANCE = DEBIT_BALANCE + P_DEBIT_AMOUNT,
-               CREDIT_BALANCE = CREDIT_BALANCE + (P_PAYMENT_CAPITAL + P_PAYMENT_INTEREST),
+           SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(P_DEBIT_AMOUNT,2),
+               CREDIT_BALANCE = CREDIT_BALANCE + TRUNC((P_PAYMENT_CAPITAL + P_PAYMENT_INTEREST),2),
                LAST_TRANSACTION_DATE = SYSDATE               
          WHERE MEMBER_ID = P_MEMBER_ID
            AND MEMBER_ACCOUNT_ID = P_MEMBER_ACCOUNT_ID;
@@ -2816,7 +2816,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_member_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(GET_MEMBER_ID(P_PERSON_ID), P_LOAN_ID);
                                                           
         UPDATE ATET_SB_MEMBERS_ACCOUNTS
-           SET DEBIT_BALANCE = DEBIT_BALANCE + P_LOAN_AMOUNT,
+           SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(P_LOAN_AMOUNT,2),
                CREDIT_BALANCE = CREDIT_BALANCE + 0,
                LAST_TRANSACTION_DATE = SYSDATE               
          WHERE MEMBER_ID = var_member_id
@@ -4296,7 +4296,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                   
         UPDATE ATET_SB_MEMBERS_ACCOUNTS
            SET DEBIT_BALANCE = DEBIT_BALANCE + 0,
-               CREDIT_BALANCE = CREDIT_BALANCE + var_loan_balance,
+               CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_loan_balance,2),
                LAST_TRANSACTION_DATE = SYSDATE               
          WHERE MEMBER_ID = var_member_id
            AND MEMBER_ACCOUNT_ID = var_member_account_id;
@@ -4570,7 +4570,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                  
         UPDATE ATET_SB_MEMBERS_ACCOUNTS
            SET DEBIT_BALANCE = DEBIT_BALANCE + 0,
-               CREDIT_BALANCE = CREDIT_BALANCE + (var_loan_balance - var_asps_payment_interest_late),
+               CREDIT_BALANCE = CREDIT_BALANCE + TRUNC((var_loan_balance - var_asps_payment_interest_late),2),
                LAST_TRANSACTION_DATE = SYSDATE               
          WHERE MEMBER_ID = P_MEMBER_ID
            AND MEMBER_ACCOUNT_ID = var_member_account_id;
@@ -5020,8 +5020,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
 
                                                       
             UPDATE ATET_SB_MEMBERS_ACCOUNTS
-               SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                   CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+               SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                   CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                    LAST_TRANSACTION_DATE = SYSDATE               
              WHERE MEMBER_ID = P_MEMBER_ID
                AND MEMBER_ACCOUNT_ID = var_member_account_id;
@@ -5806,8 +5806,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                 BEGIN
                                                                           
                                     UPDATE ATET_SB_MEMBERS_ACCOUNTS
-                                       SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                                           CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                                       SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                                           CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                                            LAST_TRANSACTION_DATE = SYSDATE               
                                      WHERE MEMBER_ID = P_MEMBER_ID
                                        AND MEMBER_ACCOUNT_ID = var_member_saving_account_id;
@@ -6785,8 +6785,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     BEGIN
                                                                       
                         UPDATE ATET_SB_MEMBERS_ACCOUNTS
-                           SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                               CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                           SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                               CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                                LAST_TRANSACTION_DATE = SYSDATE               
                          WHERE MEMBER_ID = P_MEMBER_ID
                            AND MEMBER_ACCOUNT_ID = var_member_saving_account_id;
@@ -7656,8 +7656,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
 
                                                           
             UPDATE ATET_SB_MEMBERS_ACCOUNTS
-               SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                   CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+               SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                   CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                    LAST_TRANSACTION_DATE = SYSDATE               
              WHERE MEMBER_ID = P_MEMBER_ID
                AND MEMBER_ACCOUNT_ID = var_member_account_id;
@@ -8504,8 +8504,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                               var_user_id);
                                                       
                     UPDATE ATET_SB_MEMBERS_ACCOUNTS
-                       SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                           CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                       SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                           CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                            LAST_TRANSACTION_DATE = SYSDATE               
                      WHERE MEMBER_ID = DETAIL.MEMBER_ID
                        AND MEMBER_ACCOUNT_ID = var_int_member_account_id;
@@ -8556,8 +8556,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                           var_user_id);
                                                       
                 UPDATE ATET_SB_MEMBERS_ACCOUNTS
-                   SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                       CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                   SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                       CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                        LAST_TRANSACTION_DATE = SYSDATE               
                  WHERE MEMBER_ID = DETAIL.MEMBER_ID
                    AND MEMBER_ACCOUNT_ID = var_int_member_account_id;
@@ -8921,8 +8921,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             BEGIN
                                                                       
                 UPDATE ATET_SB_MEMBERS_ACCOUNTS
-                   SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                       CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                   SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                       CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                        LAST_TRANSACTION_DATE = SYSDATE               
                  WHERE MEMBER_ID = PP_MEMBER_ID
                    AND MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID;
@@ -10039,8 +10039,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             BEGIN
                                                                       
                 UPDATE ATET_SB_MEMBERS_ACCOUNTS
-                   SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                       CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                   SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                       CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                        LAST_TRANSACTION_DATE = SYSDATE               
                  WHERE MEMBER_ID = PP_MEMBER_ID
                    AND MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID;
@@ -10610,8 +10610,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             BEGIN
                                                                       
                 UPDATE ATET_SB_MEMBERS_ACCOUNTS
-                   SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                       CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                   SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                       CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                        LAST_TRANSACTION_DATE = SYSDATE               
                  WHERE MEMBER_ID = PP_MEMBER_ID
                    AND MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID;
@@ -11233,8 +11233,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             BEGIN
                                                                       
                 UPDATE ATET_SB_MEMBERS_ACCOUNTS
-                   SET DEBIT_BALANCE = DEBIT_BALANCE + var_debit_amount,
-                       CREDIT_BALANCE = CREDIT_BALANCE + var_credit_amount,
+                   SET DEBIT_BALANCE = DEBIT_BALANCE + TRUNC(var_debit_amount,2),
+                       CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_credit_amount,2),
                        LAST_TRANSACTION_DATE = SYSDATE               
                  WHERE MEMBER_ID = PP_MEMBER_ID
                    AND MEMBER_ACCOUNT_ID = PP_MEMBER_ACCOUNT_ID;
@@ -12084,7 +12084,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
 
             UPDATE ATET_SB_MEMBERS_ACCOUNTS
                SET DEBIT_BALANCE = DEBIT_BALANCE + 0,
-                   CREDIT_BALANCE = CREDIT_BALANCE + var_loan_amount,
+                   CREDIT_BALANCE = CREDIT_BALANCE + TRUNC(var_loan_amount,2),
                    LAST_TRANSACTION_DATE = SYSDATE               
              WHERE MEMBER_ID = var_member_id
                AND MEMBER_ACCOUNT_ID = var_member_account_id
