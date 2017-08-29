@@ -738,6 +738,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         WHEN HOUV.REGION_1 = 'TAMPS' THEN 'TAM'
                         WHEN HOUV.REGION_1 = 'CHIS' THEN 'CHP'
                         WHEN HOUV.REGION_1 = 'DF' THEN 'DIF'
+                        WHEN HOUV.REGION_1 = 'QROO' THEN 'ROO'
                         ELSE HOUV.REGION_1
                      END)                                                                           AS  NOM_ENTFED,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
@@ -1858,7 +1859,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         var_file_records        NUMBER;
         var_directory_name      VARCHAR2 (1000);
         var_local_directory     VARCHAR2(150) := '/var/tmp/CARGAS/CFE/INTERFACE_NOM_O';
-        var_error_records       PAC_CFDI_ERROR_FILES;
+        ERROR_FILES             PAC_CFDI_ERROR_FILES;
+        var_errors              NUMBER;
         
         var_request_id_export   NUMBER;
         
@@ -2017,7 +2019,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 P_RETCODE := 1;    
         END IF;
         
-        var_error_records := GET_ERROR_FILES(var_directory_name, TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD'));
+        
         
         IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
             NULL;
@@ -2038,7 +2040,23 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                     
                           
             LOOP
-                EXIT WHEN IS_DOWNLOADING(var_remote_directory,((var_file_records - var_error_records.COUNT) * 2)) = FALSE;
+                ERROR_FILES := GET_ERROR_FILES(var_directory_name, TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD'));
+                
+                var_errors := ERROR_FILES.COUNT;
+        
+                FOR var_index IN 1..ERROR_FILES.COUNT LOOP
+                    DECLARE
+                        var_file_name           VARCHAR2(100) := '';
+                    BEGIN
+                        var_file_name := ERROR_FILES(var_index);
+                        
+                        IF var_file_name IN ('Productos_Avicolas', 'Calvario_Servicios', 'aspnet_client', 'Adriana_Pocovi') THEN
+                            var_errors := var_errors - 1;                
+                        END IF;
+                    END;
+                END LOOP;
+                
+                EXIT WHEN IS_DOWNLOADING(var_remote_directory,((var_file_records - var_errors) * 2)) = FALSE;
             END LOOP;
                                                                                      
                     
