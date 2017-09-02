@@ -2378,7 +2378,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                  WHERE 1 = 1 
                    AND LOAN_ID = var_loan_id;
                 
-                IF GET_PERSON_TYPE(var_member_id) IN ('Empleado', 'Employee') AND (TO_CHAR(SYSDATE, 'DD/MM/RRRR') > var_payment_deadline) THEN
+                IF GET_PERSON_TYPE(var_member_id) IN ('Empleado', 'Employee') AND (TO_DATE(SYSDATE, 'DD/MM/RRRR') > TO_DATE(var_payment_deadline, 'DD/MM/RRRR')) THEN
                     var_late_interest_rate := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LATE_INT');
                 ELSE
                     var_late_interest_rate := 0;
