@@ -739,6 +739,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         WHEN HOUV.REGION_1 = 'CHIS' THEN 'CHP'
                         WHEN HOUV.REGION_1 = 'DF' THEN 'DIF'
                         WHEN HOUV.REGION_1 = 'QROO' THEN 'ROO'
+                        WHEN HOUV.REGION_1 = 'TLAX' THEN 'TLA'
                         ELSE HOUV.REGION_1
                      END)                                                                           AS  NOM_ENTFED,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
@@ -1572,6 +1573,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             var_extra_pay_value NUMBER;
                             var_seniority_years NUMBER;
                             var_proposed_salary NUMBER;
+                            var_inc_dias        NUMBER;
+                            var_inc_tip         VARCHAR2(100);
                             
                         BEGIN
                         
@@ -1635,6 +1638,34 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_INGACUM    ');
                                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_INGNO      '); 
                                         UTL_FILE.PUT_LINE(var_file, '');   
+                                    
+                                    END IF;
+                                    
+                                    IF PERCEP.NOM_PER_DESCRI = 'SUBSIDIO INCAPACIDAD' THEN
+                                        
+                                        UTL_FILE.PUT_LINE(var_file, 'FINPER');
+                                        isOTHER := TRUE;
+                                        
+                                        var_inc_dias := GET_INFORMATION_VALUE(ASSIGN.ASSIGNMENT_ACTION_ID,
+                                                                              'P012_SUBSIDIO INCAPACIDAD',
+                                                                              'Days');
+                                        var_inc_tip := GET_INFORMATION_DISABILITY(DETAIL(rowIndex).PERSON_ID,
+                                                                                  DETAIL(rowIndex).NOM_FECINI,
+                                                                                  DETAIL(rowIndex).NOM_FECFIN);
+                                                                                  
+                                        IF    var_inc_tip = 'RT' THEN
+                                            var_inc_tip := '01';
+                                        ELSIF var_inc_tip = 'MAT' THEN
+                                            var_inc_tip := '03';
+                                        ELSIF var_inc_tip = 'GRAL' THEN
+                                            var_inc_tip := '02';
+                                        END IF;
+                                        
+                                        UTL_FILE.PUT_LINE(var_file, '');
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_INC_DIAS       ' || TO_CHAR(var_inc_dias));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_INC_TIP        ' || TO_CHAR(var_inc_tip));
+                                        UTL_FILE.PUT_LINE(var_file, 'NOM_INC_IMP        ' || TO_CHAR(PERCEP.NOM_PER_IMPEXE, '9999990D99'));
+                                        UTL_FILE.PUT_LINE(var_file, '');
                                     
                                     END IF;
                                     
@@ -1782,6 +1813,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         END;
                 
                     END LOOP;
+                    
+                    dbms_lock.SLEEP(10);
                     
                 END LOOP;
                 
@@ -3424,5 +3457,70 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
           
     END DELETE_UUID_CANCELED;
     
+    
+    FUNCTION  GET_INFORMATION_VALUE(
+        P_ASSIGNMENT_ACTION_ID  NUMBER,
+        P_ELEMENT_NAME          VARCHAR2,
+        P_INPUT_VALUE_NAME      VARCHAR2)
+        RETURN VARCHAR2
+    IS
+        result_value      VARCHAR2(100);
+    BEGIN
+        SELECT 
+            TO_CHAR(SUM(PRRV.RESULT_VALUE))
+          INTO
+            result_value
+          FROM PAY_RUN_RESULTS              PRR,
+               PAY_ELEMENT_TYPES_F          PETF,
+               PAY_RUN_RESULT_VALUES        PRRV,
+               PAY_INPUT_VALUES_F           PIVF,
+               PAY_ELEMENT_CLASSIFICATIONS  PEC
+         WHERE PRR.ASSIGNMENT_ACTION_ID = P_ASSIGNMENT_ACTION_ID
+           AND PETF.ELEMENT_TYPE_ID = PRR.ELEMENT_TYPE_ID
+           AND PRRV.RUN_RESULT_ID = PRR.RUN_RESULT_ID
+           AND PIVF.INPUT_VALUE_ID = PRRV.INPUT_VALUE_ID
+           AND PEC.CLASSIFICATION_ID = PETF.CLASSIFICATION_ID
+           AND SYSDATE <= PETF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
+           AND PETF.ELEMENT_NAME = P_ELEMENT_NAME
+           AND PIVF.NAME = P_INPUT_VALUE_NAME;
+        
+        RETURN result_value;
+    END GET_INFORMATION_VALUE;
+    
+    FUNCTION GET_INFORMATION_DISABILITY(
+        P_PERSON_ID             NUMBER,
+        P_START_DATE            DATE,
+        P_END_DATE              DATE)
+        RETURN VARCHAR2
+    IS
+        var_result_value    VARCHAR2(100);
+    BEGIN
+    
+        
+        SELECT DISTINCT CATEGORY
+          INTO var_result_value
+          FROM PER_DISABILITIES_F   PDF
+         WHERE 1 = 1
+           AND PDF.PERSON_ID = P_PERSON_ID
+           AND (   P_START_DATE 
+                    BETWEEN PDF.REGISTRATION_DATE
+                        AND PDF.REGISTRATION_EXP_DATE
+                OR P_END_DATE 
+                    BETWEEN PDF.REGISTRATION_DATE
+                        AND PDF.REGISTRATION_EXP_DATE
+                OR PDF.REGISTRATION_DATE 
+                    BETWEEN P_START_DATE
+                        AND P_END_DATE
+                OR PDF.REGISTRATION_EXP_DATE
+                    BETWEEN P_START_DATE
+                        AND P_END_DATE);
+        
+    
+        RETURN var_result_value;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RETURN 'GRAL';
+    END GET_INFORMATION_DISABILITY;
     
 END PAC_CFDI_FUNCTIONS_PKG;
