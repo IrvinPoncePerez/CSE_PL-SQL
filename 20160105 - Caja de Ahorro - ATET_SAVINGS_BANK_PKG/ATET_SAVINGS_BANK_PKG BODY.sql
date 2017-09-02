@@ -1938,6 +1938,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
         var_p_payment_interest          NUMBER := 0;
         var_p_payment_interest_late     NUMBER := 0;
         
+        var_payment_deadline            DATE;
+        
         CURSOR PAYMENT_DETAILS  IS
             SELECT ASPS.PAYMENT_SCHEDULE_ID,
                    ASPS.PAYMENT_NUMBER,
@@ -2369,8 +2371,18 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL');
                            
             IF var_validate > 0 THEN
-                    
-                var_late_interest_rate := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LATE_INT');
+            
+                SELECT ASL.PAYMENT_DEADLINE
+                  INTO var_payment_deadline 
+                  FROM ATET_SB_LOANS ASL 
+                 WHERE 1 = 1 
+                   AND LOAN_ID = var_loan_id;
+                
+                IF GET_PERSON_TYPE(var_member_id) IN ('Empleado', 'Employee') AND (TO_CHAR(SYSDATE, 'DD/MM/RRRR') > var_payment_deadline) THEN
+                    var_late_interest_rate := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LATE_INT');
+                ELSE
+                    var_late_interest_rate := 0;
+                END IF;
                             
                 SELECT NVL(SUM(NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL)), 0)       AS  PAYMENT_CAPITAL,
                        NVL(SUM(NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST)), 0)      AS  PAYMENT_INTEREST,
@@ -2395,6 +2407,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    AND ASPS.LOAN_ID = var_loan_id
                    AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL')
                    AND ASPS.ATTRIBUTE6 = 'DISABILITIES';
+                   
+                
                                
                 var_wd_payment_capital := var_wd_payment_capital;
                 var_wd_payment_interest := var_wd_payment_interest;
