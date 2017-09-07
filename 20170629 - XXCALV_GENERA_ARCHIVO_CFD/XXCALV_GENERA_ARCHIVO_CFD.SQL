@@ -753,13 +753,18 @@ BEGIN
                     FILE_PUT_LINE (V_MANEJADOR, 'REGIMEN  '||v_regimen);
                     --END IF;
 
-                    FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PUE');        --IPONCE    2017.06.29
-                    FILE_PUT_LINE (V_MANEJADOR, 'CVEFORPAG  ' || (CASE
-                                                                    WHEN v_mpago = '01' THEN '01'
-                                                                    WHEN v_mpago = '02' THEN '02'
-                                                                    WHEN v_mpago = '03' THEN '03'
-                                                                    ELSE '99'
-                                                                  END));        --IPONCE    2017.06.29
+                    IF HED_REC.TIPO_ADENDA = 'WALMART' THEN
+                        FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PPD');        -- IPONCE   2017.09.07
+                        FILE_PUT_LINE (V_MANEJADOR, 'CVEFORPAG  ' || '99');         -- IPONCE   2017.09.07
+                    ELSE
+                        FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PUE');        --IPONCE    2017.06.29
+                        FILE_PUT_LINE (V_MANEJADOR, 'CVEFORPAG  ' || (CASE
+                                                                        WHEN v_mpago = '01' THEN '01'
+                                                                        WHEN v_mpago = '02' THEN '02'
+                                                                        WHEN v_mpago = '03' THEN '03'
+                                                                        ELSE '99'
+                                                                      END));        --IPONCE    2017.06.29
+                    END IF;
 
                     IF (v_mpago = 'N' AND v_cuenta = 'N') AND V_RFC = 'RTO840921RE4' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||'');  --N(2)
