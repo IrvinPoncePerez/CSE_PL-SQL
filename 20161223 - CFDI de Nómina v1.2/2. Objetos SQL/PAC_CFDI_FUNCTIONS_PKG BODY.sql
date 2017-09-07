@@ -1812,9 +1812,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Crear los Registros de Percepciones y Deducciones. ' || SQLERRM);
                         END;
                 
+                        dbms_lock.SLEEP(60);
+
                     END LOOP;
-                    
-                    dbms_lock.SLEEP(10);
                     
                 END LOOP;
                 
