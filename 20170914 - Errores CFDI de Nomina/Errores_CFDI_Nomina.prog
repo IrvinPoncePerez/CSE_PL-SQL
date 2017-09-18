@@ -1,0 +1,22 @@
+#!/bin/bash
+param1="$5"
+param2="$6"
+param3="$7"
+param4="$8"
+param5="$9"
+param6="MasterEDI.MasProcesaXMLWin_"$param4".txt"
+pwd
+ftp -n 192.1.1.64 << EOF
+verbose off
+prompt off
+user ftpuser Oracle123
+cd /$param3/Log
+pwd
+get $param6
+bye
+EOF
+while read line
+do
+	echo $line
+done < $param6
+rm $param6
