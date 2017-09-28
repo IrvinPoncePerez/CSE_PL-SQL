@@ -1,6 +1,30 @@
 CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
 
     PP_CONSOLIDATION_ID     NUMBER  := 0;
+    
+    PROCEDURE CFDI_LOGGING(
+        P_FILE_NAME   VARCHAR2,
+        P_STATUS      VARCHAR2)
+    IS
+        PRAGMA AUTONOMOUS_TRANSACTION;
+    BEGIN
+    
+        INSERT 
+          INTO PAC_CFDI_LOG_TB
+            (FILE_NAME,
+             STATUS,
+             LOG_DATE)
+        VALUES
+            (P_FILE_NAME,
+             P_STATUS,
+             SYSDATE);
+             
+        COMMIT;
+    
+    END;
+    
+    
+    
     /*
     Suma de todas las percepciones suma de gravado mas excento
     */
@@ -3275,31 +3299,50 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
           FROM DUAL;
           
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_test_connection);
+        CFDI_LOGGING(P_FILE_NAME, 'START SEARCH TXT FILE');
         
         LOOP
             EXIT WHEN FIND_FILE(P_DIRECTORY_NAME, var_sub_directory_name, var_file_name || '.txt') = TRUE;
+            DBMS_LOCK.SLEEP(5);
         END LOOP;
+        
+        CFDI_LOGGING(P_FILE_NAME, 'FINISHED SEARCH TXT FILE');
         
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || '.txt Found!.');
         
+        CFDI_LOGGING(P_FILE_NAME, 'START SEARCH XML FILE');
+        
         LOOP 
             EXIT WHEN FIND_FILE(P_DIRECTORY_NAME, var_sub_directory_name, var_file_name || '.xml') = TRUE;
+            DBMS_LOCK.SLEEP(5);
         END LOOP;
+        
+        CFDI_LOGGING(P_FILE_NAME, 'FINISHED SEARCH XML FILE');
         
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || '.xml Found!.');
         
+        CFDI_LOGGING(P_FILE_NAME, 'START WAIT WORKING');
+        
         LOOP
             EXIT WHEN IS_WORKING(P_DIRECTORY_NAME) = FALSE;
+            DBMS_LOCK.SLEEP(60);
         END LOOP;
+        
+        CFDI_LOGGING(P_FILE_NAME, 'FINISHED WAIT WORKING');
         
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, 'Recuperando archivos del servidor...');
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
         
         OUTPUT_FILES := GET_OUTPUT_FILES(P_DIRECTORY_NAME, var_sub_directory_name);
+        CFDI_LOGGING(P_FILE_NAME, 'GET OUTPUT_FILES : ' || OUTPUT_FILES.COUNT-2 || ' OUTPUT_FILES');
+        
         ERROR_FILES := GET_ERROR_FILES(P_DIRECTORY_NAME, var_sub_directory_name);
+        CFDI_LOGGING(P_FILE_NAME, 'GET ERROR_FILES : ' || ERROR_FILES.COUNT || ' ERROR_FILES');
         
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, OUTPUT_FILES.COUNT-2 || ' Archivos finalizados satisfactoriamente.');
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
+        
+        CFDI_LOGGING(P_FILE_NAME, 'GET OUTPUT_FILES...');
         
         FOR var_index IN 1..OUTPUT_FILES.COUNT LOOP
             DECLARE
@@ -3323,7 +3366,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 END;
                 
                 FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || ' ' || var_employee_name);
-                                   
+                CFDI_LOGGING(P_FILE_NAME, var_file_name || ' ' || var_employee_name);                    
+                
             END;
         END LOOP;
         
