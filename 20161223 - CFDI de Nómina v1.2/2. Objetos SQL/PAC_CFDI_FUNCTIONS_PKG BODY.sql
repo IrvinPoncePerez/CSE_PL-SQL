@@ -939,12 +939,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                  ORDER BY PPF.PAYROLL_NAME,
                           PAPF.EMPLOYEE_NUMBER;                          
 
-
-
-                                       
+                                                
          TYPE   DETAILS IS TABLE OF DETAIL_LIST%ROWTYPE INDEX BY PLS_INTEGER;
          
          DETAIL DETAILS;
+         
+         PROCEDURE REGISTRING IS BEGIN dbms_lock.SLEEP(5); END;
          
     BEGIN
         
@@ -1812,7 +1812,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Crear los Registros de Percepciones y Deducciones. ' || SQLERRM);
                         END;
                 
-                        dbms_lock.SLEEP(3);
+                        REGISTRING;
 
                     END LOOP;
                     
@@ -2473,14 +2473,15 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         MO_GLOBAL.SET_POLICY_CONTEXT (P_ACCESS_MODE => 'S', 
                                       P_ORG_ID      => 85);
         
-        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN 
+         
+        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
         
             FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
             FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV-Programa_Importacion_CFDI_Nom');
             FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-            
-            BEGIN
                 
+            BEGIN
+                    
                 V_REQUEST_ID :=
                     FND_REQUEST.SUBMIT_REQUEST (
                        APPLICATION => 'PAY',
@@ -2491,7 +2492,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                        ARGUMENT1 => TO_CHAR(var_local_directory)
                                                );
                 STANDARD.COMMIT;                  
-                                 
+                                     
                 WAITING :=
                     FND_CONCURRENT.WAIT_FOR_REQUEST (
                         REQUEST_ID => V_REQUEST_ID,
@@ -2503,18 +2504,18 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         DEV_STATUS => DEV_STATUS,
                         MESSAGE => V_MESSAGE
                                                 );
-                    
+                        
                 FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
                 FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
-                
+                    
             EXCEPTION WHEN OTHERS THEN
                 dbms_output.put_line('**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
             END;
-            
+           
         ELSE
-                P_RETCODE := 1;    
-        END IF;
+                P_RETCODE := 1;
+        END IF; 
 
     EXCEPTION WHEN NO_DIRECTORY THEN
         P_ERRBUF := 'DIRECTORIO NO DEFINIDO';
