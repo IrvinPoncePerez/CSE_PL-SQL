@@ -944,7 +944,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
          
          DETAIL DETAILS;
          
-         PROCEDURE REGISTRING IS BEGIN dbms_lock.SLEEP(5); END;
+         PROCEDURE REGISTRING IS BEGIN dbms_lock.SLEEP(4); END;
          
     BEGIN
         
@@ -2474,7 +2474,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                       P_ORG_ID      => 85);
         
          
-        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') THEN
+        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') OR var_ejecuciones > 1 THEN
         
             FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
             FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV-Programa_Importacion_CFDI_Nom');
