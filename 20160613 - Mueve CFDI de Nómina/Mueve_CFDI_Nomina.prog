@@ -1,6 +1,7 @@
 #!/bin/bash
 param1="$5"
 param2="$6"
+pwd
 ftp -n 192.1.1.191 << EOF
 verbose off
 prompt off
@@ -20,6 +21,13 @@ cd /$param2/In
 put $param1
 bye
 EOF
-rm $param1
+ftp -n 192.1.1.191 << EOF
+verbose off
+prompt off
+passive off
+user nomina oracle
 cd /var/tmp/CARGAS/NOMINA/CFDI_NOMINA
+delete $param1
+bye
+EOF
 rm $param1
