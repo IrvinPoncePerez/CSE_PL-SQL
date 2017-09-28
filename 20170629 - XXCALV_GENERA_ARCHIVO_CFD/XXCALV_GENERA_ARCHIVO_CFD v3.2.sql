@@ -11,6 +11,7 @@ CREATE OR REPLACE PROCEDURE APPS."XXCALV_GENERA_ARCHIVO_CFD" ( errbuf       OUT 
                                                            , p_fecha_fin  IN  VARCHAR2
                                                            , p_pelecha    IN  VARCHAR2)  AUTHID CURRENT_USER
 IS
+--XXCALV_GENERA_ARCHIVO_CFD
 
    
 
@@ -46,8 +47,6 @@ IS
    
    --variables para taras, totales y direcci?n del CEDIS emisor
    v_iva_total NUMBER := 0;
-   v_isr_global NUMBER := 0;    --IPONCE 2017.07.03
-   v_iva_ret_global NUMBER := 0;    --iponce 2017.07.04
    v_isr_ret_total number := 0; 
    v_iva_ret_total number := 0;   
    v_iva_global NUMBER := 0;
@@ -130,9 +129,9 @@ IS
                       WHEN UPPER ( trax.ctt_class ) LIKE 'DM'  THEN 'NOTA DE CARGO'
                    END fuente
                  , CASE
-                      WHEN UPPER ( trax.ctt_class ) LIKE 'INV' THEN 'I'
-                      WHEN UPPER ( trax.ctt_class ) LIKE 'CM'  THEN 'E'
-                      WHEN UPPER ( trax.ctt_class ) LIKE 'DM'  THEN 'I'
+                      WHEN UPPER ( trax.ctt_class ) LIKE 'INV' THEN 1
+                      WHEN UPPER ( trax.ctt_class ) LIKE 'CM'  THEN 2
+                      WHEN UPPER ( trax.ctt_class ) LIKE 'DM'  THEN 3
                    END tipo_transaccion1
                  , TO_CHAR(trax.trx_date,'DD-MM-YYYY') fechar
                  , TO_CHAR(trax.trx_date,'YYYY-MM-DD')||'T'||TO_CHAR(SYSDATE,'HH24:MI:SS') fecha_factura --to_char(trax.trx_date,'HH:MI:SS') fecha_factura
@@ -221,7 +220,6 @@ IS
                  , TO_CHAR(trax.ship_date_actual,'yyyy-mm-dd')||'T'||TO_CHAR(trax.ship_date_actual,'hh24:mi:ss') ship_date_actual
                  , trax.customer_class_code
                  , trax.cust_trx_type_id
-                 , trax.attribute_category
               FROM ra_customer_trx_partial_cfd trax
              WHERE 1=1
                --and trax.customer_trx_id in (104900,105400,105900,106000)
@@ -446,7 +444,6 @@ IS
    BEGIN
         UTL_FILE.PUT_LINE (P_MANEJADOR, P_STRING_LINE);
         FND_FILE.PUT_LINE(FND_FILE.LOG, P_STRING_LINE);
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, P_STRING_LINE);
    END FILE_PUT_LINE;
 
 BEGIN
@@ -713,7 +710,7 @@ BEGIN
                                H.ATTRIBUTE5,-- SELLO_T,
                                H.ATTRIBUTE10, --SELLO_TA,
                                TO_CHAR(H.REQUEST_DATE,'YYYY-MM-DD'), -- FECHOC
-                               H.ATTRIBUTE14
+                               H.ATTRIBUTE7
                           INTO V_TRANSP, V_SALIDA, V_SELLO_L, V_SELLO_LA, V_SELLO_T, V_SELLO_TA, V_FECHOC, V_CONTRA
                           FROM OE_ORDER_HEADERS_ALL H
                          WHERE ORG_ID = HED_REC.ORG_ID
@@ -729,7 +726,7 @@ BEGIN
                     dbms_output.put_line('Escribiendo encabezado');
                     --ENCABEZADO DEL DOCUMENTO
                     FILE_PUT_LINE (V_MANEJADOR, 'E');
-                    FILE_PUT_LINE (V_MANEJADOR, 'VERSIO  3.3');   --S               --IPONCE 2017.06.29
+                    FILE_PUT_LINE (V_MANEJADOR, 'VERSIO  2.0');   --S
                     --FILE_PUT_LINE (V_MANEJADOR, 'TRADPP  '||'PAC941215E50');  --S(13)
                     
                     IF HED_REC.TIPO_ADENDA = 'WALMART' THEN
@@ -743,53 +740,26 @@ BEGIN
                     --IF V_RFC = 'ROBG560202PS5' THEN
                         --FILE_PUT_LINE (V_MANEJADOR, 'REGIMEN  '||'PERSONA FISICA CON ACTIVIDAD EMPRESARIAL Y PROFESIONAL');
                     --ELSE
-                    FILE_PUT_LINE (V_MANEJADOR, 'CVEREGIMEN ' || (CASE
-                                                                    WHEN v_regimen = 'REGIMEN GENERAL DE LA LEY DE PERSONAS MORALES'
-                                                                    THEN '601'
-                                                                    WHEN v_regimen = 'PERSONA FISICA CON ACTIVIDAD DE ARRENDAMIENTO'
-                                                                    THEN '606'
-                                                                    WHEN v_regimen = 'REGIMEN DE ACTIVIDADES AGRICOLAS, GANADERAS, SILVICOLAS Y PESQUERAS'
-                                                                    THEN '622'
-                                                                 END));             --  IPONCE  2017.06.29
                     FILE_PUT_LINE (V_MANEJADOR, 'REGIMEN  '||v_regimen);
                     --END IF;
 
-                    IF HED_REC.TIPO_ADENDA = 'WALMART' THEN
-                        FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PPD');        -- IPONCE   2017.09.07
-                        FILE_PUT_LINE (V_MANEJADOR, 'CVEFORPAG  ' || '99');         -- IPONCE   2017.09.07
-                    ELSE
-                    
-                        IF HED_REC.ATTRIBUTE_CATEGORY = 'Payment in partialities' THEN
-                            FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PPD');        -- IPONCE   2017.09.07
-                        ELSE
-                            FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PUE');        --IPONCE    2017.06.29
-                        END IF;
-                        
-                        FILE_PUT_LINE (V_MANEJADOR, 'CVEFORPAG  ' || (CASE
-                                                                        WHEN v_mpago = '01' THEN '01'
-                                                                        WHEN v_mpago = '02' THEN '02'
-                                                                        WHEN v_mpago = '03' THEN '03'
-                                                                        ELSE '99'
-                                                                      END));        --IPONCE    2017.06.29
-                    END IF;
-
                     IF (v_mpago = 'N' AND v_cuenta = 'N') AND V_RFC = 'RTO840921RE4' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||'');  --N(2)
-                        FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||'NA');  --S  METODO DE PAGO       --IPONCE 2017.06.29
+                        FILE_PUT_LINE (V_MANEJADOR, 'METPAG  '||'NA');  --S  METODO DE PAGO
                     ELSIF (v_mpago = 'N' AND v_cuenta = 'N') AND V_RFC <> 'RTO840921RE4' THEN
                         --FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||'NO IDENTIFICADO');  --N(2)
-                        --FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||'CHEQUE NOMINATIVO O TRANSFERENCIA ELECTRONICA DE FONDOS O EFECTIVO');  --S  METODO DE PAGO       --IPONCE 2017.06.29
+                        --FILE_PUT_LINE (V_MANEJADOR, 'METPAG  '||'CHEQUE NOMINATIVO O TRANSFERENCIA ELECTRONICA DE FONDOS O EFECTIVO');  --S  METODO DE PAGO
                         FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||'');  --N(2)
-                        FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||'02');  --S  METODO DE PAGO       -- IPONCE 2017.06.29                 
+                        FILE_PUT_LINE (V_MANEJADOR, 'METPAG  '||'02');  --S  METODO DE PAGO                        
                     ELSE
                         IF v_cuenta = 'N' THEN 
                             v_cuenta := ''; 
                         END IF;
                         FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||v_cuenta);  --N(2)
-                        FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||v_mpago);  --S  METODO DE PAGO       --IPONCE 2017.06.29             
+                        FILE_PUT_LINE (V_MANEJADOR, 'METPAG  '||v_mpago);  --S  METODO DE PAGO                    
                     END IF;
 
-                    FILE_PUT_LINE (V_MANEJADOR, 'METPAG  '||HED_REC.FORMA_PAGO);  --S  FORMA DE PAGO
+                    FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||HED_REC.FORMA_PAGO);  --S  FORMA DE PAGO
 -----------------------17 JUN 2012 --------------- ANEXO -----------------------------
 --                    FILE_PUT_LINE (V_MANEJADOR, 'FOLFIS_ORI  '||HED_REC.FACTURA);  --N  N?MERO DEL FOLIO DEL DOCUMENTO
 --                    FILE_PUT_LINE (V_MANEJADOR, 'FOLFIS_ORI  '||HED_REC.SERIE);  --N  SERIE DEL FOLIO DEL DOCUMENTO
@@ -809,7 +779,7 @@ BEGIN
                         IF p_pelecha = 'Y' THEN
                             FILE_PUT_LINE (V_MANEJADOR, 'PELCHA  '||TO_CHAR(NULL));
                         ELSE
-                            FILE_PUT_LINE (V_MANEJADOR, 'PELCHA  '||'AVES DE DESECHO, PROHIBIDO PELECHAR, SÓLO PARA SU SACRIFICIO.');
+                            FILE_PUT_LINE (V_MANEJADOR, 'PELCHA  '||'AVES DE DESECHO, PROHIBIDO PELECHAR, SøLO PARA SU SACRIFICIO.');
                         END IF;
                     ELSE
                         FILE_PUT_LINE (V_MANEJADOR, 'PELCHA  '||TO_CHAR(NULL));
@@ -829,7 +799,7 @@ BEGIN
                     END IF;
                     --====================================================================--
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'TIPDOC  '||HED_REC.TIPO_TRANSACCION1);  --  TIPO O CLAVE DEL DOCUMENTO: 1 - FACTURA    --IPONCE 2017.06.29
+                    FILE_PUT_LINE (V_MANEJADOR, 'TIPDOC  '||HED_REC.TIPO_TRANSACCION1);  --  TIPO O CLAVE DEL DOCUMENTO: 1 - FACTURA 
                     FILE_PUT_LINE (V_MANEJADOR, 'NOMDOC  '||HED_REC.FUENTE);  --  NOMBRE DEL DOCUMENTO
                     FILE_PUT_LINE (V_MANEJADOR, 'TIPMON  '||HED_REC.TIPO_MONEDA);  --S  TIPO DE MONEDA. EJEMPLO: MXN
                     FILE_PUT_LINE (V_MANEJADOR, 'TIPCAM  '||HED_REC.TIPO_CAMBIO);  --S  TIPO DE CAMBIO 
@@ -837,6 +807,8 @@ BEGIN
                     FILE_PUT_LINE (V_MANEJADOR, 'DIAPAG  '||HED_REC.DIAS_PAGO);  --N  D?AS DE PAGO
                     FILE_PUT_LINE (V_MANEJADOR, 'PDPPAG  '||'0');  --N  PORCENTAJE DE DESCUENTO POR PRONTO PAGO
                     FILE_PUT_LINE (V_MANEJADOR, 'MDPPAG  '||'0');  --N  MONTO DE DESCUENTO POR PRONTO PAGO
+                    
+                    
                     -- Caso facturas extemporaneas (SORIANA)                
                     IF (HED_REC.TIPO_ADENDA = 'SORIANA' AND NVL(P_EXTEMP,0) = 0 AND NVL(V_CONTRA,0) > 0) THEN
                     --IF NVL(P_EXTEMP,0) > 0 THEN
@@ -915,8 +887,6 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'EANEMI  '||'');  --N  EAN DEL EMISOR
                     END IF;
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'CODLUGEXP   ' || NVL(v_postal, v_postal_code));
-                    
                     FILE_PUT_LINE (V_MANEJADOR, 'NUMEMI  '||HED_REC.NUMERO_PROVEEDOR);  --  NUMERO DEL EMISOR (# PROVEEDOR)  
 --                    FILE_PUT_LINE (V_MANEJADOR, 'CALEMI  '||'AV. HEROES DE LA INDEPENDENCIA');  --S  CALLE DEL DOMICILIO FISCAL DEL EMISOR
 --                    FILE_PUT_LINE (V_MANEJADOR, 'NEXEMI  '||'901');  --  NUMERO EXTERIOR DEL DOMICILIO FISCAL DEL EMISOR
@@ -962,21 +932,7 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'NOMREC  '||UPPER(HED_REC.NOMBRE_CLIENTE));  --S  NOMBRE DEL RECEPTOR DE LA FACTURA
                     ELSIF HED_REC.TIPO_DE_CLIENTE = 'ORGANIZATION' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'NOMREC  '||UPPER(HED_REC.CLIENTE_MATRIZ));  --S  NOMBRE DEL RECEPTOR DE LA FACTURA        
-                    END IF;    
-                    
-                    FILE_PUT_LINE (V_MANEJADOR, 'USOCFDI    ' || (CASE
-                                                                    WHEN V_RFC = 'PAC941215E50' AND HED_REC.TIPO_TRANSACCION1 = 'I'
-                                                                    THEN 'G01'
-                                                                    WHEN HED_REC.TIPO_TRANSACCION1 = 'E'
-                                                                    THEN 'G02'
-                                                                    WHEN HED_REC.RFC_RECEPTOR = 'CSE941214C11' AND V_RFC = 'PAC941215E50'
-                                                                    THEN 'G03'
-                                                                    WHEN HED_REC.RFC_RECEPTOR = 'PAC941215E50' AND V_RFC = 'ROBG560202PS5' 
-                                                                    THEN 'P01'
-                                                                    WHEN HED_REC.RFC_RECEPTOR = 'PAC941215E50' AND V_RFC = 'ROBG560202PS5'
-                                                                    THEN 'P01'
-                                                                    ELSE 'P01'
-                                                                  END));        --  IPONCE      2017.06.30
+                    END IF;       
 
             --        IF HED_REC.TIPO_ADENDA = 'WALMART' THEN
             --            FILE_PUT_LINE (V_MANEJADOR, 'NOMREC  '||'NUEVA WALMART DE MEXICO S. DE R.L. DE C.V.');  --S  NOMBRE DEL RECEPTOR DE LA FACTURA 
@@ -1021,7 +977,7 @@ BEGIN
                     
                     --FILE_PUT_LINE (V_MANEJADOR, 'EANREC  '||HED_REC.GLN); --N -- EAN RECEPTOR
 
-                    FILE_PUT_LINE (V_MANEJADOR, 'EMAIL  '||HED_REC.EMAIL); --N -- EAN RECEPTOR
+                    FILE_PUT_LINE (V_MANEJADOR, 'MAIL  '||HED_REC.EMAIL); --N -- EAN RECEPTOR
                     FILE_PUT_LINE (V_MANEJADOR, 'NUMCLI  '||HED_REC.NO_CLIENTE); --N -- EAN RECEPTOR
                     FILE_PUT_LINE (V_MANEJADOR, '');  -- L?NEA EN BLANCO
 
@@ -1102,7 +1058,7 @@ BEGIN
                             -- 25/09/2012 ARS
                             -- Solicitud de modificaci?n para mostrar c?digo 
                             -- de barras de cajas 180
-                            --===============================================-- 
+                            --===============================================--
                             IF (LIN_REC.INV_ITEM_ID = 879378) AND (HED_REC.TIPO_ADENDA = 'SORIANA') THEN
                                 SELECT meaning
                                   INTO v_ean
@@ -1127,7 +1083,7 @@ BEGIN
                                V_UNIDAD := LIN_REC.UOM_LINE;
                             END IF;
                             --=========================--
-                            IF (V_UNIDAD IS NULL) AND (HED_REC.TIPO_TRANSACCION1 IN ('I','E')) THEN
+                            IF (V_UNIDAD IS NULL) AND (HED_REC.TIPO_TRANSACCION1 IN (1,2,3)) THEN
                                IF (p_org_id = 85) OR (p_org_id = 84 AND P_ORIGEN = 1493) OR (p_org_id = 83 AND P_ORIGEN = 1356) THEN
                                     V_UNIDAD := 'SERVICIOS';
                                ELSE
@@ -1167,63 +1123,6 @@ BEGIN
                             FND_FILE.PUT_LINE (FND_FILE.LOG,'Escribiendo l?neas de la factura');
                             dbms_output.put_line('Escribiendo l?neas de la factura');
                             
-                            
-                            /*************************************************************/
-                            --IPONCE        2017.06.30
-                            
-                            DECLARE 
-                                var_cveunidad       VARCHAR2(10);
-                            BEGIN
-                            
-                                IF  V_UNIDAD NOT IN('SERVICIOS', 'NA') THEN
-                                
-                                
-                                    SELECT ATTRIBUTE1
-                                      INTO var_cveunidad
-                                      FROM MTL_UNITS_OF_MEASURE UOM
-                                     WHERE 1 = 1
-                                       AND UOM.UOM_CODE = NVL(NVL(LIN_REC.UOM, LIN_REC.UOM2), LIN_REC.UOM_LINE);
-                                                  
-                                    FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || var_cveunidad);
-                                
-                                ELSE
-                                    FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || 'EA');
-                                END IF;                                         
-                                
-                            EXCEPTION WHEN OTHERS THEN
-                                FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || 'EA');
-                            END;
-                            
-                            /*************************************************************/
-                            --IPONCE        2017.06.30
-                            
-                            DECLARE
-                                var_cveprodserv     VARCHAR2(10); --IPONCE        2017.06.30
-                            BEGIN
-                                 
-                                
-                                SELECT MC.SEGMENT3
-                                  INTO var_cveprodserv
-                                  FROM MTL_SYSTEM_ITEMS_B   MSI,
-                                       MTL_ITEM_CATEGORIES  MIC,
-                                       MTL_CATEGORIES       MC
-                                 WHERE 1 = 1
-                                   AND MSI.INVENTORY_ITEM_ID = LIN_REC.INV_ITEM_ID
-                                   AND MIC.INVENTORY_ITEM_ID = MSI.INVENTORY_ITEM_ID
-                                   AND MIC.ORGANIZATION_ID = MSI.ORGANIZATION_ID
-                                   AND MIC.CATEGORY_ID = MC.CATEGORY_ID;
-                            
-                                FILE_PUT_LINE (V_MANEJADOR, 'CVEPRODSERV    ' || var_cveprodserv);
-                                        
-                                
-                            EXCEPTION WHEN OTHERS THEN
-                                FILE_PUT_LINE (V_MANEJADOR, 'CVEPRODSERV    ' || '01010101');
-                            
-                                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Error - CVEPRODSERV - ' || SQLERRM);
-                            END;
-                            
-                            /*************************************************************/
-                            
                             IF HED_REC.SERIE = 'FCTH' THEN
                                 FILE_PUT_LINE (V_MANEJADOR, 'CANTID  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.CANT_FACTURADA));  --N  CANTIDAD FACTURADA
                                 FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.DESCRIPCION||' Ton. '||LIN_REC.CANTIDAD_SECUNDARIA);  --S  DESCRIPCI?N DEL PRODUCTO O SERVICIO
@@ -1241,13 +1140,9 @@ BEGIN
                                 FILE_PUT_LINE (V_MANEJADOR, 'CDECON  '||'0');  --S(3) C?DIGO DEL DESCUENTO
                                 FILE_PUT_LINE (V_MANEJADOR, 'VALUNI  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.PRECIO_UNITARIO));  --N PRECIO UNITARIO NETO
                                 FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.PRECIO_NETO));  --N IMPORTE NETO DE LA PARTIDA
-                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIPETR  '|| 'Tasa');     --iponce 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TASA_IMPUESTO));  --N % DEL IVA TRASLADADO DE LA PARTIDA
-                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TASA_IMPUESTO) / 100, '9D99'));      --IPONCE 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TTL_IMPUESTO)); --N  MONTO DE IVA TRASLADADO DE LA PARTIDA
-                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIEPTR  '|| 'Tasa');     --iponce 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'TASIEP  '||'0');  --N % DEL IEPS TRASLADADO DE LA PARTIDA
-                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIEP  ' || '0.00');        --IPONCE 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'MONIEP  '||'0');  --N MONTO DE IEPS TRASLADADO DE LA PARTIDA
                                 FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_TOTAL_LIN);  --N N?MERO DE L?ENA DE LA FACTURA
                                 FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||XXCALV_ROUND_TWO_DECIMAL((LIN_REC.CANT_FACTURADA + LIN_REC.TARA))); --PESO BRUTO
@@ -1294,13 +1189,9 @@ BEGIN
                                 END IF;
                                 FILE_PUT_LINE (V_MANEJADOR, 'VALUNI  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.PRECIO_UNITARIO));  --N PRECIO UNITARIO NETO
                                 FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.PRECIO_NETO));  --N IMPORTE NETO DE LA PARTIDA
-                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIPETR  '|| 'Tasa');     --iponce 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TASA_IMPUESTO));  --N % DEL IVA TRASLADADO DE LA PARTIDA
-                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TASA_IMPUESTO) / 100, '9D99'));      --IPONCE 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.TTL_IMPUESTO)); --N  MONTO DE IVA TRASLADADO DE LA PARTIDA
-                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIEPTR  '|| 'Tasa');     --iponce 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'TASIEP  '||'0');  --N % DEL IEPS TRASLADADO DE LA PARTIDA
-                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIEP  ' || '0.00');        --IPONCE 2017.07.03
                                 FILE_PUT_LINE (V_MANEJADOR, 'MONIEP  '||'0');  --N MONTO DE IEPS TRASLADADO DE LA PARTIDA
                                 FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_TOTAL_LIN);  --N N?MERO DE L?ENA DE LA FACTURA
                                 FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||XXCALV_ROUND_TWO_DECIMAL(LIN_REC.CANT_FACTURADA + LIN_REC.TARA)); --PESO BRUTO
@@ -1312,9 +1203,7 @@ BEGIN
                             --TOTALES POR FACTURA
                             V_IVA_GLOBAL := V_IVA_GLOBAL + LIN_REC.TASA_IMPUESTO;           -- SUMA DE LAS TASAS DE IVA DE CADA L?NEA
                             V_IVA_TOTAL := V_IVA_TOTAL + LIN_REC.TTL_IMPUESTO;              -- SUMA DE CANTIDADADES DE IVA DE CADA L?NEA
-                            V_ISR_GLOBAL := V_ISR_GLOBAL + LIN_REC.TASA_ISR_RET;            --IPONCE 2017.07.03
                             V_ISR_RET_TOTAL := V_ISR_RET_TOTAL + ABS(LIN_REC.TTL_ISR_RET); 
-                            V_IVA_RET_GLOBAL := V_IVA_RET_GLOBAL + ABS(LIN_REC.TASA_IVA_RET);
                             V_IVA_RET_TOTAL := V_IVA_RET_TOTAL + ABS(LIN_REC.TTL_IVA_RET);
                             V_IMPORTE_TOTAL := V_IMPORTE_TOTAL + LIN_REC.PRECIO_NETO;       -- SUMA DE LOS IMPORTES DE LAS L?NEAS
                             V_CANTIDAD_TOTAL := V_CANTIDAD_TOTAL +  LIN_REC.CANT_FACTURADA; -- SUMA DE CANTIDADES DE LAS L?NEAS
@@ -1326,7 +1215,7 @@ BEGIN
                     
                     END LOOP;
 
-                    --PARA SABER SI EL IVA ES EL MISMO PARA TODAS LAS L?NEAS DE LA 
+                    --PARA SABER SI EL IVA ES EL MISMO PARA TODAS LAS L?NEAS DE LA FACTURA
                     V_IVA_GLOBAL := V_IVA_GLOBAL/V_TOTAL_LIN;
 
                     FND_FILE.PUT_LINE (FND_FILE.LOG,'Escribiendo totales');
@@ -1363,33 +1252,11 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||XXCALV_ROUND_TWO_DECIMAL(0));  --N  TASA IVA GLOBAL
                     END IF;
                         
-                    
-                    FILE_PUT_LINE (V_MANEJADOR, 'TIPIVARE   ' || 'Tasa');   --iponce   2017.07.03
-                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET_P   ' || V_IVA_GLOBAL);     --iponce   2017.07.03
-                    FILE_PUT_LINE (V_MANEJADOR, 'FCTIVARET_P    ' || TO_CHAR((V_IVA_GLOBAL/100), '9D99'));      --iponce   2017.07.03
-                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET_D   ' || ROUND(ABS(V_IVA_TOTAL),2));    --iponce   2017.07.03
-                    
-                    FILE_PUT_LINE (V_MANEJADOR, 'TIPISRRE   ' || 'Tasa');   --iponce   2017.07.03
-                    FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_P   ' || V_ISR_GLOBAL);     --iponce   2017.07.03
-                    FILE_PUT_LINE (V_MANEJADOR, 'FCTISRRET_P    ' || TO_CHAR((V_ISR_GLOBAL/100), '9D99'));      --iponce   2017.07.03
-                    FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_D   ' || ROUND(ABS(V_ISR_RET_TOTAL), 2));   --iponce   2017.07.03
-                    
-                    FILE_PUT_LINE (V_MANEJADOR, 'TIPIEPRE   ' || 'Tasa');   --IPONCE 2017.07.04
-                    FILE_PUT_LINE (V_MANEJADOR, 'IEPRET_P   ' || '0');      --IPONCE 2017.07.04
-                    FILE_PUT_LINE (V_MANEJADOR, 'FACIEPRET_P    ' || '0.00');   --IPONCE 2017.07.04
-                    FILE_PUT_LINE (V_MANEJADOR, 'IEPRET_D   ' || '0');      --IPONCE 2017.07.04
-                    
-                    FILE_PUT_LINE (V_MANEJADOR, 'TIPFACIVA1 ' || 'Tasa');
-                    FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA1    ' || V_IVA_RET_GLOBAL);
-                    FILE_PUT_LINE (V_MANEJADOR, 'FCTTOTIVA1     ' || TO_CHAR((V_IVA_RET_GLOBAL/100), '9D99'));
-                    FILE_PUT_LINE (V_MANEJADOR, 'IVATRA1    ' || ROUND(ABS(V_IVA_RET_TOTAL), 2));
-                    
-                    
---                    FILE_PUT_LINE (V_MANEJADOR, 'IVATRA  '||XXCALV_ROUND_TWO_DECIMAL(ROUND(V_IVA_TOTAL,2)));--N  MONTO TOTAL DE IVA TRASLADADO, IVATRA1, IVATRA2, IVATRA3  --iponce   2017.07.03
---                    FILE_PUT_LINE (V_MANEJADOR, 'TATIEP  '||'0'); --N  TASA IEPS GLOBAL   --iponce   2017.07.03
---                    FILE_PUT_LINE (V_MANEJADOR, 'IEPTRA  '||'0'); --N  MONTO TOTAL DE IEPS GLOBAL     --iponce   2017.07.03
---                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET  '||ROUND(ABS(V_IVA_RET_TOTAL),2)); --N  IVA RETENIDO (LA SUMA DE IVARET_D)   --iponce   2017.07.03
---                    FILE_PUT_LINE (V_MANEJADOR, 'ISRRET  '||ROUND(ABS(V_ISR_RET_TOTAL),2)); --N  ISR RETENIDO (LA SUMA DE ISRRET_D)   --iponce    2017.06.29
+                    FILE_PUT_LINE (V_MANEJADOR, 'IVATRA  '||XXCALV_ROUND_TWO_DECIMAL(ROUND(V_IVA_TOTAL,2)));--N  MONTO TOTAL DE IVA TRASLADADO, IVATRA1, IVATRA2, IVATRA3  
+                    FILE_PUT_LINE (V_MANEJADOR, 'TATIEP  '||'0'); --N  TASA IEPS GLOBAL
+                    FILE_PUT_LINE (V_MANEJADOR, 'IEPTRA  '||'0'); --N  MONTO TOTAL DE IEPS GLOBAL
+                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET  '||ROUND(ABS(V_IVA_RET_TOTAL),2)); --N  IVA RETENIDO (LA SUMA DE IVARET_D)
+                    FILE_PUT_LINE (V_MANEJADOR, 'ISRRET  '||ROUND(ABS(V_ISR_RET_TOTAL),2)); --N  ISR RETENIDO (LA SUMA DE ISRRET_D)
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG  '||XXCALV_ROUND_TWO_DECIMAL(V_TOTAL - ABS(NVL(V_IVA_RET_TOTAL,0)) - ABS(NVL(V_ISR_RET_TOTAL,0))));--N  TOTAL A PAGAR
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG_ORI  '||XXCALV_ROUND_TWO_DECIMAL(V_TOTAL - ABS(NVL(V_IVA_RET_TOTAL,0)) - ABS(NVL(V_ISR_RET_TOTAL,0))));--N  TOTAL A PAGAR
                     UTL_FILE.FCLOSE (V_MANEJADOR);
