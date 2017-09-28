@@ -2,5 +2,5 @@ CREATE TABLE APPS.PAC_CFDI_LOG_TB
 ( 
     FILE_NAME           VARCHAR2(500),
     STATUS              VARCHAR2(1000),
-    LOG_DATE            DATE
+    LOG_DATE            VARCHAR2(100)
 );

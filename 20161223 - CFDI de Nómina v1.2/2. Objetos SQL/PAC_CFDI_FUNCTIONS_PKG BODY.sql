@@ -7,7 +7,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         P_STATUS      VARCHAR2)
     IS
         PRAGMA AUTONOMOUS_TRANSACTION;
+        
+        var_date      VARCHAR2(100);
     BEGIN
+    
+        SELECT TO_CHAR(CURRENT_TIMESTAMP,'DD-MM-RRRR HH24:MI:SS PM')
+          INTO var_date
+          FROM DUAL;
     
         INSERT 
           INTO PAC_CFDI_LOG_TB
@@ -17,7 +23,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         VALUES
             (P_FILE_NAME,
              P_STATUS,
-             SYSDATE);
+             var_date);
              
         COMMIT;
     
@@ -3373,6 +3379,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 END;
                 
                 FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || ' ' || var_employee_name);
+                
+                DBMS_LOCK.SLEEP(1);
                 CFDI_LOGGING(P_FILE_NAME, var_file_name || ' ' || var_employee_name);                    
                 
             END;
@@ -3425,6 +3433,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         END;
                         
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || ' ' || var_employee_name);
+                        
+                        DBMS_LOCK.SLEEP(1);
                         CFDI_LOGGING(P_FILE_NAME, var_file_name || ' ' || var_employee_name);
                         
                     END IF;
