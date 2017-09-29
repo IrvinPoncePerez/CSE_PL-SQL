@@ -1032,6 +1032,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         
             --Eliminación y creación del Archivo.
             BEGIN
+                
+                CFDI_LOGGING(var_file_name, 'CREATE CFDI FILE');
             
                 var_file := UTL_FILE.FOPEN(var_path, var_file_name, 'A', 30000);
                 UTL_FILE.FREMOVE(var_path, var_file_name);
@@ -1099,6 +1101,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 OPEN DETAIL_LIST;
                 
                 LOOP
+                
+                    CFDI_LOGGING(var_file_name, 'START WRITE');
                 
                     FETCH DETAIL_LIST BULK COLLECT INTO DETAIL LIMIT 500;
                     
@@ -1842,6 +1846,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Crear los Registros de Percepciones y Deducciones. ' || SQLERRM);
                         END;
                 
+                        CFDI_LOGGING(var_file_name, 'WRITE ' || DETAIL(rowIndex).NOM_NUMEMP || ' ' || DETAIL(rowIndex).NOMREC);
                         REGISTRING;
 
                     END LOOP;
@@ -1885,6 +1890,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error al Borrar la Secuencia ' || var_sequence_name || '. ' || SQLERRM);
             END;
             
+            CFDI_LOGGING(var_file_name, 'FINISHED WRITE');
             COMMIT;
         
         ELSE
@@ -3312,9 +3318,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         CFDI_LOGGING(P_FILE_NAME, 'START SEARCH TXT FILE');
         
         LOOP
-            EXIT WHEN FIND_FILE(P_DIRECTORY_NAME, var_sub_directory_name, var_file_name || '.txt') = TRUE;
+            
             CFDI_LOGGING(P_FILE_NAME, 'WAITING 60 SECONDS');
             DBMS_LOCK.SLEEP(60);
+        
+            EXIT WHEN FIND_FILE(P_DIRECTORY_NAME, var_sub_directory_name, var_file_name || '.txt') = TRUE;
+            
         END LOOP;
         
         CFDI_LOGGING(P_FILE_NAME, 'FINISHED SEARCH TXT FILE');
@@ -3324,9 +3333,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         CFDI_LOGGING(P_FILE_NAME, 'START SEARCH XML FILE');
         
         LOOP 
-            EXIT WHEN FIND_FILE(P_DIRECTORY_NAME, var_sub_directory_name, var_file_name || '.xml') = TRUE;
+        
             CFDI_LOGGING(P_FILE_NAME, 'WAITING 60 SECONDS');
             DBMS_LOCK.SLEEP(60);
+        
+            EXIT WHEN FIND_FILE(P_DIRECTORY_NAME, var_sub_directory_name, var_file_name || '.xml') = TRUE;
+            
         END LOOP;
         
         CFDI_LOGGING(P_FILE_NAME, 'FINISHED SEARCH XML FILE');
@@ -3336,9 +3348,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         CFDI_LOGGING(P_FILE_NAME, 'START WAIT WORKING');
         
         LOOP
-            EXIT WHEN IS_WORKING(P_DIRECTORY_NAME) = FALSE;
+        
             CFDI_LOGGING(P_FILE_NAME, 'WAITING 60 SECONDS');
             DBMS_LOCK.SLEEP(60);
+        
+            EXIT WHEN IS_WORKING(P_DIRECTORY_NAME) = FALSE;
+            
         END LOOP;
         
         CFDI_LOGGING(P_FILE_NAME, 'FINISHED WAIT WORKING');
@@ -3347,15 +3362,15 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
         
         OUTPUT_FILES := GET_OUTPUT_FILES(P_DIRECTORY_NAME, var_sub_directory_name);
-        CFDI_LOGGING(P_FILE_NAME, 'GET OUTPUT_FILES : ' || TO_CHAR(OUTPUT_FILES.COUNT-2) || ' OUTPUT_FILES');
+        CFDI_LOGGING(P_FILE_NAME, 'GET OUTPUT FILES : ' || TO_CHAR(OUTPUT_FILES.COUNT-2) || ' OUTPUT FILES');
         
         ERROR_FILES := GET_ERROR_FILES(P_DIRECTORY_NAME, var_sub_directory_name);
-        CFDI_LOGGING(P_FILE_NAME, 'GET ERROR_FILES : ' || TO_CHAR(ERROR_FILES.COUNT) || ' ERROR_FILES');
+        CFDI_LOGGING(P_FILE_NAME, 'GET ERROR FILES : ' || TO_CHAR(ERROR_FILES.COUNT) || ' ERROR FILES');
         
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, OUTPUT_FILES.COUNT-2 || ' Archivos finalizados satisfactoriamente.');
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '');
         
-        CFDI_LOGGING(P_FILE_NAME, 'START GET OUTPUT_FILES');
+        CFDI_LOGGING(P_FILE_NAME, 'START GET OUTPUT FILES');
         
         FOR var_index IN 1..OUTPUT_FILES.COUNT LOOP
             DECLARE
@@ -3386,11 +3401,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
             END;
         END LOOP;
         
-        CFDI_LOGGING(P_FILE_NAME, 'FINISHED GET OUTPUT_FILES');
+        CFDI_LOGGING(P_FILE_NAME, 'FINISHED GET OUTPUT FILES');
         
         var_errors := ERROR_FILES.COUNT;
         
-        CFDI_LOGGING(P_FILE_NAME, 'START GET ERROR_FILES');
+        CFDI_LOGGING(P_FILE_NAME, 'START GET ERROR FILES');
         
         FOR var_index IN 1..ERROR_FILES.COUNT LOOP
             DECLARE
@@ -3441,7 +3456,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 END;
             END LOOP;
             
-            CFDI_LOGGING(P_FILE_NAME, 'FINISHED GET ERROR_FILES');
+            CFDI_LOGGING(P_FILE_NAME, 'FINISHED GET ERROR FILES');
             
             P_RETCODE := 1;
         ELSIF var_errors = 0 THEN

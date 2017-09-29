@@ -1,6 +1,27 @@
 CREATE TABLE APPS.PAC_CFDI_LOG_TB
 ( 
+    LOG_ID              NUMBER,
     FILE_NAME           VARCHAR2(500),
     STATUS              VARCHAR2(1000),
     LOG_DATE            VARCHAR2(100)
 );
+
+
+
+CREATE OR REPLACE TRIGGER APPS.PAC_CFDI_LOG_TGR
+BEFORE INSERT
+   ON APPS.PAC_CFDI_LOG_TB
+   FOR EACH ROW
+DECLARE
+
+   var_next_id  NUMBER;
+
+BEGIN
+
+    SELECT COUNT(LOG_ID) +1
+      INTO var_next_id
+      FROM PAC_CFDI_LOG_TB;        
+      
+    :NEW.LOG_ID := var_next_id;
+
+END;
