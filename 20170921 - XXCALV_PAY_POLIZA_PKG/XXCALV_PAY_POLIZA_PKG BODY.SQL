@@ -564,7 +564,7 @@ END submit_gl;
            print_out('E: Error en la creacion de asientos: '||SQLERRM);
            l_error_flag := 1;
       END;
-      DBMS_LOCK.SLEEP(5);
+--      DBMS_LOCK.SLEEP(5);
       END LOOP;
       
       print_out(lpad(' ',50,' ')||lpad('-',20,'-'));
