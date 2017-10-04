@@ -1096,15 +1096,18 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
             --Recorrido del Cursor de Empleados.
             BEGIN
             
+                CFDI_LOGGING(var_file_name, 'START WRITE');
+            
                 var_date_exp := TO_CHAR(SYSDATE, 'RRRR-MM-DD') || 'T' || TO_CHAR(SYSDATE, 'HH24:MI:SS');
                 
                 OPEN DETAIL_LIST;
                 
-                LOOP
+                LOOP        
                 
-                    CFDI_LOGGING(var_file_name, 'START WRITE');
+                    CFDI_LOGGING(var_file_name, 'FLUSH DATA');  
+                    DBMS_LOCK.SLEEP(60);                          
                 
-                    FETCH DETAIL_LIST BULK COLLECT INTO DETAIL LIMIT 500;
+                    FETCH DETAIL_LIST BULK COLLECT INTO DETAIL LIMIT 100;
                     
                     EXIT WHEN DETAIL.COUNT = 0;
                     
@@ -2101,160 +2104,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         ELSE
                 P_RETCODE := 1;    
         END IF;
-                                      
-                                      
-        SELECT COUNT(FILE_NAME)
-          INTO var_ejecuciones
-          FROM PAC_CFDI_NOMINA_TB
-         WHERE 1 = 1
-           AND FILE_NAME = var_file_name;                                 
         
-        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Normal') AND var_ejecuciones = 1 THEN
-            
-            
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Descarga CFDI de Nómina');
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-                    
-            DECLARE 
-                var_remote_directory    VARCHAR2(150) := '/' || var_directory_name || '/Descarga/' || EXTRACT(YEAR FROM SYSDATE) || '/' || TRIM(TO_CHAR(EXTRACT(MONTH FROM SYSDATE), '00'));
-                var_company_directory   VARCHAR2(150) := var_directory_name;
-                var_day_directory       VARCHAR2(150) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
-                var_new_directory       VARCHAR2(150) := var_day_directory || '_' || REPLACE(var_file_name, '.txt', '');
-            BEGIN
-                        
-                              
-                LOOP
-                    ERROR_FILES := GET_ERROR_FILES(var_directory_name, TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD'));
-                    
-                    var_errors := ERROR_FILES.COUNT;
-            
-                    FOR var_index IN 1..ERROR_FILES.COUNT LOOP
-                        DECLARE
-                            var_file_name           VARCHAR2(100) := '';
-                        BEGIN
-                            var_file_name := ERROR_FILES(var_index);
-                            
-                            IF var_file_name IN ('Productos_Avicolas', 'Calvario_Servicios', 'aspnet_client', 'Adriana_Pocovi') THEN
-                                var_errors := var_errors - 1;                
-                            END IF;
-                        END;
-                    END LOOP;
-                    
-                    EXIT WHEN IS_DOWNLOADING(var_remote_directory,((var_file_records - var_errors) * 2)) = FALSE;
-                END LOOP;
-                                                                                         
-                        
-                V_REQUEST_ID :=
-                    FND_REQUEST.SUBMIT_REQUEST (
-                       APPLICATION => 'PER',
-                       PROGRAM => 'DESCARGA_CFDI_NOMINA',
-                       DESCRIPTION => '',
-                       START_TIME => '',
-                       SUB_REQUEST => FALSE,
-                       ARGUMENT1 => TO_CHAR(var_remote_directory),
-                       ARGUMENT2 => TO_CHAR(var_local_directory),
-                       ARGUMENT3 => TO_CHAR(var_company_directory),
-                       ARGUMENT4 => TO_CHAR(var_day_directory),
-                       ARGUMENT5 => TO_CHAR(var_new_directory)
-                                               );
-                STANDARD.COMMIT;                  
-                                         
-                WAITING :=
-                    FND_CONCURRENT.WAIT_FOR_REQUEST (
-                        REQUEST_ID => V_REQUEST_ID,
-                        INTERVAL => 1,
-                        MAX_WAIT => 0,
-                        PHASE => PHASE,
-                        STATUS => STATUS,
-                        DEV_PHASE => DEV_PHASE,
-                        DEV_STATUS => DEV_STATUS,
-                        MESSAGE => V_MESSAGE
-                                                );
-                            
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
-                        
-            EXCEPTION WHEN OTHERS THEN
-                dbms_output.put_line('**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
-                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
-            END;
-            
-        ELSIF var_ejecuciones > 1 THEN
-            
-            
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Descarga CFDI de Nómina');
-            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
-                    
-            DECLARE 
-                var_remote_directory    VARCHAR2(150) := '/' || var_directory_name || '/Descarga/' || EXTRACT(YEAR FROM SYSDATE) || '/' || TRIM(TO_CHAR(EXTRACT(MONTH FROM SYSDATE), '00'));
-                var_company_directory   VARCHAR2(150) := var_directory_name;
-                var_day_directory       VARCHAR2(150) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
-                var_new_directory       VARCHAR2(150) := var_day_directory || '_' || REPLACE(var_file_name, '.txt', '');
-            BEGIN
-                        
-                              
-                LOOP
-                    ERROR_FILES := GET_ERROR_FILES(var_directory_name, TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD'));
-                    
-                    var_errors := ERROR_FILES.COUNT;
-            
-                    FOR var_index IN 1..ERROR_FILES.COUNT LOOP
-                        DECLARE
-                            var_file_name           VARCHAR2(100) := '';
-                        BEGIN
-                            var_file_name := ERROR_FILES(var_index);
-                            
-                            IF var_file_name IN ('Productos_Avicolas', 'Calvario_Servicios', 'aspnet_client', 'Adriana_Pocovi') THEN
-                                var_errors := var_errors - 1;                
-                            END IF;
-                        END;
-                    END LOOP;
-                    
-                    EXIT WHEN IS_DOWNLOADING(var_remote_directory,((var_file_records - var_errors) * 2)) = FALSE;
-                END LOOP;
-                                                                                         
-                        
-                V_REQUEST_ID :=
-                    FND_REQUEST.SUBMIT_REQUEST (
-                       APPLICATION => 'PER',
-                       PROGRAM => 'DESCARGA_CFDI_NOMINA',
-                       DESCRIPTION => '',
-                       START_TIME => '',
-                       SUB_REQUEST => FALSE,
-                       ARGUMENT1 => TO_CHAR(var_remote_directory),
-                       ARGUMENT2 => TO_CHAR(var_local_directory),
-                       ARGUMENT3 => TO_CHAR(var_company_directory),
-                       ARGUMENT4 => TO_CHAR(var_day_directory),
-                       ARGUMENT5 => TO_CHAR(var_new_directory)
-                                               );
-                STANDARD.COMMIT;                  
-                                         
-                WAITING :=
-                    FND_CONCURRENT.WAIT_FOR_REQUEST (
-                        REQUEST_ID => V_REQUEST_ID,
-                        INTERVAL => 1,
-                        MAX_WAIT => 0,
-                        PHASE => PHASE,
-                        STATUS => STATUS,
-                        DEV_PHASE => DEV_PHASE,
-                        DEV_STATUS => DEV_STATUS,
-                        MESSAGE => V_MESSAGE
-                                                );
-                            
-                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
-                        
-            EXCEPTION WHEN OTHERS THEN
-                dbms_output.put_line('**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
-                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
-            END;
-            
-            PHASE := 'Completed';
-            STATUS := 'Normal';
-            
-        ELSE
+        
+        IF PHASE IN ('Finalizado', 'Completed') AND STATUS IN ('Advertencia', 'Warning') THEN
         
             FND_GLOBAL.APPS_INITIALIZE (USER_ID        => var_user_id,
                                         RESP_ID        => 50668,    --CALVARIO_HR_ADMINISTRADOR
@@ -2312,14 +2164,95 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
         
         
             P_RETCODE := 1; 
-        END IF;            
-                 
+        END IF;   
+        
+        
         FND_GLOBAL.APPS_INITIALIZE (USER_ID        => 3397,     --IPONCE
                                     RESP_ID        => 50668,    --CALVARIO_HR_ADMINISTRADOR
                                     RESP_APPL_ID   => 800);     --Human Resources
                        
         MO_GLOBAL.SET_POLICY_CONTEXT (P_ACCESS_MODE => 'S', 
                                       P_ORG_ID      => 85);
+           
+         
+        BEGIN
+            
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  '');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV - Descarga CFDI de Nómina');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
+                        
+            DECLARE 
+                var_remote_directory    VARCHAR2(150) := '/' || var_directory_name || '/Descarga/' || EXTRACT(YEAR FROM SYSDATE) || '/' || TRIM(TO_CHAR(EXTRACT(MONTH FROM SYSDATE), '00'));
+                var_company_directory   VARCHAR2(150) := var_directory_name;
+                var_day_directory       VARCHAR2(150) := TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD');
+                var_new_directory       VARCHAR2(150) := var_day_directory || '_' || REPLACE(var_file_name, '.txt', '');
+            BEGIN
+                            
+                                  
+                LOOP
+                    ERROR_FILES := GET_ERROR_FILES(var_directory_name, TO_CHAR(TO_DATE(SYSDATE, 'DD/MM/RRRR'), 'RRRRMMDD'));
+                        
+                    var_errors := ERROR_FILES.COUNT;
+                
+                    FOR var_index IN 1..ERROR_FILES.COUNT LOOP
+                        DECLARE
+                            var_file_name           VARCHAR2(100) := '';
+                        BEGIN
+                            var_file_name := ERROR_FILES(var_index);
+                                
+                            IF var_file_name IN ('Productos_Avicolas', 'Calvario_Servicios', 'aspnet_client', 'Adriana_Pocovi') THEN
+                                var_errors := var_errors - 1;                
+                            END IF;
+                        END;
+                    END LOOP;
+                    
+                    DBMS_LOCK.SLEEP(60);
+                    CFDI_LOGGING(var_file_name, 'WAIT DOWNLOAD FILES');
+                        
+                    EXIT WHEN IS_DOWNLOADING(var_remote_directory,((var_file_records - var_errors) * 2)) = FALSE;
+                END LOOP;
+                                                                                             
+                            
+                V_REQUEST_ID :=
+                    FND_REQUEST.SUBMIT_REQUEST (
+                       APPLICATION => 'PER',
+                       PROGRAM => 'DESCARGA_CFDI_NOMINA',
+                       DESCRIPTION => '',
+                       START_TIME => '',
+                       SUB_REQUEST => FALSE,
+                       ARGUMENT1 => TO_CHAR(var_remote_directory),
+                       ARGUMENT2 => TO_CHAR(var_local_directory),
+                       ARGUMENT3 => TO_CHAR(var_company_directory),
+                       ARGUMENT4 => TO_CHAR(var_day_directory),
+                       ARGUMENT5 => TO_CHAR(var_new_directory)
+                                               );
+                STANDARD.COMMIT;                  
+                                             
+                WAITING :=
+                    FND_CONCURRENT.WAIT_FOR_REQUEST (
+                        REQUEST_ID => V_REQUEST_ID,
+                        INTERVAL => 1,
+                        MAX_WAIT => 0,
+                        PHASE => PHASE,
+                        STATUS => STATUS,
+                        DEV_PHASE => DEV_PHASE,
+                        DEV_STATUS => DEV_STATUS,
+                        MESSAGE => V_MESSAGE
+                                                );
+                                
+                FND_FILE.PUT_LINE(FND_FILE.LOG,  'Finalización : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS')); 
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Fase : ' || PHASE || '     Estatus : ' || STATUS);  
+                            
+            EXCEPTION WHEN OTHERS THEN
+                dbms_output.put_line('**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante la descarga de los archivos XML de Nómina. ' || SQLERRM);
+            END;
+            
+            CFDI_LOGGING(var_file_name, 'FILES DOWNLOADED');
+            
+        END;
+              
+        
                 
         IF P_COMPANY_ID = '02' AND P_CONSOLIDATION_ID = 68 THEN
         
@@ -2520,6 +2453,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
             FND_FILE.PUT_LINE(FND_FILE.LOG,  'XXCALV-Programa_Importacion_CFDI_Nom');
             FND_FILE.PUT_LINE(FND_FILE.LOG,  'Inicio : ' || TO_CHAR(SYSDATE, 'DD-MON-RRRR HH24:MI:SS'));
                 
+            CFDI_LOGGING(var_file_name, 'START IMPORT CFDI');
+            
             BEGIN
                     
                 V_REQUEST_ID :=
@@ -2553,6 +2488,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '**Error durante el timbrado del archivo CFDI de Nómina. ' || SQLERRM);
             END;
            
+        
+            CFDI_LOGGING(var_file_name, 'FINISHED IMPORT CFDI');
         ELSE
                 P_RETCODE := 1;
         END IF; 
@@ -3456,12 +3393,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 END;
             END LOOP;
             
-            CFDI_LOGGING(P_FILE_NAME, 'FINISHED GET ERROR FILES');
+            
             
             P_RETCODE := 1;
         ELSIF var_errors = 0 THEN
             P_RETCODE := 0;
         END IF;
+        
+        CFDI_LOGGING(P_FILE_NAME, 'FINISHED GET ERROR FILES');
     
     END TIMBRADO_CFDI_NOMINA;  
     

@@ -1,5 +1,9 @@
 CREATE OR REPLACE PACKAGE APPS.PAC_CFDI_FUNCTIONS_PKG AS
 
+    PROCEDURE CFDI_LOGGING(
+        P_FILE_NAME   VARCHAR2,
+        P_STATUS      VARCHAR2);
+        
     /*
     Suma de todas las percepciones suma de gravado mas excento
     */
