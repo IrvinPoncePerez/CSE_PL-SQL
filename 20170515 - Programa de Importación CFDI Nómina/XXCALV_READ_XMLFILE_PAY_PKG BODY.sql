@@ -962,6 +962,8 @@ END count_rows_load;
          
          /* iponce 15-MAY-2017 */
          debug_read_xml('read_xml : l_file_name' || l_file_name);
+         PAC_CFDI_FUNCTIONS_PKG.CFDI_LOGGING(l_file_name, 'READ FILE : ' || l_file_name);
+         DBMS_LOCK.SLEEP(1);
 
          l_count_rows := l_count_rows + 1;
          --find file
