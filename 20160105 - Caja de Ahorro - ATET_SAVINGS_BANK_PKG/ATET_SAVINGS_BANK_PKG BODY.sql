@@ -678,7 +678,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                        AND ASL.MEMBER_ID = ASM.MEMBER_ID
                        AND ASPS.PERIOD_NAME = PP_PERIOD_NAME
                        AND ASPS.PAYMENT_DATE = PP_PAYMENT_DATE
-                       AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED');
+                       AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED', 'SKIP');
                       
             
                     
