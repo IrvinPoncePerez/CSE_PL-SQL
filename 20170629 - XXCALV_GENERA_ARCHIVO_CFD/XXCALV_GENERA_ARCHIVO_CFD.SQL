@@ -240,7 +240,7 @@ IS
 
    --cursor de las l?neas de las facturas
    CURSOR lines_cur (p_customer_trx_id NUMBER) IS
-        SELECT inv_item_id, 
+SELECT inv_item_id, 
                -----------------------------------------------------------------  
                -- Cambio solicitado por Ventas, quitar FRAGIL, dejar s?lo la F.
                -- 25 FEB 2013, Abrahan Rinc?n.
@@ -306,54 +306,63 @@ IS
                                , NVL ( DECODE(ctl.quantity_invoiced, NULL, ABS(ctl.quantity_credited), ctl.quantity_invoiced ) ,1) cant_facturada 
                                , '' /*ctl.quantity_credited*/ cant_credito
                                , NVL(ABS(ctl.unit_selling_price),0) precio_unitario
-                               , DECODE(UPPER(ctl.uom_code) 
-                                         ,'CJ' ,'CA'
-                                         ,'CJA','CA'
-                                         ,'CJS','CA'
-                                         ,'PZ','EA'
-                                         ,'KGS','KGM'
-                                         ,'KG','KGM'
-                                         ,'PZ','EA'
-                                         ,'PZS','EA'
-                                         ,'PZS','EA'
-                                         , ctl.uom_code
-                                 ) uom_line
+--                               , DECODE(UPPER(ctl.uom_code) 
+--                                         ,'CJ' ,'CA'
+--                                         ,'CJA','CA'
+--                                         ,'CJS','CA'
+--                                         ,'PZ','EA'
+--                                         ,'KGS','KGM'
+--                                         ,'KG','KGM'
+--                                         ,'PZ','EA'
+--                                         ,'PZS','EA'
+--                                         ,'PZS','EA'
+--                                         , ctl.uom_code
+--                                 ) uom_line
+                               , CTL.UOM_CODE UOM_LINE
                                , (SELECT oel.ordered_quantity2 
                                     FROM oe_order_lines_all oel 
                                    WHERE oel.line_id = ctl.interface_line_attribute6 
                                  ) cantidad_secundaria
-                               , DECODE((SELECT UPPER(oel.order_quantity_uom) 
-                                           FROM oe_order_lines_all oel 
-                                          WHERE oel.line_id = ctl.interface_line_attribute6) 
-                                         ,'CJ' ,'CA'
-                                         ,'CJA','CA'
-                                         ,'CJS','CA'
-                                         ,'PZ','EA'
-                                         ,'KGS','KGM'
-                                         ,'KG','KGM'
-                                         ,'PZ','EA'
-                                         ,'PZS','EA'
-                                         ,'PZS','EA'
-                                         ,(SELECT UPPER(oel.order_quantity_uom) 
+--                               , DECODE((SELECT UPPER(oel.order_quantity_uom) 
+--                                           FROM oe_order_lines_all oel 
+--                                          WHERE oel.line_id = ctl.interface_line_attribute6) 
+--                                         ,'CJ' ,'CA'
+--                                         ,'CJA','CA'
+--                                         ,'CJS','CA'
+--                                         ,'PZ','EA'
+--                                         ,'KGS','KGM'
+--                                         ,'KG','KGM'
+--                                         ,'PZ','EA'
+--                                         ,'PZS','EA'
+--                                         ,'PZS','EA'
+--                                         ,(SELECT UPPER(oel.order_quantity_uom) 
+--                                             FROM oe_order_lines_all oel 
+--                                            WHERE oel.line_id = ctl.interface_line_attribute6)
+--                                       ) uom
+                                 , (SELECT UPPER(oel.order_quantity_uom) 
                                              FROM oe_order_lines_all oel 
                                             WHERE oel.line_id = ctl.interface_line_attribute6)
-                                       ) uom
-                               , DECODE((SELECT UPPER(oel.ordered_quantity_uom2) 
-                                           FROM oe_order_lines_all oel 
-                                          WHERE oel.line_id = ctl.interface_line_attribute6 ) 
-                                         ,'CJ' ,'CA'
-                                         ,'CJA','CA'
-                                         ,'CJS','CA'
-                                         ,'PZ','EA'
-                                         ,'KGS','KGM'
-                                         ,'KG','KGM'
-                                         ,'PZ','EA'
-                                         ,'PZS','EA'
-                                         ,'PZS','EA'
-                                         ,(SELECT UPPER(oel.ordered_quantity_uom2)  
+                                   UOM
+--                               , DECODE((SELECT UPPER(oel.ordered_quantity_uom2) 
+--                                           FROM oe_order_lines_all oel 
+--                                          WHERE oel.line_id = ctl.interface_line_attribute6 ) 
+--                                         ,'CJ' ,'CA'
+--                                         ,'CJA','CA'
+--                                         ,'CJS','CA'
+--                                         ,'PZ','EA'
+--                                         ,'KGS','KGM'
+--                                         ,'KG','KGM'
+--                                         ,'PZ','EA'
+--                                         ,'PZS','EA'
+--                                         ,'PZS','EA'
+--                                         ,(SELECT UPPER(oel.ordered_quantity_uom2)  
+--                                             FROM oe_order_lines_all oel 
+--                                            WHERE oel.line_id = ctl.interface_line_attribute6 )
+--                                       ) uom2
+                                   ,(SELECT UPPER(oel.ordered_quantity_uom2)  
                                              FROM oe_order_lines_all oel 
                                             WHERE oel.line_id = ctl.interface_line_attribute6 )
-                                       ) uom2
+                                     UOM2
                                , ctl.interface_line_attribute1 folio_pedido  
                                , ABS((CASE tax.vat_tax_id
                                      WHEN 10129 THEN tax.tax_rate
@@ -439,6 +448,8 @@ IS
     ORDER BY 1;
     
     v_numext_soriana VARCHAR2(200) := NULL;
+    
+    CVEPRODSERV_EX      EXCEPTION;
     
    PROCEDURE FILE_PUT_LINE (P_MANEJADOR     UTL_FILE.FILE_TYPE,
                             P_STRING_LINE   VARCHAR2)
@@ -1191,6 +1202,8 @@ BEGIN
                                 END IF;                                         
                                 
                             EXCEPTION WHEN OTHERS THEN
+                                FND_FILE.PUT_LINE (FND_FILE.LOG, 'Error - CVEUNIDAD - ' || SQLERRM);
+                            
                                 FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || 'EA');
                             END;
                             
@@ -1202,7 +1215,8 @@ BEGIN
                             BEGIN
                                  
                                 
-                                SELECT MC.SEGMENT3
+                                SELECT DISTINCT
+                                       MC.SEGMENT3
                                   INTO var_cveprodserv
                                   FROM MTL_SYSTEM_ITEMS_B   MSI,
                                        MTL_ITEM_CATEGORIES  MIC,
@@ -1211,10 +1225,14 @@ BEGIN
                                    AND MSI.INVENTORY_ITEM_ID = LIN_REC.INV_ITEM_ID
                                    AND MIC.INVENTORY_ITEM_ID = MSI.INVENTORY_ITEM_ID
                                    AND MIC.ORGANIZATION_ID = MSI.ORGANIZATION_ID
-                                   AND MIC.CATEGORY_ID = MC.CATEGORY_ID;
+                                   AND MIC.CATEGORY_ID = MC.CATEGORY_ID
+                                   AND MC.SEGMENT3 IS NOT NULL;
                             
                                 FILE_PUT_LINE (V_MANEJADOR, 'CVEPRODSERV    ' || var_cveprodserv);
                                         
+                                IF var_cveprodserv IS NULL THEN
+                                    RAISE CVEPRODSERV_EX; 
+                                END IF;
                                 
                             EXCEPTION WHEN OTHERS THEN
                                 FILE_PUT_LINE (V_MANEJADOR, 'CVEPRODSERV    ' || '01010101');
@@ -1464,10 +1482,15 @@ BEGIN
                                                         );
                   COMMIT;
 */
-EXCEPTION WHEN others THEN
+EXCEPTION 
+    WHEN CVEPRODSERV_EX THEN
+    errbuf := 'NO SE HA DEFINIDO CLAVE PARA EL PRODUCTO.';
+    retcode:= 1;
+    WHEN others THEN
     fnd_file.put_line (fnd_file.output, 'ERROR inesperado al generar factura. '||SQLERRM);
     dbms_output.put_line('ERROR inesperado al generar factura. '||SQLERRM);
     fnd_file.put_line (fnd_file.LOG, 'Archivo generado: '||v_directorio||'/'||v_archivo);
     dbms_output.put_line('ERROR inesperado al generar factura. '||SQLERRM);
+    
 END;
 /
