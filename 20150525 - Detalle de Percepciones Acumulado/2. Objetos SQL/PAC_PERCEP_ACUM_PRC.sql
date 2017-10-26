@@ -18,13 +18,14 @@ IS
     
     CURSOR DETAIL_LIST IS
         SELECT PAAF.PERSON_ID,
-               PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID)                               AS  "NUMERO_EMPLEADO",
-               PAC_HR_PAY_PKG.GET_PERSON_NAME(SYSDATE, PAAF.PERSON_ID)                          AS  NOMBRE_EMPLEADO,
-               PAC_HR_PAY_PKG.GET_EMPLOYEE_TAX_PAYER_ID(PAAF.PERSON_ID)                         AS  RFC,
+               DETAIL.EMPLOYEE_NUMBER    AS  "NUMERO_EMPLEADO",
+               DETAIL.FULL_NAME          AS  NOMBRE_EMPLEADO,
+               DETAIL.PER_INFORMATION2   AS  RFC,
                PAC_RESULT_VALUES_PKG.GET_EFFECTIVE_START_DATE(PAAF.PERSON_ID)                   AS  EFFECTIVE_START_DATE,
-               PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, P_END_MONTH, P_YEAR)     AS  TYPE_MOVEMENT,
-               CLAVE_NOMINA,
-               REG_PATRONAL,
+               PAC_RESULT_VALUES_PKG.GET_TYPE_MOVEMENT(PAAF.PERSON_ID, P_END_MONTH, P_YEAR)   AS  TYPE_MOVEMENT,
+               PPF.ATTRIBUTE1                                                                   AS  CLAVE_NOMINA,
+               PAC_RESULT_VALUES_PKG.GET_EMPLOYEER_REGISTRATION(SYSDATE,        
+                                                                PAAF.ASSIGNMENT_ID)              AS  REG_PATRONAL,
                MAX(SUELDO_DIARIO)        AS SUELDO_DIARIO,
                MAX(SALARIO_DIARIO_INTEGRADO) AS SALARIO_DIARIO_INTEGRADO,            
                SUM(SUELDO_NORMAL)        AS SUELDO_NORMAL,      
@@ -87,7 +88,12 @@ IS
                SUM(AJUSTE_ISR_SEGUN_TABLA)      AS AJUSTE_ISR_SEGUN_TABLA,
                SUM(AJUSTE_SUBSIDIO_SEGUN_TABLA) AS AJUSTE_SUBSIDIO_SEGUN_TABLA, 
                SUM(DIAS_PAGADOS)         AS DIAS_PAGADOS
-          FROM (SELECT DISTINCT
+          FROM (
+                SELECT DISTINCT
+                       PAPF.PERSON_ID,
+                       PAPF.EMPLOYEE_NUMBER,
+                       PAPF.FULL_NAME,
+                       PAPF.PER_INFORMATION2,
                        PAA.TAX_UNIT_ID,
                        PPA.PAYROLL_ACTION_ID,
                        PAA.ASSIGNMENT_ID,
@@ -102,13 +108,10 @@ IS
                        (SELECT meaning 
                           FROM HR_LOOKUPS 
                          WHERE LOOKUP_TYPE = 'ACTION_TYPE'
-                           AND LOOKUP_CODE = PPA.ACTION_TYPE )                                  AS  ACTION_TYPE,
-                       PPF.ATTRIBUTE1                                                           AS  CLAVE_NOMINA,    
+                           AND LOOKUP_CODE = PPA.ACTION_TYPE )                                  AS  ACTION_TYPE,   
                        EXTRACT(YEAR FROM PTP.END_DATE)                                          AS  ANIO,
                        EXTRACT(MONTH FROM PTP.END_DATE)                                         AS  MES,
                        PTP.PERIOD_NUM                                                           AS  NUM_NOMINA,
-                       PAC_RESULT_VALUES_PKG.GET_EMPLOYEER_REGISTRATION(PPA.DATE_EARNED,        
-                                                                        PAA.ASSIGNMENT_ID)      AS  REG_PATRONAL,
                        -----------------------------------------------------------------------------------------
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,      'I001_SALARIO_DIARIO',      'Pay Value'), '0')    AS  SUELDO_DIARIO,
                        NVL(apps.PAC_RESULT_VALUES_PKG.GET_INFORMATION_VALUE(PAA.ASSIGNMENT_ACTION_ID,'Integrated Daily Wage',    'Pay Value'), '0')    AS  SALARIO_DIARIO_INTEGRADO,
@@ -230,14 +233,17 @@ IS
                   FROM PAY_PAYROLL_ACTIONS          PPA,
                        PER_TIME_PERIODS             PTP,
                        PAY_ASSIGNMENT_ACTIONS       PAA,
-                       PAY_PAYROLLS_F               PPF
+                       PAY_PAYROLLS_F               PPF,
+                       PER_ALL_ASSIGNMENTS_F        PAAF,
+                       PER_ALL_PEOPLE_F             PAPF,
+                       PAY_RUN_TYPES_F              PRTF
                  WHERE 1 = 1
                    AND PTP.TIME_PERIOD_ID = PPA.TIME_PERIOD_ID
                    AND PAA.PAYROLL_ACTION_ID = PPA.PAYROLL_ACTION_ID
                    AND PPA.PAYROLL_ID = PPF.PAYROLL_ID 
+                   AND PTP.PAYROLL_ID = PPF.PAYROLL_ID
                     ----------Parametros de Ejecucion-----------------
                    AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = P_COMPANY_ID    
-                   AND PPA.PAYROLL_ID = NVL(P_PAYROLL_ID,  PPA.PAYROLL_ID)
                    AND PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(P_PERIOD_TYPE, PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
                    AND PPA.CONSOLIDATION_SET_ID = NVL(P_CONSOLIDATION_SET_ID, PPA.CONSOLIDATION_SET_ID)
                    AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')
@@ -245,9 +251,26 @@ IS
                    AND (    EXTRACT(MONTH FROM PTP.END_DATE) >= P_START_MONTH
                         AND EXTRACT(MONTH FROM PTP.END_DATE) <= P_END_MONTH)
                    AND PPF.PAYROLL_NAME NOT IN ('02_SEM - GRBE', '02_QUIN - EVENTUAL')
-                   ------------------------------------------------------  
+                   ------------------------------------------------------
+                   AND PAAF.ASSIGNMENT_ID = PAA.ASSIGNMENT_ID
+                   AND PPA.DATE_EARNED BETWEEN PAAF.EFFECTIVE_START_DATE   
+                                           AND PAAF.EFFECTIVE_END_DATE
+                   AND PAAF.PERSON_ID = PAPF.PERSON_ID  
+                   AND PPA.DATE_EARNED BETWEEN PAPF.EFFECTIVE_START_DATE
+                                           AND PAPF.EFFECTIVE_END_DATE
+                   AND PAPF.PERSON_ID = P_PERSON_ID
+                   AND PAA.RUN_TYPE_ID = PRTF.RUN_TYPE_ID
+                   AND PPA.DATE_EARNED BETWEEN PRTF.EFFECTIVE_START_DATE
+                                           AND PRTF.EFFECTIVE_END_DATE
+                   AND PRTF.RUN_TYPE_NAME IN ('Process Separately', 
+                                              'Process Separately - Non Periodic', 
+                                              'Standard')
                  GROUP  
-                    BY PAA.ASSIGNMENT_ID,
+                    BY PAPF.PERSON_ID,
+                       PAPF.EMPLOYEE_NUMBER,
+                       PAPF.FULL_NAME,
+                       PAPF.PER_INFORMATION2,
+                       PAA.ASSIGNMENT_ID,
                        PPF.ATTRIBUTE1,
                        PTP.END_DATE,
                        PTP.PERIOD_NUM,
@@ -263,24 +286,29 @@ IS
                        PAA.TAX_UNIT_ID,
                        PAA.RUN_TYPE_ID,
                        PPF.PERIOD_TYPE
+                 ORDER 
+                    BY PTP.END_DATE               
                       )  DETAIL,
                          PAY_CONSOLIDATION_SETS     PCS,
-                         PER_ALL_ASSIGNMENTS_F      PAAF
+                         PER_ALL_ASSIGNMENTS_F      PAAF,
+                         PAY_PAYROLLS_F             PPF
          WHERE 1 = 1
---           AND PAC_HR_PAY_PKG.GET_EMPLOYEE_NUMBER(PAAF.PERSON_ID) IN ('1998')
            AND PCS.CONSOLIDATION_SET_ID = DETAIL.CONSOLIDATION_SET_ID
-           AND PAAF.ASSIGNMENT_ID = DETAIL.ASSIGNMENT_ID
-           AND PAAF.PAYROLL_ID = DETAIL.PAYROLL_ID
-           AND DETAIL.EFFECTIVE_DATE BETWEEN PAAF.EFFECTIVE_START_DATE 
-                                         AND PAAF.EFFECTIVE_END_DATE
-           AND PAAF.PERSON_ID = NVL(P_PERSON_ID, PAAF.PERSON_ID)
+           AND PAAF.PERSON_ID = DETAIL.PERSON_ID
+           AND PAAF.PAYROLL_ID = PPF.PAYROLL_ID
+           AND SYSDATE BETWEEN PAAF.EFFECTIVE_START_DATE 
+                           AND PAAF.EFFECTIVE_END_DATE
+           AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE
+                           AND PPF.EFFECTIVE_END_DATE
          GROUP 
             BY PAAF.PERSON_ID,
-               CLAVE_NOMINA,
-               REG_PATRONAL
+               PPF.ATTRIBUTE1,
+               PAAF.ASSIGNMENT_ID,
+               DETAIL.EMPLOYEE_NUMBER,
+               DETAIL.FULL_NAME,
+               DETAIL.PER_INFORMATION2
          ORDER 
-            BY TO_NUMBER(NUMERO_EMPLEADO);                             
-
+            BY TO_NUMBER(NUMERO_EMPLEADO); 
                                
     
            
