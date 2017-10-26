@@ -2564,20 +2564,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             '01'
                         WHEN PAAF.EMPLOYMENT_CATEGORY = 'MX2_E' THEN
                             '03'
-                     END)                                                                           AS  NOM_TIPCON,
-                    (CASE
-                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
-                            CASE 
-                                WHEN P_PERIOD_TYPE = 'Week' OR P_PERIOD_TYPE = 'Semana' THEN
-                                     PTP.END_DATE + 4
-                                ELSE
-                                     PTP.END_DATE
-                            END
-                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' THEN
-                            PTP.END_DATE + 1
-                        ELSE
-                            PTP.END_DATE
-                     END)                                                                           AS  NOM_FECPAG,       
+                     END)                                                                           AS  NOM_TIPCON,    
                     (CASE
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%NORMAL%' THEN
                             PTP.START_DATE
@@ -2600,6 +2587,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         WHEN HOUV.REGION_1 = 'TAMPS' THEN 'TAM'
                         WHEN HOUV.REGION_1 = 'CHIS' THEN 'CHP'
                         WHEN HOUV.REGION_1 = 'DF' THEN 'DIF'
+                        WHEN HOUV.REGION_1 = 'QROO' THEN 'ROO'
+                        WHEN HOUV.REGION_1 = 'TLAX' THEN 'TLA'
                         ELSE HOUV.REGION_1
                      END)                                                                           AS  NOM_ENTFED,
                     HAPD.NAME                                                                       AS  NOM_PUESTO, 
@@ -2613,6 +2602,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%GRATIFICACIÓN%'
                         THEN '99'
                         WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITO%'
+                        THEN '99'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%PTU%'
+                        THEN '99'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%AGUINALDO%'
+                        THEN '99'
+                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FONDO DE AHORRO%'
                         THEN '99'
                      END)                                                                           AS  NOM_FORPAG,
                     PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
@@ -2749,7 +2744,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                 PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID)
                             ELSE 1
                         END) <> 0
---                   AND PAPF.EMPLOYEE_NUMBER IN (1233)
+--                   AND PAPF.EMPLOYEE_NUMBER NOT IN (5646) -- PrBueba 17.05.30
                  GROUP BY PPF.PAYROLL_NAME,
                           FLV1.LOOKUP_CODE,
                           OI.ORG_INFORMATION2,
@@ -2904,7 +2899,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                                                 TO_CHAR((DETAIL(rowIndex).SUBTBR - (DETAIL(rowIndex).ISRRET + DETAIL(rowIndex).MONDET)), '9999990D99'),
                                                 DETAIL(rowIndex).NOM_NUMEMP,
                                                 DETAIL(rowIndex).NOM_CURP,
-                                                TO_CHAR(DETAIL(rowIndex).NOM_FECPAG, 'YYYY-MM-DD'),
+                                                TO_CHAR(SYSDATE, 'YYYY-MM-DD'),
                                                 TO_CHAR(DETAIL(rowIndex).NOM_FECINI, 'YYYY-MM-DD'),
                                                 TO_CHAR(DETAIL(rowIndex).NOM_FECFIN, 'YYYY-MM-DD'),
                                                 DETAIL(rowIndex).NOM_NUMSEG,
