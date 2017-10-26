@@ -1,6 +1,8 @@
 CREATE OR REPLACE PROCEDURE PAC_UPDATE_ACCOUNT_EDENRED_PRC(
             P_ERRBUF    OUT NOCOPY  VARCHAR2,
-            P_RETCODE   OUT NOCOPY  VARCHAR2
+            P_RETCODE   OUT NOCOPY  VARCHAR2,
+            P_UPDATE_MODE           VARCHAR2,
+            P_EFFECTIVE_DATE        VARCHAR2
 )
 IS
 
@@ -10,7 +12,7 @@ IS
     var_external_account_id             NUMBER;
     var_attribute1                      VARCHAR2(150);
     var_segment3                        VARCHAR2(150);
-    var_effective_date                  DATE;
+    var_effective_date                  DATE := TRUNC(TO_DATE(P_EFFECTIVE_DATE,'RRRR/MM/DD HH24:MI:SS'));
     
     p_comment_id                        NUMBER;
     p_external_account_id               NUMBER;
@@ -53,16 +55,14 @@ BEGIN
                    PPPM.OBJECT_VERSION_NUMBER,
                    PPPM.EXTERNAL_ACCOUNT_ID,
                    PPPM.ATTRIBUTE1,
-                   PEA.SEGMENT3,
-                   PPPM.EFFECTIVE_START_DATE
+                   PEA.SEGMENT3
               INTO
                    var_full_name,
                    var_personal_payment_method_id,
                    var_object_version_number,
                    var_external_account_id,
                    var_attribute1,
-                   var_segment3,
-                   var_effective_date
+                   var_segment3
               FROM PER_ALL_PEOPLE_F                 PAPF,
                    PER_ALL_ASSIGNMENTS_F            PAAF,
                    PAY_PERSONAL_PAYMENT_METHODS_F   PPPM,
@@ -95,7 +95,9 @@ BEGIN
                 
                 HR_PERSONAL_PAY_METHOD_API.UPDATE_PERSONAL_PAY_METHOD(p_validate => FALSE,
                                                                       p_effective_date => var_effective_date,
-                                                                      p_datetrack_update_mode => 'CORRECTION',
+                                                                      p_datetrack_update_mode => (CASE WHEN P_UPDATE_MODE = 'ACTUALIZACION' THEN 'UPDATE'
+                                                                                                       WHEN P_UPDATE_MODE = 'CORRECCION' THEN 'CORRECTION' 
+                                                                                                  END),
                                                                       p_personal_payment_method_id => var_personal_payment_method_id,
                                                                       p_object_version_number => var_object_version_number,
                                                                       p_comments => 'XXCALV - Actualización No Cuenta EDENRED CORRECTION' || SYSDATE,
@@ -109,7 +111,7 @@ BEGIN
                                                                          
                 EXECUTE IMMEDIATE 'COMMIT';
                 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, '         Estatus : CORREGIDO');
+                FND_FILE.PUT_LINE(FND_FILE.LOG, '         Estatus : ' || P_UPDATE_MODE);
                     
                 
             EXCEPTION 
