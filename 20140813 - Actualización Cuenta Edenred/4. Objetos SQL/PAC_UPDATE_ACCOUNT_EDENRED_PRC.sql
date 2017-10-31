@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE PAC_UPDATE_ACCOUNT_EDENRED_PRC(
+CREATE OR REPLACE PROCEDURE APPS.PAC_UPDATE_ACCOUNT_EDENRED_PRC(
             P_ERRBUF    OUT NOCOPY  VARCHAR2,
             P_RETCODE   OUT NOCOPY  VARCHAR2,
             P_UPDATE_MODE           VARCHAR2,
@@ -12,7 +12,7 @@ IS
     var_external_account_id             NUMBER;
     var_attribute1                      VARCHAR2(150);
     var_segment3                        VARCHAR2(150);
-    var_effective_date                  DATE := TRUNC(TO_DATE(P_EFFECTIVE_DATE,'RRRR/MM/DD HH24:MI:SS'));
+    var_effective_date                  DATE;
     
     p_comment_id                        NUMBER;
     p_external_account_id               NUMBER;
@@ -55,14 +55,19 @@ BEGIN
                    PPPM.OBJECT_VERSION_NUMBER,
                    PPPM.EXTERNAL_ACCOUNT_ID,
                    PPPM.ATTRIBUTE1,
-                   PEA.SEGMENT3
+                   PEA.SEGMENT3,
+                   CASE 
+                    WHEN P_UPDATE_MODE = 'CORRECCION' THEN PPPM.EFFECTIVE_START_DATE
+                    WHEN P_UPDATE_MODE = 'ACTUALIZACION' THEN TRUNC(TO_DATE(P_EFFECTIVE_DATE,'RRRR/MM/DD HH24:MI:SS'))
+                   END
               INTO
                    var_full_name,
                    var_personal_payment_method_id,
                    var_object_version_number,
                    var_external_account_id,
                    var_attribute1,
-                   var_segment3
+                   var_segment3,
+                   var_effective_date
               FROM PER_ALL_PEOPLE_F                 PAPF,
                    PER_ALL_ASSIGNMENTS_F            PAAF,
                    PAY_PERSONAL_PAYMENT_METHODS_F   PPPM,
