@@ -1112,13 +1112,13 @@ AS
 
 
 
-                  LN_LOAN_BALANCE := LN_LOAN_BALANCE - LN_PARTIAL_AMOUNT;
+                  LN_LOAN_BALANCE := LN_LOAN_BALANCE - TRUNC(LN_PARTIAL_AMOUNT,2);
                   LN_ACCRUED_PAYMENTS :=
-                     LN_ACCRUED_PAYMENTS + LN_PARTIAL_AMOUNT;
+                     LN_ACCRUED_PAYMENTS + TRUNC(LN_PARTIAL_AMOUNT,2);
                   LN_ACCRUED_INTEREST :=
-                     LN_ACCRUED_INTEREST + LN_PAYMENT_INTEREST;
+                     LN_ACCRUED_INTEREST + TRUNC(LN_PAYMENT_INTEREST,2);
                   LN_ACCRUED_CAPITAL :=
-                     LN_ACCRUED_CAPITAL + LN_CAPITAL_PAYMENT;
+                     LN_ACCRUED_CAPITAL + TRUNC(LN_CAPITAL_PAYMENT,2);
 
                   DBMS_OUTPUT.PUT_LINE (
                      ' PAGO TOTAL ACUMULADO: ' || LN_ACCRUED_PAYMENTS);
