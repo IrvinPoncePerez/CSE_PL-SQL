@@ -143,9 +143,9 @@ BEGIN
            VALUES (v_loan_id,                               --loan_id
                    autoloans.member_id,                     --member_id
                    v_loan_number,                           --loan_number
-                   autoloans.total_amount,                  --loan_total_amount
-                   autoloans.mandatory_loan_amount,         --loan_amount
-                   autoloans.interest_remaining,            --loan_interest_amount
+                   TRUNC(autoloans.total_amount,2),         --loan_total_amount
+                   TRUNC(autoloans.mandatory_loan_amount,2),--loan_amount
+                   TRUNC(autoloans.interest_remaining,2),   --loan_interest_amount
                    8,                                       --loan_interest_rate                                       
                    autoloans.term_periods,                  --term_periods
                    2,                                       --normal_interest_rate
@@ -154,10 +154,10 @@ BEGIN
                    TO_DATE(NULL),                           --payment_deadline
                    autoloans.period_type,                   --period_type
                    'ACTIVE',                                --loan_status_flag
-                   autoloans.total_amount,                  --loan_balance                                       
+                   TRUNC(autoloans.total_amount,2),         --loan_balance                                       
                    TO_DATE(NULL),                           --last_payment_date
-                   TO_CHAR(autoloans.total_amount/
-                   autoloans.term_periods),                 --attribute1 - partial_loan_amout
+                   TO_CHAR(TRUNC(autoloans.total_amount/
+                   autoloans.term_periods,2)),              --attribute1 - partial_loan_amout
                    NULL,                                    --attribute2 - loan_id refinanciamiento
                    NULL,                                    --attribute3 - check_loan_id (de tabla excel)
                    NULL,                                    --attribute4
@@ -201,7 +201,7 @@ BEGIN
 
         --Establece el saldo inicial de la cuenta del préstamo
         BEGIN            
-            atet_savings_bank_pkg.set_loan_balance(v_loan_id, autoloans.total_amount, autoloans.person_id);
+            atet_savings_bank_pkg.set_loan_balance(v_loan_id, TRUNC(autoloans.total_amount,2), autoloans.person_id);
             dbms_output.put_line('6');
         EXCEPTION WHEN others THEN
             dbms_output.put_line('Error en código de mandingo 2.');
