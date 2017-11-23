@@ -16,6 +16,11 @@ SELECT D.ABREVIATE_PERIOD_TYPE,
        D.EARNED_DATE,
        D.DEBIT_AMOUNT,
        D.CREDIT_AMOUNT,
+       D.PAYMENT_CAPITAL,
+       D.PAYMENT_INTEREST,
+       D.PAYMENT_INTEREST_LATE,
+       NVL(ASCI.CONDONED_INTEREST_AMOUNT,0) CONDONED_INTEREST_AMOUNT,
+       D.TRANSFERED_INTEREST,
        D.ACCOUNTED_FLAG
   FROM (
         SELECT 
@@ -36,8 +41,13 @@ SELECT D.ABREVIATE_PERIOD_TYPE,
                  ELSE LT.ELEMENT_NAME
                 END )                  AS  TRANSACTION_CODE,
                LT.ACCOUNTING_DATE      AS  EARNED_DATE,
+               LT.LOAN_ID,
                LT.DEBIT_AMOUNT,
                LT.CREDIT_AMOUNT,
+               LT.PAYMENT_CAPITAL,
+               LT.PAYMENT_INTEREST,
+               LT.PAYMENT_INTEREST_LATE,
+               LT.TRANSFERED_INTEREST,
                (CASE
                  WHEN LT.ACCOUNTED_FLAG = 'ACCOUNTED' THEN 'CONTABILIZADO'
                  ELSE 'PENDIENTE'
@@ -55,16 +65,30 @@ SELECT D.ABREVIATE_PERIOD_TYPE,
                        ASLT.ELEMENT_NAME
                       ,ASLT.DEBIT_AMOUNT
                       ,ASLT.CREDIT_AMOUNT
+                      ,NVL(ASLT.PAYMENT_CAPITAL, 0)       AS  PAYMENT_CAPITAL
+                      ,NVL(ASLT.PAYMENT_INTEREST, 0)      AS  PAYMENT_INTEREST
+                      ,NVL(ASLT.PAYMENT_INTEREST_LATE, 0) AS  PAYMENT_INTEREST_LATE
                       ,AXH.ACCOUNTING_DATE
                       ,ASLT.ACCOUNTED_FLAG
                       ,ASLT.LOAN_ID
                       ,ASLT.MEMBER_ID
                       ,ASLT.LOAN_TRANSACTION_ID
                       ,ASLT.MEMBER_ACCOUNT_ID
+                      ,(CASE
+                            WHEN ASLT.ELEMENT_NAME = 'APERTURA DE PRESTAMO'
+--                             AND AXH.EVENT_TYPE_CODE = 'LOAN_CREATION'
+--                             AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_CREATION'
+--                             AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
+                             AND ASL.ATTRIBUTE6 = 'TRANSFER_TO_GUARANTEES'
+                            THEN ASL.LOAN_INTEREST_AMOUNT
+                            ELSE 0 
+                        END)                              AS  TRANSFERED_INTEREST 
                   FROM ATET_XLA_HEADERS             AXH
                       ,ATET_XLA_LINES               AXL
                       ,ATET_SB_LOANS_TRANSACTIONS   ASLT
+                      ,ATET_SB_LOANS                ASL
                  WHERE 1 = 1
+                   AND ASLT.LOAN_ID = ASL.LOAN_ID
                    AND AXH.ACCOUNTING_DATE BETWEEN :CP_START_DATE
                                                AND :CP_END_DATE
                    AND AXL.HEADER_ID = AXH.HEADER_ID
@@ -165,12 +189,16 @@ UNION
                        ASLT.ELEMENT_NAME
                       ,ASLT.DEBIT_AMOUNT
                       ,ASLT.CREDIT_AMOUNT
+                      ,NVL(ASLT.PAYMENT_CAPITAL, 0)       AS  PAYMENT_CAPITAL
+                      ,NVL(ASLT.PAYMENT_INTEREST, 0)      AS  PAYMENT_INTEREST
+                      ,NVL(ASLT.PAYMENT_INTEREST_LATE, 0) AS  PAYMENT_INTEREST_LATE
                       ,AXH.ACCOUNTING_DATE
                       ,ASLT.ACCOUNTED_FLAG
                       ,ASLT.LOAN_ID
                       ,ASLT.MEMBER_ID
                       ,ASLT.LOAN_TRANSACTION_ID
                       ,ASLT.MEMBER_ACCOUNT_ID
+                      ,0                                  AS  TRANSFERED_INTEREST
                   FROM ATET_XLA_HEADERS             AXH
                       ,ATET_XLA_LINES               AXL
                       ,ATET_SB_LOANS                ASL
@@ -227,6 +255,9 @@ UNION
            AND LT.ACCOUNTING_DATE BETWEEN PPF.EFFECTIVE_START_DATE 
                                       AND PPF.EFFECTIVE_END_DATE
        ) D
+       LEFT JOIN    ATET_SB_CONDONED_INTEREST   ASCI
+         ON D.LOAN_ID = ASCI.LOAN_ID
+        AND D.TRANSACTION_CODE = 'LIQUIDACION DE PRESTAMO'
  WHERE 1 = 1
    AND APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(D.PAYROLL_NAME) = NVL(:P_PERIOD_TYPE, APPS.PAC_HR_PAY_PKG.GET_PERIOD_TYPE(D.PAYROLL_NAME))
    AND D.PAYROLL_ID = NVL(:P_PAYROLL_ID, D.PAYROLL_ID)
@@ -236,3 +267,5 @@ UNION
           D.PAYROLL_ID,
           D.EMPLOYEE_NUMBER,
           D.EARNED_DATE;
+          
+          
