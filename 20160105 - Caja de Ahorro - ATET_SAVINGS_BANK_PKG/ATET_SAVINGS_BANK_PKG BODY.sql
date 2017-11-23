@@ -2510,8 +2510,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                   FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
                  WHERE 1 = 1
                    AND ASPS.LOAN_ID = var_loan_id
-                   AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL')
-                   AND ASPS.ATTRIBUTE6 IS NULL;
+                   AND ASPS.STATUS_FLAG IN ('SKIP', 'PARTIAL', 'PENDING')
+                   AND ASPS.ATTRIBUTE6 NOT IN ('DISABILITIES');
                                
                 SELECT NVL(SUM(NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL)), 0)        AS  PAYMENT_CAPITAL,
                        NVL(SUM(NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST)), 0)       AS  PAYMENT_INTEREST,
@@ -4363,13 +4363,17 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
     PROCEDURE   SETTLEMENT_LOAN(
                     P_LOAN_ID           NUMBER)
     IS
-        var_loan_id             NUMBER;
-        var_member_id           NUMBER;
-        var_member_account_id   NUMBER;
-        var_person_id           NUMBER;
-        var_loan_balance        NUMBER;
-        var_user_id             NUMBER := FND_GLOBAL.USER_ID;
-        var_validate            NUMBER;
+        var_loan_id                 NUMBER;
+        var_member_id               NUMBER;
+        var_member_account_id       NUMBER;
+        var_person_id               NUMBER;
+        var_loan_balance            NUMBER;
+        var_user_id                 NUMBER := FND_GLOBAL.USER_ID;
+        var_validate                NUMBER;
+        
+        var_payment_capital         NUMBER;
+        var_payment_interest        NUMBER;
+        var_payment_interest_late   NUMBER;
     BEGIN
     
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'SETTLEMENT_LOAN(P_LOAN_ID => ' || P_LOAN_ID || ')');
@@ -4389,7 +4393,19 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
            AND ASL.MEMBER_ID = ASM.MEMBER_ID;
         
         var_member_account_id := GET_LOAN_MEMBER_ACCOUNT_ID(var_member_id, var_loan_id);
-                                                            
+                                             
+        
+        SELECT SUM(NVL(ASPS.OWED_CAPITAL, ASPS.PAYMENT_CAPITAL)),
+               SUM(NVL(ASPS.OWED_INTEREST, ASPS.PAYMENT_INTEREST)),
+               SUM(NVL(ASPS.OWED_INTEREST_LATE, ASPS.PAYMENT_INTEREST_LATE))
+          INTO var_payment_capital,
+               var_payment_interest,
+               var_payment_interest_late
+          FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+         WHERE 1 = 1
+           AND ASPS.LOAN_ID = var_loan_id
+           AND ASPS.STATUS_FLAG IN ('PARTIAL', 'SKIP', 'PENDING', 'EXPORTED');
+                       
                                                             
         UPDATE ATET_SB_PAYMENTS_SCHEDULE    ASPS
            SET ASPS.STATUS_FLAG = 'PAYED',
@@ -4413,6 +4429,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                 TRANSACTION_CODE,
                                                 DEBIT_AMOUNT,
                                                 CREDIT_AMOUNT,
+                                                PAYMENT_AMOUNT,
+                                                PAYMENT_CAPITAL,
+                                                PAYMENT_INTEREST,
+                                                PAYMENT_INTEREST_LATE,
                                                 ACCOUNTED_FLAG,
                                                 CREATION_DATE,
                                                 CREATED_BY,
@@ -4429,6 +4449,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                  'SETTLEMENT_LOAN',
                                                  0,
                                                  var_loan_balance,
+                                                 var_loan_balance,
+                                                 var_payment_capital,
+                                                 var_payment_interest,
+                                                 var_payment_interest_late,
                                                  'ACCOUNTED',
                                                  SYSDATE,
                                                  var_user_id,
