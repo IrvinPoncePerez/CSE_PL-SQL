@@ -465,7 +465,7 @@ PER_ALL_ASSIGNMENTS_F
                    AND PAAF.PERSON_ID = PAPF.PERSON_ID  
                    AND PPA.DATE_EARNED BETWEEN PAPF.EFFECTIVE_START_DATE
                                            AND PAPF.EFFECTIVE_END_DATE
-                   AND PAPF.PERSON_ID = :P_PERSON_ID
+                   AND PAPF.PERSON_ID = NVL(:P_PERSON_ID, PAPF.PERSON_ID)
                    AND PAA.RUN_TYPE_ID = PRTF.RUN_TYPE_ID
                    AND PPA.DATE_EARNED BETWEEN PRTF.EFFECTIVE_START_DATE
                                            AND PRTF.EFFECTIVE_END_DATE
