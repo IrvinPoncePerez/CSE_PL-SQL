@@ -1,3 +1,6 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+
+
 SELECT inv_item_id, 
                -----------------------------------------------------------------  
                -- Cambio solicitado por Ventas, quitar FRAGIL, dejar s?lo la F.
@@ -18,8 +21,12 @@ SELECT inv_item_id,
                SUM(ttl_isr_ret) ttl_isr_ret,
                SUM(ttl_iva_ret) ttl_iva_ret,                
                SUM(precio_neto) precio_neto,
-               tara * SUM(cantidad_secundaria) tara
+               tara * SUM(cantidad_secundaria) tara,
+               clave_unidad,
+               clave_prod
           FROM (SELECT lineas.line_id
+                       , lineas.clave_prod
+                       , lineas.clave_unidad
                        , lineas.linea
                        , lineas.tipo_linea
                        , lineas.inv_item_id
@@ -48,6 +55,15 @@ SELECT inv_item_id,
                        , lineas.fecha_pedimento
                        , lineas.aduana
                   FROM (SELECT   ctl.interface_line_attribute6 line_id
+                               , (CASE
+                                  WHEN CTL.INTERFACE_LINE_CONTEXT = 'CATEGORIAS_SAT'
+                                  THEN ctl.INTERFACE_LINE_ATTRIBUTE1
+                                  ELSE ''
+                                   END) clave_PROD
+                               , (CASE
+                                  WHEN CTL.INTERFACE_LINE_CONTEXT = 'CATEGORIAS_SAT'
+                                  THEN ctl.INTERFACE_LINE_ATTRIBUTE2
+                                   END) clave_UNIDAD
                                , ctl.line_number linea
                                , ctl.line_type tipo_linea
                                , ctl.inventory_item_id inv_item_id
@@ -63,7 +79,7 @@ SELECT inv_item_id,
                                , DECODE(ctl.quantity_invoiced,NULL,ABS(ctl.quantity_credited),ctl.quantity_invoiced) cantidad_real_trx
                                , NVL ( DECODE(ctl.quantity_invoiced, NULL, ABS(ctl.quantity_credited), ctl.quantity_invoiced ) ,1) cant_facturada 
                                , '' /*ctl.quantity_credited*/ cant_credito
-                               , NVL(ABS(ctl.unit_selling_price),0) precio_unitario
+                               , NVL(ABS(ctl.unit_selling_price),1) precio_unitario
 --                               , DECODE(UPPER(ctl.uom_code) 
 --                                         ,'CJ' ,'CA'
 --                                         ,'CJA','CA'
@@ -97,10 +113,13 @@ SELECT inv_item_id,
 --                                             FROM oe_order_lines_all oel 
 --                                            WHERE oel.line_id = ctl.interface_line_attribute6)
 --                                       ) uom
-                                 , (SELECT UPPER(oel.order_quantity_uom) 
+                                 , NVL((SELECT UPPER(oel.order_quantity_uom) 
                                              FROM oe_order_lines_all oel 
-                                            WHERE oel.line_id = ctl.interface_line_attribute6)
-                                   UOM
+                                            WHERE oel.line_id = ctl.interface_line_attribute6),
+                                       (SELECT DISTINCT UPPER(UOM_CODE)
+                                          FROM MTL_UNITS_OF_MEASURE_TL
+                                         WHERE DESCRIPTION = CTL.INTERFACE_LINE_ATTRIBUTE2))
+                                    UOM
 --                               , DECODE((SELECT UPPER(oel.ordered_quantity_uom2) 
 --                                           FROM oe_order_lines_all oel 
 --                                          WHERE oel.line_id = ctl.interface_line_attribute6 ) 
@@ -157,7 +176,7 @@ SELECT inv_item_id,
                                     WHEN 10238 THEN tax.extended_amount
                                     ELSE NULL
                                  END)) ttl_iva_ret
-                               , ABS(ROUND((NVL(  ( DECODE( ctl.quantity_invoiced, NULL, (ABS(ctl.quantity_credited) * ABS(ctl.unit_selling_price)), (ctl.quantity_invoiced * ctl.unit_selling_price) ) ) , ctl.extended_amount)),2))  precio_neto
+                               , ABS((NVL(  ( DECODE( ctl.quantity_invoiced, NULL, (ABS(ctl.quantity_credited) * ABS(ctl.unit_selling_price)), (ctl.quantity_invoiced * ctl.unit_selling_price) ) ) , ctl.extended_amount)))  precio_neto
                                , '' descuento
                                , '' /*ctl.sales_order*/ pedimento
                                , '' /*ctl.sales_order_date*/ fecha_pedimento
@@ -195,6 +214,8 @@ SELECT inv_item_id,
              , lineas.pedimento
              , lineas.fecha_pedimento
              , lineas.aduana
+             , lineas.clave_unidad
+             , lineas.clave_prod
              )
     GROUP BY inv_item_id, 
              tara,
@@ -202,5 +223,7 @@ SELECT inv_item_id,
              precio_unitario,  
              uom_line, 
              uom, 
-             uom2              
+             uom2,
+             clave_unidad,
+             clave_prod          
     ORDER BY 1;

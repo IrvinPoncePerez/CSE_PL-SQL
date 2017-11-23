@@ -1,140 +1,154 @@
-SELECT trax.doc_sequence_value factura --trax.trx_number factura
-                 , trax.customer_trx_id id_factura
-                 , trax.org_id org_id
-                 , trax.primary_salesrep_id
-                 , trax.cust_attribute1 numero_proveedor
-                 , trax.cust_attribute2 cadena
---                 , trax.cust_attribute12 gln
-                 , trax.cust_attribute12 gln
-                 , trax.cust_attribute4 no_tienda
-                 , trax.cust_attribute7 tipo_adenda
-                 , trax.ship_attribute1 ship_numero_proveedor
-                 , trax.ship_attribute2 ship_cadena
---                 , trax.ship_attribute3 ship_gln
-                 , DECODE(trax.cust_attribute7,'OXXO',DECODE(org_id,88,'10CTL',89,'10CTL','99AAA'),trax.ship_attribute3) ship_gln
-                 , trax.ship_attribute4 ship_no_tienda
-                 , trax.rac_bill_party_type tipo_de_cliente
-                 , ( SELECT seq.attribute1 /*,seq.name, seq.doc_sequence_id*/
-                       FROM fnd_document_sequences seq
-                      WHERE seq.table_name = 'RA_CUSTOMER_TRX_ALL' AND seq.doc_sequence_id = trax.doc_sequence_id ) serie
-                 , ( SELECT seq.attribute2 /*,seq.name, seq.doc_sequence_id*/
-                       FROM fnd_document_sequences seq
-                      WHERE seq.table_name = 'RA_CUSTOMER_TRX_ALL' AND seq.doc_sequence_id = trax.doc_sequence_id ) num_aprob
-                 , ( SELECT seq.attribute3 /*,seq.name, seq.doc_sequence_id*/
-                       FROM fnd_document_sequences seq
-                      WHERE seq.table_name = 'RA_CUSTOMER_TRX_ALL' AND seq.doc_sequence_id = trax.doc_sequence_id ) periodo_aprob          
-                 --, trax.ctt_type_name 
-                 --, trax.cust_trx_type_id tipo_transaccion
-                 --, trax.bs_batch_source_name fuente
+ALTER SESSION SET CURRENT_SCHEMA=APPS;
+
+
+
+
+
+            SELECT TRAX.DOC_SEQUENCE_VALUE                                                  FACTURA
+                 , TRAX.CUSTOMER_TRX_ID                                                     ID_FACTURA
+                 , TRAX.ORG_ID                                                              ORG_ID
+                 , TRAX.PRIMARY_SALESREP_ID
+                 , TRAX.CUST_ATTRIBUTE1                                                     NUMERO_PROVEEDOR
+                 , TRAX.CUST_ATTRIBUTE2                                                     CADENA
+                 , TRAX.CUST_ATTRIBUTE12                                                    GLN
+                 , TRAX.CUST_ATTRIBUTE4                                                     NO_TIENDA
+                 , TRAX.CUST_ATTRIBUTE7                                                     TIPO_ADENDA
+                 , TRAX.SHIP_ATTRIBUTE1                                                     SHIP_NUMERO_PROVEEDOR
+                 , TRAX.SHIP_ATTRIBUTE2                                                     SHIP_CADENA
+                 , DECODE(TRAX.CUST_ATTRIBUTE7,
+                          'OXXO', DECODE(ORG_ID,
+                                         88, '10CTL',
+                                         89, '10CTL',
+                                         '99AAA'),
+                          TRAX.SHIP_ATTRIBUTE3)                                             SHIP_GLN
+                 , TRAX.SHIP_ATTRIBUTE4                                                     SHIP_NO_TIENDA
+                 , TRAX.RAC_BILL_PARTY_TYPE                                                 TIPO_DE_CLIENTE
+                 , (SELECT SEQ.ATTRIBUTE1 
+                      FROM FND_DOCUMENT_SEQUENCES SEQ
+                     WHERE SEQ.TABLE_NAME = 'RA_CUSTOMER_TRX_ALL' 
+                       AND SEQ.DOC_SEQUENCE_ID = TRAX.DOC_SEQUENCE_ID)                      SERIE
+                 , (SELECT SEQ.ATTRIBUTE2 
+                      FROM FND_DOCUMENT_SEQUENCES SEQ
+                     WHERE SEQ.TABLE_NAME = 'RA_CUSTOMER_TRX_ALL' 
+                       AND SEQ.DOC_SEQUENCE_ID = TRAX.DOC_SEQUENCE_ID)                      NUM_APROB
+                 , (SELECT SEQ.ATTRIBUTE3 
+                      FROM FND_DOCUMENT_SEQUENCES SEQ
+                     WHERE SEQ.TABLE_NAME = 'RA_CUSTOMER_TRX_ALL' 
+                       AND SEQ.DOC_SEQUENCE_ID = TRAX.DOC_SEQUENCE_ID)                      PERIODO_APROB          
                  , CASE
-                      WHEN UPPER ( trax.ctt_class ) LIKE 'INV' THEN 'FACTURA'
-                      WHEN UPPER ( trax.ctt_class ) LIKE 'CM'  THEN 'NOTA DE CREDITO'
-                      WHEN UPPER ( trax.ctt_class ) LIKE 'DM'  THEN 'NOTA DE CARGO'
-                   END fuente
+                      WHEN UPPER ( TRAX.CTT_CLASS ) LIKE 'INV' 
+                      THEN 'FACTURA'
+                      WHEN UPPER ( TRAX.CTT_CLASS ) LIKE 'CM'  
+                      THEN 'NOTA DE CREDITO'
+                      WHEN UPPER ( TRAX.CTT_CLASS ) LIKE 'DM'  
+                      THEN 'NOTA DE CARGO'
+                   END                                                                      FUENTE
                  , CASE
-                      WHEN UPPER ( trax.ctt_class ) LIKE 'INV' THEN 'I'
-                      WHEN UPPER ( trax.ctt_class ) LIKE 'CM'  THEN 'E'
-                      WHEN UPPER ( trax.ctt_class ) LIKE 'DM'  THEN 'I'
-                   END tipo_transaccion1
-                 , TO_CHAR(trax.trx_date,'DD-MM-YYYY') fechar
-                 , TO_CHAR(trax.trx_date,'YYYY-MM-DD')||'T'||TO_CHAR(SYSDATE,'HH24:MI:SS') fecha_factura --to_char(trax.trx_date,'HH:MI:SS') fecha_factura
-                 , TO_CHAR(trax.trx_date,'YYYY-MM-DD')||'T'||TO_CHAR(SYSDATE,'HH24:MI:SS') feccon --'00:00:00' feccon
-                 , TO_CHAR(trax.trx_date,'yyyy-mm-dd') fecha_factura_oxxo
-                 , TO_CHAR(trax.trx_date,'yyyy-mm-dd')||'T'||TO_CHAR(SYSDATE,'HH24:MI:SS') fecha_factura_rem --to_char(trax.trx_date,'hh:mi:ss') fecha_factura_rem
-                 , trax.organization_name_phonetic cliente_matriz
-                 , trax.rac_bill_party_id no_cliente
-                 , trax.rac_bill_to_customer_name nombre_cliente
-                 --, trax.rac_bill_party_type tipo_persona
-                 , 'CUSTOMER' tipo_persona
-                 , trax.bill_to_taxpayer_id rfc
-                 , trax.rac_bill_party_tax_reference rfc_extranjeros
-                 , trax.raa_bill_to_address1 calle
-                 , REPLACE(trax.raa_bill_to_address2,'N/A','') no_exterior
-                 , REPLACE(trax.raa_bill_to_address3_db,'N/A','') no_interior             
-                 , REPLACE(trax.raa_bill_to_address4,'N/A','') colonia
-                 , LPAD(trax.raa_bill_to_postal_code,5,'0') codigo_postal
-                 , trax.raa_bill_to_city ciudad
-                 , DECODE(trax.raa_bill_to_state,'DISTRITO FEDERAL','DF',trax.raa_bill_to_state) estado
-                 , REPLACE(trax.ft_bill_to_country,'?','E') pais
-                 --, decode(trax.bill_to_taxpayer_id,'UNA2907227Y5','Cheque Nominativo - Banamex, Cuenta: 1830','TSO991022PB6','NO IDENTIFICADO','PAGO EN UNA SOLA EXHIBICION') metodo_pago
-                 , 'PAGO EN UNA SOLA EXHIBICION' forma_pago
-                 , DECODE(trax.rat_term_name,'0',1,2) condicion_pago
-                 , NVL(TRIM(REPLACE(REPLACE(REPLACE(trax.rat_term_name, 'INMEDIATO', '' ),'DIAS',''),'CONTADO','')),0) dias_pago
-                 , trax.invoice_currency_code tipo_moneda
-                 --, decode(trax.invoice_currency_code,'MXN',0,1) tipo_cambio --paco
-                 , DECODE(trax.invoice_currency_code,'MXN',1,exchange_rate) tipo_cambio
-                 , DECODE(trax.invoice_currency_code,'MXN',0,1) sw_tc
-                 , trax.primary_salesrep_id no_vendedor
-                 , trax.rac_ship_to_customer_id no_comprador
-                 --, trax.ship_to_customer_id ship_from
-                 --, trax.legal_entity_id ship_from
-                 , (SELECT attribute2 
-                      FROM hr_all_organization_units 
-                     WHERE organization_id = :p_org_id_h) ship_from 
-                 , trax.rac_ship_to_customer_id ship_to
-                 , trax.rac_ship_to_customer_id no_receptor
-                 , NVL(SUBSTR(trax.rac_ship_to_customer_name,1, INSTR(trax.rac_ship_to_customer_name, '(')-1),trax.rac_ship_to_customer_name) nombre_receptor
-                 --, trax.rac_ship_to_customer_name nombre_receptor
-                 , 'CUSTOMER' tipo_persona_recept
-                 , trax.ship_to_taxpayer_id rfc_receptor
-                 , trax.raa_ship_to_address1 direccion_receptor1
-                 --, (SELECT DECODE(oe.cust_po_number,'1',NULL,'0',NULL, DECODE(trax.cust_attribute7, 'WALMART', oe.cust_po_number, LPAD(oe.cust_po_number,10,'0')))
-                 , (SELECT DECODE(trax.cust_attribute7, 'WALMART', DECODE(oe.cust_po_number, '0', NULL, oe.cust_po_number)
-                                                      , 'SORIANA', DECODE(oe.cust_po_number, '0', '0' , oe.cust_po_number)
-                                                      , LPAD(oe.cust_po_number, 10, '0'))
-                      FROM oe_order_headers_all oe 
-                     WHERE oe.order_number = NVL(trax.ct_reference,0) 
+                      WHEN UPPER ( TRAX.CTT_CLASS ) LIKE 'INV' 
+                      THEN 'I'
+                      WHEN UPPER ( TRAX.CTT_CLASS ) LIKE 'CM'  
+                      THEN 'E'
+                      WHEN UPPER ( TRAX.CTT_CLASS ) LIKE 'DM'  
+                      THEN 'I'
+                   END                                                                      TIPO_TRANSACCION1
+                 , TO_CHAR(TRAX.TRX_DATE,'DD-MM-YYYY')                                      FECHAR
+                 , TO_CHAR(TRAX.TRX_DATE,'YYYY-MM-DD')||'T'||TO_CHAR(SYSDATE,'HH24:MI:SS')  FECHA_FACTURA
+                 , TO_CHAR(TRAX.TRX_DATE,'YYYY-MM-DD')||'T'||TO_CHAR(SYSDATE,'HH24:MI:SS')  FECCON
+                 , TO_CHAR(TRAX.TRX_DATE,'YYYY-MM-DD')                                      FECHA_FACTURA_OXXO
+                 , TO_CHAR(TRAX.TRX_DATE,'YYYY-MM-DD')||'T'||TO_CHAR(SYSDATE,'HH24:MI:SS')  FECHA_FACTURA_REM
+                 , TRAX.ORGANIZATION_NAME_PHONETIC                                          CLIENTE_MATRIZ
+                 , TRAX.RAC_BILL_PARTY_ID                                                   NO_CLIENTE
+                 , TRAX.RAC_BILL_TO_CUSTOMER_NAME                                           NOMBRE_CLIENTE
+                 , 'CUSTOMER'                                                               TIPO_PERSONA
+                 , TRAX.BILL_TO_TAXPAYER_ID                                                 RFC
+                 , TRAX.RAC_BILL_PARTY_TAX_REFERENCE                                        RFC_EXTRANJEROS
+                 , TRAX.RAA_BILL_TO_ADDRESS1                                                CALLE
+                 , REPLACE(TRAX.RAA_BILL_TO_ADDRESS2,'N/A','')                              NO_EXTERIOR
+                 , REPLACE(TRAX.RAA_BILL_TO_ADDRESS3_DB,'N/A','')                           NO_INTERIOR             
+                 , REPLACE(TRAX.RAA_BILL_TO_ADDRESS4,'N/A','')                              COLONIA
+                 , LPAD(TRAX.RAA_BILL_TO_POSTAL_CODE,5,'0')                                 CODIGO_POSTAL
+                 , TRAX.RAA_BILL_TO_CITY                                                    CIUDAD
+                 , DECODE(TRAX.RAA_BILL_TO_STATE,
+                          'DISTRITO FEDERAL', 'DF',
+                          TRAX.RAA_BILL_TO_STATE)                                           ESTADO
+                 , REPLACE(TRAX.FT_BILL_TO_COUNTRY,'?','E')                                 PAIS
+                 , 'PAGO EN UNA SOLA EXHIBICION'                                            FORMA_PAGO
+                 , DECODE(TRAX.RAT_TERM_NAME,'0',1,2)                                       CONDICION_PAGO
+                 , NVL(TRIM(REPLACE(REPLACE(REPLACE(TRAX.RAT_TERM_NAME, 
+                                                    'INMEDIATO', '' ),
+                                            'DIAS',''),
+                                    'CONTADO','')),0)                                       DIAS_PAGO
+                 , TRAX.INVOICE_CURRENCY_CODE                                               TIPO_MONEDA
+                 , DECODE(TRAX.INVOICE_CURRENCY_CODE,'MXN',1,EXCHANGE_RATE)                 TIPO_CAMBIO
+                 , DECODE(TRAX.INVOICE_CURRENCY_CODE,'MXN',0,1)                             SW_TC
+                 , TRAX.PRIMARY_SALESREP_ID                                                 NO_VENDEDOR
+                 , TRAX.RAC_SHIP_TO_CUSTOMER_ID                                             NO_COMPRADOR
+                 , (SELECT ATTRIBUTE2 
+                      FROM HR_ALL_ORGANIZATION_UNITS 
+                     WHERE ORGANIZATION_ID = :P_ORG_ID_H) SHIP_FROM 
+                 , TRAX.RAC_SHIP_TO_CUSTOMER_ID SHIP_TO
+                 , TRAX.RAC_SHIP_TO_CUSTOMER_ID NO_RECEPTOR
+                 , NVL(SUBSTR(TRAX.RAC_SHIP_TO_CUSTOMER_NAME,1, INSTR(TRAX.RAC_SHIP_TO_CUSTOMER_NAME, '(')-1),TRAX.RAC_SHIP_TO_CUSTOMER_NAME) NOMBRE_RECEPTOR
+                
+                 , 'CUSTOMER' TIPO_PERSONA_RECEPT
+                 , TRAX.SHIP_TO_TAXPAYER_ID RFC_RECEPTOR
+                 , TRAX.RAA_SHIP_TO_ADDRESS1 DIRECCION_RECEPTOR1
+                
+                 , (SELECT DECODE(TRAX.CUST_ATTRIBUTE7, 'WALMART', DECODE(OE.CUST_PO_NUMBER, '0', NULL, OE.CUST_PO_NUMBER)
+                                                      , 'SORIANA', DECODE(OE.CUST_PO_NUMBER, '0', '0' , OE.CUST_PO_NUMBER)
+                                                      , LPAD(OE.CUST_PO_NUMBER, 10, '0'))
+                      FROM OE_ORDER_HEADERS_ALL OE 
+                     WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                        AND  ROWNUM = 1 
-                       AND oe.org_id = :p_org_id_h) no_order_compra 
-                 --Se agregaron 3 campos adicionales para colocarlos en la descripci?n de las lineas para controlar los pedimentos
-                 , (SELECT TO_DATE(attribute9,'YYYY-MM-DD HH24:MI:SS')
-                      FROM oe_order_headers_all oe 
-                     WHERE oe.order_number = NVL(trax.ct_reference,0) 
+                       AND OE.ORG_ID = :P_ORG_ID_H) NO_ORDER_COMPRA 
+                
+                 , (SELECT TO_DATE(ATTRIBUTE9,'YYYY-MM-DD HH24:MI:SS')
+                      FROM OE_ORDER_HEADERS_ALL OE 
+                     WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                        AND  ROWNUM = 1 
-                       AND oe.org_id = :p_org_id_h) fech_ped
-                 , (SELECT attribute8 
-                      FROM oe_order_headers_all oe 
-                     WHERE oe.order_number = NVL(trax.ct_reference,0) 
+                       AND OE.ORG_ID = :P_ORG_ID_H) FECH_PED
+                 , (SELECT ATTRIBUTE8 
+                      FROM OE_ORDER_HEADERS_ALL OE 
+                     WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                        AND  ROWNUM = 1 
-                       AND oe.org_id = :p_org_id_h) num_ped
-                 , (SELECT attribute12
-                      FROM oe_order_headers_all oe 
-                     WHERE oe.order_number = NVL(trax.ct_reference,0) 
+                       AND OE.ORG_ID = :P_ORG_ID_H) NUM_PED
+                 , (SELECT ATTRIBUTE12
+                      FROM OE_ORDER_HEADERS_ALL OE 
+                     WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                        AND  ROWNUM = 1 
-                       AND oe.org_id = :p_org_id_h) aduana
-                 -----------------------------------------------------------------------------------------------------------------      
-                 , trax.raa_ship_to_address2 direccion_receptor2
-                 , REPLACE(trax.raa_ship_to_address3_db,'N/A','') direccion_receptor3
-                 , REPLACE(trax.raa_ship_to_address3,'N/A','') direccion_receptor4             
-                 , LPAD(trax.raa_ship_to_postal_code,5,'0') codigo_postal_recept
-                 , trax.raa_ship_to_city ciudad_receptor
-                 , DECODE(trax.raa_ship_to_state,'DISTRITO FEDERAL','DF',trax.raa_ship_to_state) estado_receptor
-                 , REPLACE(DECODE(trax.raa_ship_to_county,'MX','MEXICO',trax.raa_ship_to_county),'?','E') pais_receptor
-                 , email
-                 , NVL(trax.ct_reference,0) orden_compra
-                 , trax.interface_header_attribute1 folio_pedido
-                 , TO_CHAR(trax.gd_gl_date,'YYYY-MM-DD') fecha_compra
-                 , 1 status_factura
-                 --, to_char(trax.term_due_date,'dd/mm/yyyy') fecha_vencimiento
-                 , TO_CHAR(trax.trx_date + ((SELECT NAME 
-                                               FROM ra_terms_tl 
-                                              WHERE term_id = trax.term_id 
-                                                AND LANGUAGE = 'ESA'))  ,'dd/mm/yyyy hh:mi') fecha_vencimiento
-                 , TO_CHAR(trax.ship_date_actual,'yyyy-mm-dd')||'T'||TO_CHAR(trax.ship_date_actual,'hh24:mi:ss') ship_date_actual
-                 , trax.customer_class_code
-                 , trax.cust_trx_type_id
-                 , trax.attribute_category
-              FROM ra_customer_trx_partial_cfd trax
+                       AND OE.ORG_ID = :P_ORG_ID_H) ADUANA
+                
+                 , TRAX.RAA_SHIP_TO_ADDRESS2 DIRECCION_RECEPTOR2
+                 , REPLACE(TRAX.RAA_SHIP_TO_ADDRESS3_DB,'N/A','') DIRECCION_RECEPTOR3
+                 , REPLACE(TRAX.RAA_SHIP_TO_ADDRESS3,'N/A','') DIRECCION_RECEPTOR4             
+                 , LPAD(TRAX.RAA_SHIP_TO_POSTAL_CODE,5,'0') CODIGO_POSTAL_RECEPT
+                 , TRAX.RAA_SHIP_TO_CITY CIUDAD_RECEPTOR
+                 , DECODE(TRAX.RAA_SHIP_TO_STATE,'DISTRITO FEDERAL','DF',TRAX.RAA_SHIP_TO_STATE) ESTADO_RECEPTOR
+                 , REPLACE(DECODE(TRAX.RAA_SHIP_TO_COUNTY,'MX','MEXICO',TRAX.RAA_SHIP_TO_COUNTY),'?','E') PAIS_RECEPTOR
+                 , EMAIL
+                 , NVL(TRAX.CT_REFERENCE,0) ORDEN_COMPRA
+                 , TRAX.INTERFACE_HEADER_ATTRIBUTE1 FOLIO_PEDIDO
+                 , TO_CHAR(TRAX.GD_GL_DATE,'YYYY-MM-DD') FECHA_COMPRA
+                 , 1 STATUS_FACTURA
+                
+                 , TO_CHAR(TRAX.TRX_DATE + ((SELECT NAME 
+                                               FROM RA_TERMS_TL 
+                                              WHERE TERM_ID = TRAX.TERM_ID 
+                                                AND LANGUAGE = 'ESA'))  ,'dd/mm/yyyy hh:mi') FECHA_VENCIMIENTO
+                 , TO_CHAR(TRAX.SHIP_DATE_ACTUAL,'yyyy-mm-dd')||'T'||TO_CHAR(TRAX.SHIP_DATE_ACTUAL,'hh24:mi:ss') SHIP_DATE_ACTUAL
+                 , TRAX.CUSTOMER_CLASS_CODE
+                 , TRAX.CUST_TRX_TYPE_ID
+                 , TRAX.ATTRIBUTE_CATEGORY
+                 , TRAX.ATTRIBUTE8
+              FROM RA_CUSTOMER_TRX_PARTIAL_CFD TRAX
              WHERE 1=1
-               --and trax.customer_trx_id in (104900,105400,105900,106000)
-               AND trax.org_id = :p_org_id_h
-               AND trax.cust_trx_type_id = :p_origen_h
-               AND trax.ctt_class = NVL (:p_tipo_doc_h,trax.ctt_class)
---               AND to_number(trax.trx_number) BETWEEN nvl ( p_doc_ini_h, to_number(trax.trx_number)) 
---                                                  AND nvl ( p_doc_fin_h, to_number(trax.trx_number))
-               AND TO_NUMBER(trax.doc_sequence_value) BETWEEN NVL ( :p_doc_ini_h, TO_NUMBER(trax.doc_sequence_value))
-                                                  AND NVL ( :p_doc_fin_h, TO_NUMBER(trax.doc_sequence_value))
-               AND TRUNC(trax.trx_date) BETWEEN TRUNC(NVL(TO_DATE(:p_fecha_ini_h,'RRRR/MM/DD HH24:MI:SS'),trax.trx_date))
-                                            AND TRUNC(NVL(TO_DATE(:p_fecha_fin_h,'RRRR/MM/DD HH24:MI:SS'),trax.trx_date))           
-             --ORDER BY to_number(trax.trx_number);
-             ORDER BY TO_NUMBER(trax.doc_sequence_value);
+              
+               AND TRAX.ORG_ID = :P_ORG_ID_H
+               AND TRAX.CUST_TRX_TYPE_ID = :P_ORIGEN_H
+               AND TRAX.CTT_CLASS = NVL (:P_TIPO_DOC_H,TRAX.CTT_CLASS)
+               AND TO_NUMBER(TRAX.DOC_SEQUENCE_VALUE) BETWEEN NVL ( :P_DOC_INI_H, TO_NUMBER(TRAX.DOC_SEQUENCE_VALUE))
+                                                  AND NVL ( :P_DOC_FIN_H, TO_NUMBER(TRAX.DOC_SEQUENCE_VALUE))
+               AND TRUNC(TRAX.TRX_DATE) BETWEEN TRUNC(NVL(TO_DATE(:P_FECHA_INI_H,'RRRR/MM/DD HH24:MI:SS'),TRAX.TRX_DATE))
+                                            AND TRUNC(NVL(TO_DATE(:P_FECHA_FIN_H,'RRRR/MM/DD HH24:MI:SS'),TRAX.TRX_DATE))           
+            
+             ORDER BY TO_NUMBER(TRAX.DOC_SEQUENCE_VALUE);
