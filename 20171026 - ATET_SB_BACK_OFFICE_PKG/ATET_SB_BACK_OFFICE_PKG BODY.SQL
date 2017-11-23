@@ -3360,7 +3360,8 @@ AS
                                              CREATION_DATE,
                                              LAST_UPDATE_DATE,
                                              CREATED_BY,
-                                             LAST_UPDATED_BY)
+                                             LAST_UPDATED_BY,
+                                             ATTRIBUTE6)
                        VALUES (
                                  LN_NEW_LOAN_ID,
                                  LV_ENDORSEMENTS.MEMBER_ENDORSEMENT_ID,
@@ -3399,7 +3400,8 @@ AS
                                  SYSDATE,
                                  SYSDATE,
                                  FND_GLOBAL.USER_ID,
-                                 FND_GLOBAL.USER_ID);
+                                 FND_GLOBAL.USER_ID,
+                                 'TRANSFER_TO_GUARANTEES');
 
                   BEGIN
                      SELECT PERSON_ID
@@ -3433,6 +3435,7 @@ AS
                   ATET_SB_BACK_OFFICE_PKG.CREATE_PAYMENTS_SCHEDULE (
                      LN_NEW_LOAN_ID,
                      LD_PAYMENT_DEADLINE);
+                     
 
                   UPDATE ATET_SB_LOANS
                      SET PAYMENT_DEADLINE = LD_PAYMENT_DEADLINE
