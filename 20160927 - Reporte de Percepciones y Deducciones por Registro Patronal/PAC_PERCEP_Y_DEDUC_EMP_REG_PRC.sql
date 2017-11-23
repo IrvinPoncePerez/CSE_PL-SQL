@@ -46,7 +46,8 @@ IS
                    SUM(PREMIO_PUNTUALIDAD_EXE) AS PREMIO_PUNTUALIDAD_EXE,
                    SUM(BONO_PRODUCTIVIDAD)   AS BONO_PRODUCTIVIDAD,  
                    SUM(GRATIFICACION)        AS GRATIFICACION,
-                   SUM(AYUDA_ESCOLAR)        AS AYUDA_ESCOLAR,       
+                   SUM(AYUDA_ESCOLAR)        AS AYUDA_ESCOLAR,  
+                   SUM(INDEMNIZACION)        AS INDEMNIZACION,     
                    SUM(GRATIFICACION_ESPECIAL) AS GRATIFICACION_ESPECIAL,
                    SUM(SUBSIDIO_EMPLEO)      AS SUBSIDIO_EMPLEO,     
                    SUM(COMPENSACION)         AS COMPENSACION,        
@@ -172,6 +173,7 @@ IS
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P023_BONO_PRODUCTIVIDAD',  'Pay Value'),   '0')    AS  BONO_PRODUCTIVIDAD,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P024_GRATIFICACION',       'Pay Value'),   '0')    AS  GRATIFICACION,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P025_AYUDA_ESCOLAR',       'Pay Value'),   '0')    AS  AYUDA_ESCOLAR,
+                           NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P026_INDEMNIZACION',       'Pay Value'),   '0')    AS  INDEMNIZACION,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P027_GRATIFIC_ESP',        'Pay Value'),   '0')    AS  GRATIFICACION_ESPECIAL, --P027_GRATIFICACION_ESP
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P032_SUBSIDIO_PARA_EMPLEO','Pay Value'),   '0')    AS  SUBSIDIO_EMPLEO,
                            NVL(PAC_RESULT_VALUES_PKG.GET_EARNING_VALUE(PAA.ASSIGNMENT_ACTION_ID,    'P035_COMPENSACION',        'Pay Value'),   '0')    AS  COMPENSACION, 
@@ -436,6 +438,7 @@ BEGIN
                     'BONO PRODUCTIVIDAD,'       ||
                     'GRATIFICACION,'            ||
                     'AYUDA ESCOLAR,'            ||
+                    'INDEMNIZACION,'            ||
                     'GRATIFICACION ESPECIAL,'   ||
                     'SUBSIDIO PARA EL EMPLEO,'  ||
                     'COMPENSACION,'             ||
@@ -546,6 +549,7 @@ BEGIN
                                DETAIL(rowIndex).BONO_PRODUCTIVIDAD      || ',' ||
                                DETAIL(rowIndex).GRATIFICACION           || ',' ||
                                DETAIL(rowIndex).AYUDA_ESCOLAR           || ',' ||
+                               DETAIL(rowIndex).INDEMNIZACION           || ',' ||
                                DETAIL(rowIndex).GRATIFICACION_ESPECIAL  || ',' ||
                                DETAIL(rowIndex).SUBSIDIO_EMPLEO         || ',' ||
                                DETAIL(rowIndex).COMPENSACION            || ',' ||
