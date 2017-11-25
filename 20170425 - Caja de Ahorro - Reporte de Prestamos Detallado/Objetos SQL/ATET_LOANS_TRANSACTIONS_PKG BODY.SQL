@@ -156,7 +156,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_LOANS_TRANSACTIONS_PKG IS
                                   ,'LOAN_PREPAID'
                                   ,'PAYROLL_LOANS'
                                   ,'ENDORSEMENT_LOAN_CREATION'
-                                  ,'REFINANCED_LOAN_CREATION')
+                                  ,'REFINANCED_LOAN_CREATION'
+                                  ,'REPAYMENT_LOAN')
                            AND AXL.SOURCE_ID = (CASE
                                                     WHEN AXH.ENTITY_CODE = 'LOANS'
                                                      AND AXH.EVENT_TYPE_CODE = 'LOAN_CREATION'
@@ -188,6 +189,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_LOANS_TRANSACTIONS_PKG IS
                                                      AND AXL.ACCOUNTING_CLASS_CODE = 'REFINANCED_LOAN_CREATION'
                                                      AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
                                                         THEN ASLT.LOAN_ID
+                                                    WHEN AXH.ENTITY_CODE = 'LOANS'
+                                                     AND AXH.EVENT_TYPE_CODE = 'REPAYMENT_LOAN'
+                                                     AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_CREATION'
+                                                     AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
+                                                        THEN ASLT.LOAN_ID
+                                                    WHEN AXH.ENTITY_CODE = 'LOANS'
+                                                     AND AXH.EVENT_TYPE_CODE = 'REPAYMENT_LOAN'
+                                                     AND AXL.ACCOUNTING_CLASS_CODE = 'REPAYMENT_LOAN'
+                                                     AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS_TRANSACTIONS'
+                                                        THEN ASLT.LOAN_TRANSACTION_ID
                                                 END)
                            AND ASLT.TRANSACTION_CODE = (CASE
                                                             WHEN AXH.ENTITY_CODE = 'LOANS'
@@ -220,6 +231,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_LOANS_TRANSACTIONS_PKG IS
                                                              AND AXL.ACCOUNTING_CLASS_CODE = 'REFINANCED_LOAN_CREATION'
                                                              AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
                                                                  THEN 'OPENING'
+                                                            WHEN AXH.ENTITY_CODE = 'LOANS'
+                                                             AND AXH.EVENT_TYPE_CODE = 'REPAYMENT_LOAN'
+                                                             AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_CREATION'
+                                                             AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
+                                                                 THEN 'OPENING'
+                                                            WHEN AXH.ENTITY_CODE = 'LOANS'
+                                                             AND AXH.EVENT_TYPE_CODE = 'REPAYMENT_LOAN'
+                                                             AND AXL.ACCOUNTING_CLASS_CODE = 'REPAYMENT_LOAN'
+                                                             AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS_TRANSACTIONS'
+                                                                 THEN 'REPAYMENT_LOAN'
                                                         END)
         UNION
                         SELECT 
