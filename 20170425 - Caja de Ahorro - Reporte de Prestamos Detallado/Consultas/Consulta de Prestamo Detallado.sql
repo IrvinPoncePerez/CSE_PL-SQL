@@ -319,21 +319,17 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                  AND AXH.HEADER_ID = AXL.HEADER_ID
                  AND AXH.ACCOUNTING_DATE BETWEEN :P_START_DATE
                                              AND :P_END_DATE
-                 AND AXL.CODE_COMBINATION_ID IN (634166)
-                 AND (AXL.ACCOUNTED_CR = 3000.03
-                   OR AXL.ACCOUNTED_DR = 3000.03);
+                 AND AXL.CODE_COMBINATION_ID IN (634166);
                   
                  
-          
---          ATET_XLA_HEADERS
---        ATET_SB_ACCOUNT_MAPPING
-          
-          
-          SELECT *
-            FROM ATET_SB_MEMBERS
-           WHERE EMPLOYEE_NUMBER = 1218;
-           
-           
-           SELECT *
-             FROM ATET_SB_LOANS_TRANSACTIONS
-            WHERE MEMBER_ID = 2680;
+          SELECT GH.JE_HEADER_ID,
+                 GH.NAME,
+                 GL.ACCOUNTED_DR,
+                 GL.ACCOUNTED_CR
+            FROM GL_JE_HEADERS  GH,
+                 GL_JE_LINES    GL
+           WHERE 1 = 1
+             AND GH.JE_HEADER_ID = GL.JE_HEADER_ID
+             AND GH.PERIOD_NAME = 'OCT-17'
+             AND GL.CODE_COMBINATION_ID = 634166  
+             AND GH.LEDGER_ID = 2084
