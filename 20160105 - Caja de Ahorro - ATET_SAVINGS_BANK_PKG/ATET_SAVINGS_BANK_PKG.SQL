@@ -287,6 +287,7 @@ CREATE OR REPLACE PACKAGE APPS.ATET_SAVINGS_BANK_PKG IS
                     P_RETCODE        OUT NOCOPY VARCHAR2,
                     P_MEMBER_ID                 NUMBER,
                     P_LOAN_ID                   NUMBER,
+                    P_PAYMENT_AMOUNT            NUMBER,
                     P_BONUS_PERCENTAGE          NUMBER,
                     P_BONUS_AMOUNT              NUMBER,
                     P_IS_SAVING_RETIREMENT      VARCHAR2,
