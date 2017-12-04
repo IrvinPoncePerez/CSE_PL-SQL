@@ -146,7 +146,21 @@ SELECT ASMA.*
    AND ASM.SAVING_BANK_ID = 2
    AND ASM.MEMBER_ID = ASMA.MEMBER_ID
    AND FINAL_BALANCE < 2
-   AND FINAL_BALANCE > 0
+   AND FINAL_BALANCE > 0;
    
    
    
+   
+   
+
+/****************************************************************************************/
+/*          CONSULTA DE PRESTAMOS ACTIVOS SIN SALDO                                     */
+/****************************************************************************************/
+SELECT ASL.* 
+  FROM ATET_SB_MEMBERS      ASM,
+       ATET_SB_LOANS        ASL
+ WHERE 1 = 1
+   AND ASM.SAVING_BANK_ID = 2
+   AND ASM.MEMBER_ID = ASL.MEMBER_ID
+   AND ASL.LOAN_STATUS_FLAG = 'ACTIVE'
+   AND ASL.LOAN_BALANCE BETWEEN 0 AND 1;
