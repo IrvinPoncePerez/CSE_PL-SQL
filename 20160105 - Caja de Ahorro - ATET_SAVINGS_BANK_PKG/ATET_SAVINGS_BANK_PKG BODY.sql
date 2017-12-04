@@ -2495,7 +2495,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                  WHERE 1 = 1 
                    AND LOAN_ID = var_loan_id;
                 
-                IF GET_PERSON_TYPE(var_member_id) IN ('Empleado', 'Employee') AND (TO_DATE(SYSDATE, 'DD/MM/RRRR') > TO_DATE(var_payment_deadline, 'DD/MM/RRRR')) THEN
+                IF GET_PERSON_TYPE(var_member_id) IN ('Empleado', 'Employee') THEN--AND (TO_DATE(SYSDATE, 'DD/MM/RRRR') > TO_DATE(var_payment_deadline, 'DD/MM/RRRR')) THEN
                     var_late_interest_rate := GET_PARAMETER_VALUE(GET_SAVING_BANK_ID, 'LATE_INT');
                 ELSE
                     var_late_interest_rate := 0;
@@ -5233,13 +5233,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                AND ASST.TRANSACTION_CODE = 'RETIREMENT'
                AND ASST.DEBIT_AMOUNT = var_debit_amount
                AND ASST.CREDIT_AMOUNT = var_credit_amount
-               AND ASST.ATTRIBUTE1 = var_saving_retirement_seq;
-                                        
-            /**********************************************************/
-            /*******             IMPRESIÓN DE RECIBO               ****/
-            /**********************************************************/
-                       
-            PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID => var_saving_transaction_id);                    
+               AND ASST.ATTRIBUTE1 = var_saving_retirement_seq;                 
                     
             /**********************************************************/
             /*******             CREACIÓN DE CHEQUE                ****/
@@ -5248,12 +5242,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             CREATE_SAVING_RETIREMENT_CHECK(P_SAVING_TRANSACTION_ID => var_saving_transaction_id,
                                            P_DESCRIPTION => P_DESCRIPTION, 
                                            P_CHECK_ID => var_check_id);
-                    
-            /**********************************************************/
-            /*******             IMPRESIÓN DE CHEQUE               ****/
-            /**********************************************************/
-                    
-            PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID => var_check_id);
                     
             /**********************************************************/
             /*******             CREACIÓN DE POLIZA                ****/
@@ -5287,7 +5275,21 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                      P_ACCOUNTED_CR            => var_debit_amount,
                                                      P_DESCRIPTION             => 'RETIRO DE CAJA DE AHORRO : ' || var_employee_number || '-' || var_employee_full_name,
                                                      P_SOURCE_ID               => var_check_id,
-                                                     P_SOURCE_LINK_TABLE       => 'ATET_SB_CHECKS_ALL');                                                      
+                                                     P_SOURCE_LINK_TABLE       => 'ATET_SB_CHECKS_ALL');  
+                                                     
+            /**********************************************************/
+            /*******             IMPRESIÓN DE RECIBO               ****/
+            /**********************************************************/
+                       
+            PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID => var_saving_transaction_id);   
+            
+            
+            /**********************************************************/
+            /*******             IMPRESIÓN DE CHEQUE               ****/
+            /**********************************************************/
+                    
+            PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID => var_check_id);
+                                                                
                                 
             /**********************************************************/
             /*******                   OUTPUT                      ****/
