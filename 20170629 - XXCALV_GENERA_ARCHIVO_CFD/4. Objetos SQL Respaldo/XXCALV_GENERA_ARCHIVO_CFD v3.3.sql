@@ -9,7 +9,8 @@ CREATE OR REPLACE PROCEDURE APPS."XXCALV_GENERA_ARCHIVO_CFD" ( errbuf       OUT 
                                                            , p_extemp     IN  NUMBER
                                                            , p_fecha_ini  IN  VARCHAR2
                                                            , p_fecha_fin  IN  VARCHAR2
-                                                           , p_pelecha    IN  VARCHAR2)  AUTHID CURRENT_USER
+                                                           , p_pelecha    IN  VARCHAR2
+                                                           , p_timbrar    IN  VARCHAR2)  AUTHID CURRENT_USER
 IS
 
    

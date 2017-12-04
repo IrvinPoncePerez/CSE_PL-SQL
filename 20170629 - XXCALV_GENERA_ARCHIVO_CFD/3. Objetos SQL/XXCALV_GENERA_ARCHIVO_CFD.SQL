@@ -17,7 +17,6 @@ IS
    V_MANEJADOR              UTL_FILE.FILE_TYPE;
    V_DIRECTORIO             VARCHAR2(250 BYTE) := 'CALVARIO';
    V_ARCHIVO                VARCHAR2(120 BYTE); 
-   V_ADDENDA                VARCHAR2(120 );
    V_FECHOC                 VARCHAR2(100);
    V_CONTRA                 VARCHAR2(100);
 
@@ -32,42 +31,36 @@ IS
         
    
    V_REGIMEN                VARCHAR2(300);
-   V_NAME                   VARCHAR2(300);
-   V_STREET                 VARCHAR2(240);
-   V_EXTNUM                 VARCHAR2(50);
-   V_INTNUM                 VARCHAR2(50);
-   V_NEIGH                  VARCHAR2(240);
-   V_MUN                    VARCHAR2(240);
-   V_CITY                   VARCHAR2(240);
-   V_STATE                  VARCHAR2(240);
-   V_COUNTRY                VARCHAR2(240);
-   V_POSTAL_CODE            VARCHAR2(240);
+   V_NOMEMI                 VARCHAR2(300);
+   V_CALEMI                 VARCHAR2(240);
+   V_NEXEMI                 VARCHAR2(50);
+   V_COLEMI                 VARCHAR2(240);
+   V_MUNEMI                 VARCHAR2(240);
+   V_ESTEMI                 VARCHAR2(240);
+   V_PAIEMI                 VARCHAR2(240);
+   V_CODEMI                 VARCHAR2(240);
    
    
-   V_IVA_TOTAL              NUMBER := 0;
-   V_ISR_GLOBAL             NUMBER := 0;    
-   V_IVA_RET_GLOBAL         NUMBER := 0;   
-   V_ISR_RET_TOTAL          NUMBER := 0; 
-   V_IVA_RET_TOTAL          NUMBER := 0;   
-   V_IVA_GLOBAL             NUMBER := 0;
-   V_TOTAL_LIN              NUMBER := 0;
-   V_IMPORTE_TOTAL          NUMBER := 0;
+   V_IVATRA                 NUMBER := 0;   
+   V_ISRRET                 NUMBER := 0; 
+   V_IVARET                 NUMBER := 0;   
+   V_TOTIVA                 NUMBER := 0;
+   V_NUMLIN                 NUMBER := 0;
+   V_SUBTBR                 NUMBER := 0;
    V_IMP_TOTAL_PED          NUMBER := 0;
-   V_TOTAL                  NUMBER := 0;
-   V_CANTIDAD_TOTAL         NUMBER := 0;
-   V_CEDIS                  VARCHAR2(300);
-   V_CALLE                  VARCHAR2(300);
-   V_CALLE2                 VARCHAR2(300);
-   V_NUMEXT                 VARCHAR2(300);
-   V_COLONIA                VARCHAR2(300);
-   V_CIUDAD                 VARCHAR2(300);
-   V_ESTADO                 VARCHAR2(300);
-   V_PAIS                   VARCHAR2(300);
-   V_POSTAL                 VARCHAR2(300);
-   V_EAN                    VARCHAR2(150 BYTE);
+   V_TOTPAG                 NUMBER := 0;
+   V_TOTCAN                 NUMBER := 0;
+   V_REMDES                 VARCHAR2(300);
+   V_CALEXP                 VARCHAR2(300);
+   V_NEXEXP                 VARCHAR2(300);
+   V_COLEXP                 VARCHAR2(300);
+   V_MUNEXP                 VARCHAR2(300);
+   V_ESTEXP                 VARCHAR2(300);
+   V_PAIEXP                 VARCHAR2(300);
+   V_CODEXP                 VARCHAR2(300);
+   V_CODUPC                 VARCHAR2(150 BYTE);
    V_UNIDAD                 VARCHAR2(100 BYTE) := NULL;
    V_SEC_UOM                VARCHAR2(180) := NULL;
-   V_UNIDAD_PDF             VARCHAR2(180) := NULL;
    
    
    V_RFCEMI                 VARCHAR2(300) := 'RFC';
@@ -82,15 +75,15 @@ IS
                           
    
    V_TRANSP                 VARCHAR2(240);
-   V_SALIDA                 VARCHAR2(240); 
-   V_SELLO_L                VARCHAR2(240); 
-   V_SELLO_LA               VARCHAR2(240);
-   V_SELLO_T                VARCHAR2(240);
-   V_SELLO_TA               VARCHAR2(240);
+   V_EMBARQ                 VARCHAR2(240); 
+   V_SELLO1                 VARCHAR2(240); 
+   V_SELLO2                 VARCHAR2(240);
+   V_SELLO3                 VARCHAR2(240);
+   V_SELLO4                 VARCHAR2(240);
    
    
-   V_MPAGO                  VARCHAR2(240) := 'N';
-   V_CUENTA                 VARCHAR2(240) := 'N';
+   V_FORPAG                 VARCHAR2(240);
+   V_CTAPAG                 VARCHAR2(240) := 'N';
    V_RELUUID                VARCHAR2(100);
 
    
@@ -149,83 +142,59 @@ IS
          , REPLACE(TRAX.RAA_BILL_TO_ADDRESS3_DB,'N/A','')                           NINREC             
          , REPLACE(TRAX.RAA_BILL_TO_ADDRESS4,'N/A','')                              COLREC
          , LPAD(TRAX.RAA_BILL_TO_POSTAL_CODE,5,'0')                                 CODREC
-         , TRAX.RAA_BILL_TO_CITY                                                    CIUDAD
+         , TRAX.RAA_BILL_TO_CITY                                                    MUNREC
          , DECODE(TRAX.RAA_BILL_TO_STATE,
                   'DISTRITO FEDERAL', 'DF',
-                  TRAX.RAA_BILL_TO_STATE)                                           ESTADO
-         , REPLACE(TRAX.FT_BILL_TO_COUNTRY,'?','E')                                 PAIS
-         , 'PAGO EN UNA SOLA EXHIBICION'                                            FORMA_PAGO
-         , DECODE(TRAX.RAT_TERM_NAME,'0',1,2)                                       CONDICION_PAGO
+                  TRAX.RAA_BILL_TO_STATE)                                           ESTREC
+         , REPLACE(TRAX.FT_BILL_TO_COUNTRY,'?','E')                                 PAIREC
          , NVL(TRIM(REPLACE(REPLACE(REPLACE(TRAX.RAT_TERM_NAME, 
                                             'INMEDIATO', '' ),
                                     'DIAS',''),
-                            'CONTADO','')),0)                                       DIAS_PAGO
-         , TRAX.INVOICE_CURRENCY_CODE                                               TIPO_MONEDA
-         , DECODE(TRAX.INVOICE_CURRENCY_CODE,'MXN',1,EXCHANGE_RATE)                 TIPO_CAMBIO
-         , DECODE(TRAX.INVOICE_CURRENCY_CODE,'MXN',0,1)                             SW_TC
-         , TRAX.PRIMARY_SALESREP_ID                                                 NO_VENDEDOR
-         , TRAX.RAC_SHIP_TO_CUSTOMER_ID                                             NO_COMPRADOR
-         , (SELECT ATTRIBUTE2 
-              FROM HR_ALL_ORGANIZATION_UNITS 
-             WHERE ORGANIZATION_ID = P_ORG_ID_H)                                   SHIP_FROM 
-         , TRAX.RAC_SHIP_TO_CUSTOMER_ID                                             SHIP_TO
-         , TRAX.RAC_SHIP_TO_CUSTOMER_ID                                             NO_RECEPTOR
-         , NVL(SUBSTR(TRAX.RAC_SHIP_TO_CUSTOMER_NAME,1, INSTR(TRAX.RAC_SHIP_TO_CUSTOMER_NAME, '(')-1),
-               TRAX.RAC_SHIP_TO_CUSTOMER_NAME)                                      NOMBRE_RECEPTOR
-         , 'CUSTOMER'                                                               TIPO_PERSONA_RECEPT
-         , TRAX.SHIP_TO_TAXPAYER_ID                                                 RFC_RECEPTOR
-         , TRAX.RAA_SHIP_TO_ADDRESS1                                                DIRECCION_RECEPTOR1
-                
+                            'CONTADO','')),0)                                       DIAPAG
+         , TRAX.INVOICE_CURRENCY_CODE                                               TIPMON
+         , DECODE(TRAX.INVOICE_CURRENCY_CODE,
+                  'MXN', 1,
+                  EXCHANGE_RATE)                                                    TIPCAM
+         , DECODE(TRAX.INVOICE_CURRENCY_CODE,
+                  'MXN', 0,
+                  1)                                                                SW_TC 
+         , NVL(SUBSTR(TRAX.RAC_SHIP_TO_CUSTOMER_NAME,
+                      1, INSTR(TRAX.RAC_SHIP_TO_CUSTOMER_NAME, '(')-1),
+               TRAX.RAC_SHIP_TO_CUSTOMER_NAME)                                      NOMENT
+         , TRAX.SHIP_TO_TAXPAYER_ID                                                 RFCREC
          , (SELECT DECODE(TRAX.CUST_ATTRIBUTE7, 
-                          'WALMART', DECODE(OE.CUST_PO_NUMBER, '0', NULL, OE.CUST_PO_NUMBER),
-                          'SORIANA', DECODE(OE.CUST_PO_NUMBER, '0', '0' , OE.CUST_PO_NUMBER),
+                          'WALMART', DECODE(OE.CUST_PO_NUMBER, 
+                                            '0', NULL, 
+                                            OE.CUST_PO_NUMBER),
+                          'SORIANA', DECODE(OE.CUST_PO_NUMBER, 
+                                            '0', '0', 
+                                            OE.CUST_PO_NUMBER),
                           LPAD(OE.CUST_PO_NUMBER, 10, '0'))
               FROM OE_ORDER_HEADERS_ALL OE 
              WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                AND  ROWNUM = 1 
-               AND OE.ORG_ID = P_ORG_ID_H)                                         NO_ORDER_COMPRA 
+               AND OE.ORG_ID = P_ORG_ID_H)                                          NUMEOC
          , (SELECT TO_DATE(ATTRIBUTE9,'YYYY-MM-DD HH24:MI:SS')
               FROM OE_ORDER_HEADERS_ALL OE 
              WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                AND  ROWNUM = 1 
-               AND OE.ORG_ID = P_ORG_ID_H)                                         FECH_PED
+               AND OE.ORG_ID = P_ORG_ID_H)                                          FECH_PED
          , (SELECT ATTRIBUTE8 
               FROM OE_ORDER_HEADERS_ALL OE 
              WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                AND  ROWNUM = 1 
-               AND OE.ORG_ID = P_ORG_ID_H)                                         NUM_PED
+               AND OE.ORG_ID = P_ORG_ID_H)                                          NUM_PED
          , (SELECT ATTRIBUTE12
               FROM OE_ORDER_HEADERS_ALL OE 
              WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                AND  ROWNUM = 1 
-               AND OE.ORG_ID = P_ORG_ID_H)                                         ADUANA
-         , TRAX.RAA_SHIP_TO_ADDRESS2                                                DIRECCION_RECEPTOR2
-         , REPLACE(TRAX.RAA_SHIP_TO_ADDRESS3_DB,'N/A','')                           DIRECCION_RECEPTOR3
-         , REPLACE(TRAX.RAA_SHIP_TO_ADDRESS3,'N/A','')                              DIRECCION_RECEPTOR4             
-         , LPAD(TRAX.RAA_SHIP_TO_POSTAL_CODE,5,'0')                                 CODIGO_POSTAL_RECEPT
-         , TRAX.RAA_SHIP_TO_CITY                                                    CIUDAD_RECEPTOR
-         , DECODE(TRAX.RAA_SHIP_TO_STATE,
-                  'DISTRITO FEDERAL', 'DF',
-                  TRAX.RAA_SHIP_TO_STATE)                                           ESTADO_RECEPTOR
-         , REPLACE(DECODE(TRAX.RAA_SHIP_TO_COUNTY,
-                          'MX', 'MEXICO',
-                          TRAX.RAA_SHIP_TO_COUNTY),'?','E')                         PAIS_RECEPTOR
-         , EMAIL
+               AND OE.ORG_ID = P_ORG_ID_H)                                          ADUANA         
+         , EMAIL                                                                    MAIL
          , NVL(TRAX.CT_REFERENCE,0)                                                 ORDEN_COMPRA
-         , TRAX.INTERFACE_HEADER_ATTRIBUTE1                                         FOLIO_PEDIDO
-         , TO_CHAR(TRAX.GD_GL_DATE,'YYYY-MM-DD')                                    FECHA_COMPRA
-         , 1                                                                        STATUS_FACTURA
-         , TO_CHAR(TRAX.TRX_DATE + ((SELECT NAME 
-                                       FROM RA_TERMS_TL 
-                                      WHERE TERM_ID = TRAX.TERM_ID 
-                                        AND LANGUAGE = 'ESA'))  ,'DD/MM/YYYY HH:MI')FECHA_VENCIMIENTO
-         , TO_CHAR(TRAX.SHIP_DATE_ACTUAL,'YYYY-MM-DD')||
-           'T'||
-           TO_CHAR(TRAX.SHIP_DATE_ACTUAL,'HH24:MI:SS')                              SHIP_DATE_ACTUAL
          , TRAX.CUSTOMER_CLASS_CODE
          , TRAX.CUST_TRX_TYPE_ID
          , TRAX.ATTRIBUTE_CATEGORY
-         , TRAX.ATTRIBUTE8
+         , TRAX.ATTRIBUTE8                                                          CVEFORPAG
       FROM RA_CUSTOMER_TRX_PARTIAL_CFD TRAX
      WHERE 1 = 1
        AND TRAX.ORG_ID = P_ORG_ID_H
@@ -242,26 +211,26 @@ IS
    CURSOR LINES_CUR (P_CUSTOMER_TRX_ID  NUMBER) 
    IS
     SELECT INV_ITEM_ID, 
-           REPLACE(DESCRIPCION,'FRAGIL','')                         DESCRIPCION, 
-           SUM(CANT_FACTURADA)                                      CANT_FACTURADA, 
-           PRECIO_UNITARIO,  
+           REPLACE(DESCRI,'FRAGIL','')                                              DESCRI, 
+           SUM(CANTID)                                                              CANTID, 
+           PBRUDE,  
            UOM_LINE, 
-           SUM(CANTIDAD_SECUNDARIA)                                 CANTIDAD_SECUNDARIA,
+           SUM(CANTIDAD_SECUNDARIA)                                                 CANTIDAD_SECUNDARIA,
            UOM, 
            UOM2, 
-           SUM(TASA_IMPUESTO)                                       TASA_IMPUESTO, 
-           SUM(TASA_ISR_RET)                                        TASA_ISR_RET,
-           SUM(TASA_IVA_RET)                                        TASA_IVA_RET,
-           SUM(TTL_IMPUESTO)                                        TTL_IMPUESTO,
-           SUM(TTL_ISR_RET)                                         TTL_ISR_RET,
-           SUM(TTL_IVA_RET)                                         TTL_IVA_RET,                
-           SUM(PRECIO_NETO)                                         PRECIO_NETO,
-           TARA * SUM(CANTIDAD_SECUNDARIA)                          TARA,
-           CLAVE_UNIDAD,
-           CLAVE_PROD
+           SUM(TASIPE)                                                              TASIPE, 
+           SUM(TASA_ISR_RET)                                                        TASA_ISR_RET,
+           SUM(TASA_IVA_RET)                                                        TASA_IVA_RET,
+           SUM(MONIPE)                                                              MONIPE,
+           SUM(TTL_ISR_RET)                                                         TTL_ISR_RET,
+           SUM(TTL_IVA_RET)                                                         TTL_IVA_RET,                
+           SUM(IMPBRU)                                                              IMPBRU,
+           TARA * SUM(CANTIDAD_SECUNDARIA)                                          TARA,
+           CVEUNIDAD,
+           CVEPRODSERV
       FROM (SELECT LINEAS.LINE_ID
-                   , LINEAS.CLAVE_PROD
-                   , LINEAS.CLAVE_UNIDAD
+                   , LINEAS.CVEPRODSERV
+                   , LINEAS.CVEUNIDAD
                    , LINEAS.LINEA
                    , LINEAS.TIPO_LINEA
                    , LINEAS.INV_ITEM_ID
@@ -269,44 +238,43 @@ IS
                    , LINEAS.SERIAL_CODE
                    , TARA
                    , DECODE(P_ORG_ID,
-                            83, DESCRIPCION,
-                            REGEXP_REPLACE(LINEAS.DESCRIPCION, 
-                                           '[^a-zA-Z0-9. ]', ''))   DESCRIPCION
-                   , LINEAS.CANTIDAD_REAL_TRX                       CANTIDAD_REAL_TRX
-                   , LINEAS.CANT_FACTURADA                          CANT_FACTURADA
-                   , LINEAS.CANT_CREDITO                            CANT_CREDITO
-                   , LINEAS.PRECIO_UNITARIO
+                            83, DESCRI,
+                            REGEXP_REPLACE(LINEAS.DESCRI, 
+                                           '[^a-zA-Z0-9. ]', ''))                   DESCRI
+                   , LINEAS.CANTIDAD_REAL_TRX                                       CANTIDAD_REAL_TRX
+                   , LINEAS.CANTID                                                  CANTID
+                   , LINEAS.CANT_CREDITO                                            CANT_CREDITO
+                   , LINEAS.PBRUDE
                    , LINEAS.UOM_LINE
-                   , LINEAS.CANTIDAD_SECUNDARIA                     CANTIDAD_SECUNDARIA
+                   , LINEAS.CANTIDAD_SECUNDARIA                                     CANTIDAD_SECUNDARIA
                    , LINEAS.UOM
                    , LINEAS.UOM2
-                   , LINEAS.FOLIO_PEDIDO
-                   , SUM(LINEAS.TASA_IMPUESTO)                      TASA_IMPUESTO
-                   , SUM(LINEAS.TASA_ISR_RET)                       TASA_ISR_RET
-                   , SUM(LINEAS.TASA_IVA_RET)                       TASA_IVA_RET
-                   , SUM(LINEAS.TTL_IMPUESTO)                       TTL_IMPUESTO
-                   , SUM(LINEAS.TTL_ISR_RET)                        TTL_ISR_RET
-                   , SUM(LINEAS.TTL_IVA_RET)                        TTL_IVA_RET
-                   , LINEAS.PRECIO_NETO                             PRECIO_NETO
+                   , SUM(LINEAS.TASIPE)                                             TASIPE
+                   , SUM(LINEAS.TASA_ISR_RET)                                       TASA_ISR_RET
+                   , SUM(LINEAS.TASA_IVA_RET)                                       TASA_IVA_RET
+                   , SUM(LINEAS.MONIPE)                                             MONIPE
+                   , SUM(LINEAS.TTL_ISR_RET)                                        TTL_ISR_RET
+                   , SUM(LINEAS.TTL_IVA_RET)                                        TTL_IVA_RET
+                   , LINEAS.IMPBRU                                                  IMPBRU
                    , LINEAS.DESCUENTO
                    , LINEAS.PEDIMENTO
                    , LINEAS.FECHA_PEDIMENTO
                    , LINEAS.ADUANA
-              FROM (SELECT   CTL.INTERFACE_LINE_ATTRIBUTE6          LINE_ID
+              FROM (SELECT   CTL.INTERFACE_LINE_ATTRIBUTE6                          LINE_ID
                            , (CASE
                               WHEN CTL.INTERFACE_LINE_CONTEXT = 'CATEGORIAS_SAT'
                               THEN CTL.INTERFACE_LINE_ATTRIBUTE1
                               ELSE ''
-                               END)                                 CLAVE_PROD
+                               END)                                                 CVEPRODSERV
                            , (CASE
                               WHEN CTL.INTERFACE_LINE_CONTEXT = 'CATEGORIAS_SAT'
                               THEN CTL.INTERFACE_LINE_ATTRIBUTE2
-                               END)                                 CLAVE_UNIDAD
-                           , CTL.LINE_NUMBER                        LINEA
-                           , CTL.LINE_TYPE                          TIPO_LINEA
-                           , CTL.INVENTORY_ITEM_ID                  INV_ITEM_ID
-                           , ''                                     CODE_BAR
-                           , ''                                     SERIAL_CODE
+                               END)                                                 CVEUNIDAD
+                           , CTL.LINE_NUMBER                                        LINEA
+                           , CTL.LINE_TYPE                                          TIPO_LINEA
+                           , CTL.INVENTORY_ITEM_ID                                  INV_ITEM_ID
+                           , ''                                                     CODE_BAR
+                           , ''                                                     SERIAL_CODE
                            , XXCALV_CALCULA_TARA_CFD(CTL.INTERFACE_LINE_ATTRIBUTE6) TARA
                            , TRIM(CTL.DESCRIPTION||REPLACE(XXCALV_GRADE_DESC(CTL.INTERFACE_LINE_ATTRIBUTE6),
                                                            'CASCADO CASCADO',
@@ -315,32 +283,31 @@ IS
                                                                                   WHERE LOOKUP_TYPE = 'CREDIT_MEMO_REASON'
                                                                                     AND LOOKUP_CODE = CTL.REASON_CODE
                                                                                     AND LANGUAGE = 'ESA')  
-                                                                             )      DESCRIPCION
+                                                                             )      DESCRI
                            , DECODE(CTL.QUANTITY_INVOICED,
                                     NULL, ABS(CTL.QUANTITY_CREDITED),
-                                    CTL.QUANTITY_INVOICED)          CANTIDAD_REAL_TRX
+                                    CTL.QUANTITY_INVOICED)                          CANTIDAD_REAL_TRX
                            , NVL ( DECODE(CTL.QUANTITY_INVOICED, 
                                           NULL, ABS(CTL.QUANTITY_CREDITED), 
-                                          CTL.QUANTITY_INVOICED ),1)CANT_FACTURADA 
-                           , ''                                     CANT_CREDITO
-                           , NVL(ABS(CTL.UNIT_SELLING_PRICE),1)     PRECIO_UNITARIO
-                           , CTL.UOM_CODE                           UOM_LINE
+                                          CTL.QUANTITY_INVOICED ),1)                CANTID 
+                           , ''                                                     CANT_CREDITO
+                           , NVL(ABS(CTL.UNIT_SELLING_PRICE),1)                     PBRUDE
+                           , CTL.UOM_CODE                                           UOM_LINE
                            , (SELECT OEL.ORDERED_QUANTITY2 
                                 FROM OE_ORDER_LINES_ALL OEL 
                                WHERE OEL.LINE_ID = CTL.INTERFACE_LINE_ATTRIBUTE6 
-                             )                                      CANTIDAD_SECUNDARIA
+                             )                                                      CANTIDAD_SECUNDARIA
                              , NVL((SELECT UPPER(OEL.ORDER_QUANTITY_UOM) 
                                          FROM OE_ORDER_LINES_ALL OEL 
                                         WHERE OEL.LINE_ID = CTL.INTERFACE_LINE_ATTRIBUTE6),
                                    (SELECT DISTINCT UPPER(UOM_CODE)
                                       FROM MTL_UNITS_OF_MEASURE_TL
                                      WHERE DESCRIPTION = CTL.INTERFACE_LINE_ATTRIBUTE2))
-                                                                    UOM
+                                                                                    UOM
                                ,(SELECT UPPER(OEL.ORDERED_QUANTITY_UOM2)  
                                          FROM OE_ORDER_LINES_ALL OEL 
                                         WHERE OEL.LINE_ID = CTL.INTERFACE_LINE_ATTRIBUTE6 )
-                                                                    UOM2
-                           , CTL.INTERFACE_LINE_ATTRIBUTE1          FOLIO_PEDIDO  
+                                                                                    UOM2
                            , ABS((CASE TAX.VAT_TAX_ID
                                  WHEN 10129 THEN TAX.TAX_RATE
                                  WHEN 10131 THEN TAX.TAX_RATE
@@ -349,15 +316,15 @@ IS
                                  WHEN 10132 THEN TAX.TAX_RATE
                                  WHEN 10236 THEN TAX.TAX_RATE
                                  WHEN 10335 THEN TAX.TAX_RATE
-                             END))                                  TASA_IMPUESTO,
+                             END))                                                  TASIPE,
                              ABS((CASE TAX.VAT_TAX_ID
                                 WHEN 10237 THEN TAX.TAX_RATE
                                 ELSE NULL
-                             END))                                  TASA_ISR_RET,
+                             END))                                                  TASA_ISR_RET,
                              ABS((CASE TAX.VAT_TAX_ID
                                 WHEN 10238 THEN TAX.TAX_RATE
                                 ELSE NULL
-                             END))                                  TASA_IVA_RET,
+                             END))                                                  TASA_IVA_RET,
                              ABS((CASE TAX.VAT_TAX_ID
                                  WHEN 10129 THEN TAX.EXTENDED_AMOUNT
                                  WHEN 10131 THEN TAX.EXTENDED_AMOUNT
@@ -367,22 +334,22 @@ IS
                                  WHEN 10236 THEN TAX.EXTENDED_AMOUNT
                                  WHEN 10335 THEN TAX.EXTENDED_AMOUNT
                              ELSE NULL
-                             END))                                  TTL_IMPUESTO,
+                             END))                                                  MONIPE,
                              ABS((CASE TAX.VAT_TAX_ID
                                 WHEN 10237 THEN TAX.EXTENDED_AMOUNT
                                 ELSE NULL
-                             END))                                  TTL_ISR_RET,
+                             END))                                                  TTL_ISR_RET,
                              ABS((CASE TAX.VAT_TAX_ID
                                 WHEN 10238 THEN TAX.EXTENDED_AMOUNT
                                 ELSE NULL
-                             END))                                  TTL_IVA_RET
+                             END))                                                  TTL_IVA_RET
                            , ABS((NVL(  ( DECODE( CTL.QUANTITY_INVOICED, 
                                                  NULL, (ABS(CTL.QUANTITY_CREDITED) * ABS(CTL.UNIT_SELLING_PRICE)), 
-                                                 (CTL.QUANTITY_INVOICED * CTL.UNIT_SELLING_PRICE) ) ) , CTL.EXTENDED_AMOUNT)))  PRECIO_NETO
-                           , ''                                     DESCUENTO
-                           , ''                                     PEDIMENTO
-                           , ''                                     FECHA_PEDIMENTO
-                           , ''                                     ADUANA
+                                                 (CTL.QUANTITY_INVOICED * CTL.UNIT_SELLING_PRICE) ) ) , CTL.EXTENDED_AMOUNT)))  IMPBRU
+                           , ''                                                     DESCUENTO
+                           , ''                                                     PEDIMENTO
+                           , ''                                                     FECHA_PEDIMENTO
+                           , ''                                                     ADUANA
                       FROM RA_CUSTOMER_TRX_LINES_ALL CTL
                          , RA_CUSTOMER_TRX_LINES_ALL TAX
                      WHERE CTL.LINE_TYPE = 'LINE' 
@@ -401,34 +368,34 @@ IS
              , LINEAS.CODE_BAR 
              , LINEAS.SERIAL_CODE
              , LINEAS.TARA
-             , LINEAS.DESCRIPCION
+             , LINEAS.DESCRI
              , LINEAS.CANTIDAD_REAL_TRX
-             , LINEAS.CANT_FACTURADA
+             , LINEAS.CANTID
              , LINEAS.CANTIDAD_SECUNDARIA
              , LINEAS.CANT_CREDITO
-             , LINEAS.PRECIO_UNITARIO
-             , LINEAS.PRECIO_NETO
+             , LINEAS.PBRUDE
+             , LINEAS.IMPBRU
              , LINEAS.UOM_LINE
              , LINEAS.UOM
              , LINEAS.UOM2             
-             , LINEAS.FOLIO_PEDIDO
              , LINEAS.DESCUENTO
              , LINEAS.PEDIMENTO
              , LINEAS.FECHA_PEDIMENTO
              , LINEAS.ADUANA
-             , LINEAS.CLAVE_UNIDAD
-             , LINEAS.CLAVE_PROD
+             , LINEAS.CVEUNIDAD
+             , LINEAS.CVEPRODSERV
              )
     GROUP BY INV_ITEM_ID, 
              TARA,
-             DESCRIPCION,
-             PRECIO_UNITARIO,  
+             DESCRI,
+             PBRUDE,  
              UOM_LINE, 
              UOM, 
              UOM2,
-             CLAVE_UNIDAD,
-             CLAVE_PROD          
+             CVEUNIDAD,
+             CVEPRODSERV          
     ORDER BY 1;    
+    
     
     CURSOR REL_CUR(P_CUSTOMER_TRX_ID NUMBER)
     IS
@@ -439,9 +406,9 @@ IS
        AND ARAA.APPLIED_CUSTOMER_TRX_ID = AN.CUSTOMER_TRX_ID
        AND ARAA.CUSTOMER_TRX_ID = P_CUSTOMER_TRX_ID;
     
-    V_NUMEXT_SORIANA VARCHAR2(200) := NULL;
     
-    CVEPRODSERV_EX      EXCEPTION;
+    
+    
     
    PROCEDURE FILE_PUT_LINE (P_MANEJADOR     UTL_FILE.FILE_TYPE,
                             P_STRING_LINE   VARCHAR2)
@@ -456,26 +423,24 @@ BEGIN
    BEGIN
        
        
-       SELECT FLN.MEANING                       CEDIS,
-              FLN.DESCRIPTION                   CALLE,
-              FLN.ATTRIBUTE9                    CALLE2,
-              REPLACE(FLN.TAG,'N/A','')         EXTERIOR,  
-              LOC.ADDRESS_LINE_2                COLONIA,
-              LOC.REGION_2                      CIUDAD, 
+       SELECT FLN.MEANING                       REMDES,
+              FLN.DESCRIPTION                   CALEXP,
+              REPLACE(FLN.TAG,'N/A','')         NEXEXP,  
+              LOC.ADDRESS_LINE_2                COLEXP,
+              LOC.REGION_2                      MUNEXP, 
               DECODE(UPPER(FLV.DESCRIPTION),
                      'DISTRITO FEDERAL','DF',
-                     UPPER(FLV.DESCRIPTION))    ESTADO, 
-              REPLACE(T.NLS_TERRITORY,'?','E')  PAIS, 
-              LOC.POSTAL_CODE                   CODIGO_POSTAL
-         INTO V_CEDIS, 
-              V_CALLE, 
-              V_CALLE2, 
-              V_NUMEXT, 
-              V_COLONIA, 
-              V_CIUDAD, 
-              V_ESTADO, 
-              V_PAIS, 
-              V_POSTAL
+                     UPPER(FLV.DESCRIPTION))    ESTEXP, 
+              REPLACE(T.NLS_TERRITORY,'?','E')  PAIEXP, 
+              LOC.POSTAL_CODE                   CODEXP
+         INTO V_REMDES, 
+              V_CALEXP, 
+              V_NEXEXP, 
+              V_COLEXP, 
+              V_MUNEXP, 
+              V_ESTEXP, 
+              V_PAIEXP, 
+              V_CODEXP
          FROM HR_ORGANIZATION_UNITS O,
               HR_LOOKUPS L,
               HR_LOOKUPS L2,
@@ -504,41 +469,39 @@ BEGIN
     
    FOR HED_REC IN HEADERS_CUR(P_ORG_ID, P_TIPO_DOC, P_ORIGEN, P_DOC_INI, P_DOC_FIN, P_FECHA_INI, P_FECHA_FIN) LOOP
 
-       IF (HED_REC.RFCEMI IS NULL) AND (HED_REC.RFC_RECEPTOR IS NULL) THEN
+       IF (HED_REC.RFCEMI IS NULL) AND (HED_REC.RFCREC IS NULL) THEN
            V_RFCEMI := 'NULO';
            FND_FILE.PUT_LINE (FND_FILE.LOG,'No se encontro RFC del cliente, no es posible generar la factura.');
        ELSE
            BEGIN
            
-                SELECT UPPER(LOC_INFORMATION14),
-                       UPPER(LOC_INFORMATION15), 
-                       UPPER(HOU.NAME),
-                       UPPER(ADDRESS_LINE_1),
-                       UPPER(ADDRESS_LINE_3),
-                       UPPER(LOC_INFORMATION13),
-                       UPPER(ADDRESS_LINE_2), 
-                       UPPER(TOWN_OR_CITY), 
+                SELECT UPPER(LOC_INFORMATION14)                         REGIMEN,
+                       UPPER(LOC_INFORMATION15)                         RFCEMI, 
+                       UPPER(HOU.NAME)                                  NOMEMI,
+                       UPPER(ADDRESS_LINE_1)                            CALEMI,
+                       UPPER(ADDRESS_LINE_3)                            NEXEMI,
+                       UPPER(ADDRESS_LINE_2)                            COLEMI, 
+                       UPPER(TOWN_OR_CITY)                              MUNEMI, 
                        (SELECT UPPER(FLV.MEANING)
                           FROM FND_LOOKUP_VALUES FLV
                          WHERE FLV.LOOKUP_TYPE = 'PER_MX_STATE_CODES'
                            AND FLV.LANGUAGE = USERENV('LANG')
-                           AND FLV.LOOKUP_CODE = HL.REGION_1), 
+                           AND FLV.LOOKUP_CODE = HL.REGION_1)           ESTEMI, 
                        (SELECT UPPER(NVL(FT.NLS_TERRITORY, 'MEXICO'))
                           FROM FND_TERRITORIES  FT
                          WHERE 1=1
-                           AND FT.TERRITORY_CODE = UPPER(HL.COUNTRY)),
-                       UPPER(POSTAL_CODE)
+                           AND FT.TERRITORY_CODE = UPPER(HL.COUNTRY))   PAIEMI,
+                       UPPER(POSTAL_CODE)                               CODEMI
                   INTO V_REGIMEN,
                        V_RFCEMI,
-                       V_NAME,
-                       V_STREET,
-                       V_EXTNUM,
-                       V_INTNUM, 
-                       V_NEIGH, 
-                       V_CITY, 
-                       V_STATE, 
-                       V_COUNTRY, 
-                       V_POSTAL_CODE
+                       V_NOMEMI,
+                       V_CALEMI,
+                       V_NEXEMI,
+                       V_COLEMI, 
+                       V_MUNEMI, 
+                       V_ESTEMI, 
+                       V_PAIEMI, 
+                       V_CODEMI
                   FROM HR_ORGANIZATION_UNITS HOU,
                        HR_LOCATIONS HL,
                        HR_ORGANIZATION_INFORMATION HOI
@@ -554,14 +517,25 @@ BEGIN
            
            BEGIN
            
-                SELECT NVL(UPPER(FLV.TAG),'N'), 
-                       NVL(UPPER(ATTRIBUTE15),'N')
-                  INTO V_MPAGO, 
-                       V_CUENTA
+                SELECT NVL(UPPER(ATTRIBUTE15),'N')  CTAPAG
+                  INTO V_CTAPAG
                   FROM FND_LOOKUP_VALUES_VL FLV
                  WHERE FLV.LOOKUP_TYPE = 'XXCALV_CUENTAS_FE'
                    AND REPLACE(UPPER(MEANING),'-','') = REPLACE(UPPER(HED_REC.RFCEMI),'-','')
                    AND ENABLED_FLAG = 'Y';
+                   
+                   
+                SELECT FVT.DESCRIPTION
+                  INTO V_FORPAG
+                  FROM FND_FLEX_VALUE_SETS  FVS,
+                       FND_FLEX_VALUES      FV,
+                       FND_FLEX_VALUES_TL   FVT
+                 WHERE 1 = 1
+                   AND FVS.FLEX_VALUE_SET_ID = FV.FLEX_VALUE_SET_ID
+                   AND FV.FLEX_VALUE_ID = FVT.FLEX_VALUE_ID
+                   AND FVS.FLEX_VALUE_SET_NAME = 'PAC_SAT_FORPAG'
+                   AND FVT.LANGUAGE = USERENV('LANG')
+                   AND FV.FLEX_VALUE = NVL(HED_REC.CVEFORPAG, '99');
 
            EXCEPTION WHEN OTHERS THEN
                 FND_FILE.PUT_LINE (FND_FILE.LOG,'No se encontro metodo de pago.');
@@ -570,14 +544,14 @@ BEGIN
            BEGIN     
                 BEGIN
                 
-                     SELECT LOC.ADDRESS1,   
-                            REPLACE(LOC.ADDRESS2,'N/A',''),
-                            REPLACE(LOC.ADDRESS3,'N/A',''),
-                            LOC.ADDRESS4,
-                            LOC.CITY,
-                            LOC.STATE,
-                            REPLACE(TERR.NLS_TERRITORY,'?','E'),
-                            LPAD(LOC.POSTAL_CODE,5,'0')                
+                     SELECT LOC.ADDRESS1                          CALENT,   
+                            REPLACE(LOC.ADDRESS2,'N/A','')        NEXENT,
+                            REPLACE(LOC.ADDRESS3,'N/A','')        NINENT,
+                            LOC.ADDRESS4                          COLENT,
+                            LOC.CITY                              MUNENT,
+                            LOC.STATE                             ESTENT,
+                            REPLACE(TERR.NLS_TERRITORY,'?','E')   PAIENT,
+                            LPAD(LOC.POSTAL_CODE,5,'0')           CODENT     
                        INTO V_CALENT, 
                             V_NEXENT, 
                             V_NINENT, 
@@ -603,28 +577,27 @@ BEGIN
                 END;
                 
                 
-                V_IVA_GLOBAL := 0;
-                V_IVA_TOTAL := 0;
-                V_ISR_RET_TOTAL := 0; 
-                V_IVA_RET_TOTAL := 0;
-                V_TOTAL_LIN := 0;
-                V_IMPORTE_TOTAL := 0;
-                V_CANTIDAD_TOTAL := 0;
-                V_TOTAL := 0;
+                V_TOTIVA := 0;
+                V_IVATRA := 0;
+                V_ISRRET := 0; 
+                V_IVARET := 0;
+                V_NUMLIN := 0;
+                V_SUBTBR := 0;
+                V_TOTCAN := 0;
+                V_TOTPAG := 0;
                     
                 
-                V_ARCHIVO := UPPER(NVL(V_RFCEMI,HED_REC.RFC_RECEPTOR)) ||'_'||HED_REC.RFC_RECEPTOR||'_'||HED_REC.SERFOL||'_'||TO_CHAR(HED_REC.NUMFOL)||'.txt';
-                
-
+                V_ARCHIVO := UPPER(NVL(V_RFCEMI,HED_REC.RFCREC)) ||'_'||HED_REC.RFCREC||'_'||HED_REC.SERFOL||'_'||TO_CHAR(HED_REC.NUMFOL)||'.txt';
                 V_MANEJADOR := UTL_FILE.FOPEN (V_DIRECTORIO, V_ARCHIVO, 'W');
+                
                     
-                V_TOTAL := 0;
+                V_TOTPAG := 0;
                 V_IMP_TOTAL_PED := 0;
                 
                 BEGIN
                     
                     FOR LIN_REC IN LINES_CUR (HED_REC.CUSTOMER_TRX_ID) LOOP
-                        V_TOTAL := V_TOTAL + LIN_REC.PRECIO_NETO + NVL(LIN_REC.TTL_IMPUESTO,0);
+                        V_TOTPAG := V_TOTPAG + LIN_REC.IMPBRU + NVL(LIN_REC.MONIPE,0);
                     END LOOP;
                     
                 EXCEPTION WHEN OTHERS THEN
@@ -633,7 +606,7 @@ BEGIN
 
                 BEGIN
                     
-                    SELECT ROUND(SUM(IMP),2)
+                    SELECT ROUND(SUM(IMP),2)  
                       INTO V_IMP_TOTAL_PED 
                       FROM (SELECT TRX.DOC_SEQUENCE_VALUE NUM_FACTURA,
                                    HED.ORDER_NUMBER,LIN.LINE_ID,
@@ -682,32 +655,32 @@ BEGIN
                      
                 EXCEPTION WHEN NO_DATA_FOUND THEN
                     FND_FILE.PUT_LINE (FND_FILE.LOG,'No se encontr? pedido, sin embargo se generar? la factura. '||SQLERRM);
-                    V_IMP_TOTAL_PED := V_TOTAL;
+                    V_IMP_TOTAL_PED := V_TOTPAG;
                 WHEN OTHERS THEN
                     FND_FILE.PUT_LINE (FND_FILE.LOG,'Error inesperado al obtener total de lineas del pedido. '||SQLERRM);
                 END;
 
 
 
-                IF V_TOTAL = V_TOTAL THEN
+                IF V_TOTPAG = V_TOTPAG THEN
                     
                     BEGIN
                         
                     
-                        SELECT H.ATTRIBUTE1,
-                               H.ATTRIBUTE11,
-                               H.ATTRIBUTE3,
-                               H.ATTRIBUTE4,
-                               H.ATTRIBUTE5,
-                               H.ATTRIBUTE10,
-                               TO_CHAR(H.REQUEST_DATE,'YYYY-MM-DD'),
-                               H.ATTRIBUTE7
+                        SELECT H.ATTRIBUTE1                           TRANSP,
+                               H.ATTRIBUTE11                          EMBARQ,
+                               H.ATTRIBUTE3                           SELLO1,
+                               H.ATTRIBUTE4                           SELLO2,
+                               H.ATTRIBUTE5                           SELLO3,
+                               H.ATTRIBUTE10                          SELLO4,
+                               TO_CHAR(H.REQUEST_DATE,'YYYY-MM-DD')   FECHOC,
+                               H.ATTRIBUTE7                           CONTRA
                           INTO V_TRANSP, 
-                               V_SALIDA, 
-                               V_SELLO_L, 
-                               V_SELLO_LA, 
-                               V_SELLO_T, 
-                               V_SELLO_TA, 
+                               V_EMBARQ, 
+                               V_SELLO1, 
+                               V_SELLO2, 
+                               V_SELLO3, 
+                               V_SELLO4, 
                                V_FECHOC, 
                                V_CONTRA
                           FROM OE_ORDER_HEADERS_ALL H
@@ -728,8 +701,10 @@ BEGIN
                     IF HED_REC.TIPO_ADENDA = 'WALMART' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'TRADPP  '||V_RFCEMI);
                     ELSE
-                        FILE_PUT_LINE (V_MANEJADOR, 'TRADPP  '||V_NAME);
+                        FILE_PUT_LINE (V_MANEJADOR, 'TRADPP  '||V_NOMEMI);
                     END IF;
+                    
+                    
                     FILE_PUT_LINE (V_MANEJADOR, 'CTPPRO  '||'ZZ');
                     FILE_PUT_LINE (V_MANEJADOR, 'CVEREGIMEN ' || (CASE
                                                                     WHEN V_REGIMEN = 'REGIMEN GENERAL DE LA LEY DE PERSONAS MORALES'
@@ -741,40 +716,41 @@ BEGIN
                                                                  END));
                     FILE_PUT_LINE (V_MANEJADOR, 'REGIMEN  '||V_REGIMEN);
 
+
                     IF HED_REC.TIPO_ADENDA = 'WALMART' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PPD'); 
                         FILE_PUT_LINE (V_MANEJADOR, 'CVEFORPAG  ' || '99');       
                     ELSE
-                    
                         IF UPPER(HED_REC.ATTRIBUTE_CATEGORY) = 'PAYMENT IN PARTIALITIES' THEN
                             FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PPD');  
                         ELSIF UPPER(HED_REC.ATTRIBUTE_CATEGORY) = 'PAID IN A SINGLE EXHIBITION' THEN
                             FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PUE');  
                         ELSE
                             FILE_PUT_LINE (V_MANEJADOR, 'CODMETPAG  ' || 'PPD');  
-                        END IF;
-                        
+                        END IF;    
+
                         FILE_PUT_LINE (V_MANEJADOR, 'CVEFORPAG  ' || (CASE
-                                                                        WHEN HED_REC.ATTRIBUTE8 IS NOT NULL THEN
-                                                                            HED_REC.ATTRIBUTE8
+                                                                        WHEN HED_REC.CVEFORPAG IS NOT NULL THEN
+                                                                            HED_REC.CVEFORPAG
                                                                         ELSE '99'
-                                                                      END));    
+                                                                      END));
+
                     END IF;
 
-                    IF (V_MPAGO = 'N' AND V_CUENTA = 'N') AND V_RFCEMI = 'RTO840921RE4' THEN
+
+                    IF V_CTAPAG = 'N' AND V_RFCEMI = 'RTO840921RE4' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||''); 
-                        FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||'POR DEFINIR'); 
-                    ELSIF (V_MPAGO = 'N' AND V_CUENTA = 'N') AND V_RFCEMI <> 'RTO840921RE4' THEN
-                        FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||''); 
-                        FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||'CHEQUE');                 
+                    ELSIF V_CTAPAG = 'N' AND V_RFCEMI <> 'RTO840921RE4' THEN
+                        FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||'');             
                     ELSE
-                        IF V_CUENTA = 'N' THEN 
-                            V_CUENTA := ''; 
+                        IF V_CTAPAG = 'N' THEN 
+                            V_CTAPAG := ''; 
                         END IF;
-                        FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||V_CUENTA); 
-                        FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||V_MPAGO);               
+                        FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||V_CTAPAG); 
                     END IF;
 
+
+                    FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||V_FORPAG); 
                     FILE_PUT_LINE (V_MANEJADOR, 'METPAG  '||(CASE 
                                                                 WHEN UPPER(HED_REC.ATTRIBUTE_CATEGORY) = 'PAYMENT IN PARTIALITIES' THEN
                                                                     'PAGO EN PARCIALIDADES O DIFERIDO' 
@@ -787,6 +763,7 @@ BEGIN
                     FILE_PUT_LINE (V_MANEJADOR, 'SERFOL  '||HED_REC.SERFOL);  
                     FILE_PUT_LINE (V_MANEJADOR, 'REFEMI  '||HED_REC.SERFOL||HED_REC.NUMFOL);  
                     
+                    
                     IF HED_REC.SERFOL = 'FBTH' THEN
                         IF P_PELECHA = 'Y' THEN
                             FILE_PUT_LINE (V_MANEJADOR, 'PELCHA  '||TO_CHAR(NULL));
@@ -794,9 +771,12 @@ BEGIN
                             FILE_PUT_LINE (V_MANEJADOR, 'PELCHA  '||'AVES DE DESECHO, PROHIBIDO PELECHAR, SÓLO PARA SU SACRIFICIO.');
                         END IF;
                     ELSE
-                        FILE_PUT_LINE (V_MANEJADOR, 'PELCHA  '||TO_CHAR(NULL));
+                        NULL;
                     END IF;
+                    
+                    
                     FILE_PUT_LINE (V_MANEJADOR, 'FECEXP  '||HED_REC.FECEXP);  
+
 
                     IF HED_REC.TIPO_ADENDA = 'CHEDRAUI' AND P_TIPO_DOC = 'CM' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'FUNDOC  '||'C');
@@ -804,14 +784,16 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'FUNDOC  '||'O'); 
                     END IF;
                     
+                    
                     FILE_PUT_LINE (V_MANEJADOR, 'TIPDOC  '||HED_REC.TIPDOC);  
                     FILE_PUT_LINE (V_MANEJADOR, 'NOMDOC  '||HED_REC.NOMDOC);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'TIPMON  '||HED_REC.TIPO_MONEDA);
-                    FILE_PUT_LINE (V_MANEJADOR, 'TIPCAM  '||HED_REC.TIPO_CAMBIO); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'TIPMON  '||HED_REC.TIPMON);
+                    FILE_PUT_LINE (V_MANEJADOR, 'TIPCAM  '||HED_REC.TIPCAM); 
                     FILE_PUT_LINE (V_MANEJADOR, 'SW_TC  ' ||HED_REC.SW_TC);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'DIAPAG  '||HED_REC.DIAS_PAGO); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'DIAPAG  '||HED_REC.DIAPAG); 
                     FILE_PUT_LINE (V_MANEJADOR, 'PDPPAG  '||'0');  
                     FILE_PUT_LINE (V_MANEJADOR, 'MDPPAG  '||'0');  
+                
                 
                     IF (HED_REC.TIPO_ADENDA = 'SORIANA' AND NVL(P_EXTEMP,0) = 0 AND NVL(V_CONTRA,0) > 0) THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'PO_NUMEOC  '||'SI');  
@@ -826,38 +808,43 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'NUMDPT  '||P_DEPTO);            
                     END IF;
                     
+                    
                     IF HED_REC.TIPO_ADENDA = 'OXXO' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'TIPROV  '||'02'); 
                         FILE_PUT_LINE (V_MANEJADOR, 'TIPLOC  '||'C');  
                     END IF;
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'NUMEOC  '||HED_REC.NO_ORDER_COMPRA); 
+                    
+                    FILE_PUT_LINE (V_MANEJADOR, 'NUMEOC  '||HED_REC.NUMEOC); 
+                    
                     
                     IF HED_REC.TIPO_ADENDA = 'WALMART' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'CONTRA  '||V_CONTRA); 
                     END IF;                    
                     
+                    
                     FILE_PUT_LINE (V_MANEJADOR, 'FECHOC  '||V_FECHOC);  
+                    
                     
                     IF HED_REC.TIPO_ADENDA = 'SORIANA' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'FECCON  '||HED_REC.FECCON);  
                     END IF;
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'NOTAS3 '||REPLACE (UPPER(IBY_AMOUNT_IN_WORDS.GET_AMOUNT_IN_WORDS(V_TOTAL,'MXN')), 'MXN', HED_REC.TIPO_MONEDA));
-                    FILE_PUT_LINE (V_MANEJADOR, 'REMDES  '||NVL(V_CEDIS,'MATRIZ TEHUACAN')); 
-                    FILE_PUT_LINE (V_MANEJADOR, 'FECHAR  '||HED_REC.FECHAR);         
+                    
+                    FILE_PUT_LINE (V_MANEJADOR, 'NOTAS3 '||REPLACE (UPPER(IBY_AMOUNT_IN_WORDS.GET_AMOUNT_IN_WORDS(V_TOTPAG,'MXN')), 'MXN', HED_REC.TIPMON));
                     FILE_PUT_LINE (V_MANEJADOR, 'TRANSP  '||V_TRANSP);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'EMBARQ  '||V_SALIDA);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'SELLO1  '||V_SELLO_L); 
-                    FILE_PUT_LINE (V_MANEJADOR, 'SELLO2  '||V_SELLO_LA); 
-                    FILE_PUT_LINE (V_MANEJADOR, 'SELLO3  '||V_SELLO_T);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'SELLO4  '||V_SELLO_TA); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'SELLO1  '||V_SELLO1); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'SELLO2  '||V_SELLO2); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'SELLO3  '||V_SELLO3);  
+                    FILE_PUT_LINE (V_MANEJADOR, 'SELLO4  '||V_SELLO4); 
+                    
                     
                     IF HED_REC.TIPO_ADENDA IS NOT NULL THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'ADDEND  '||'1'); 
                     ELSE    
                         FILE_PUT_LINE (V_MANEJADOR, 'ADDEND  '||'0'); 
                     END IF;
+                    
                     
                     FILE_PUT_LINE (V_MANEJADOR, ''); 
                         
@@ -873,11 +860,14 @@ BEGIN
                         END LOOP;
                     
                     END IF;
+                    
+                    
                     FILE_PUT_LINE (V_MANEJADOR, '');  
                                         
                    
                     FILE_PUT_LINE (V_MANEJADOR, 'RFCEMI  '||V_RFCEMI);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'NOMEMI  '||V_NAME);
+                    FILE_PUT_LINE (V_MANEJADOR, 'NOMEMI  '||V_NOMEMI);
+                    
                     
                     IF V_RFCEMI = 'PAC941215E50' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'EANEMI  '||'7504003607004'); 
@@ -885,32 +875,34 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'EANEMI  '||'');  
                     END IF;
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'CODLUGEXP   ' || NVL(V_POSTAL, V_POSTAL_CODE));
                     
+                    FILE_PUT_LINE (V_MANEJADOR, 'CODLUGEXP   ' || NVL(V_CODEXP, V_CODEMI));
                     FILE_PUT_LINE (V_MANEJADOR, 'NUMEMI  '||HED_REC.NUMEMI);    
-                    FILE_PUT_LINE (V_MANEJADOR, 'CALEMI  '||V_STREET);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'NEXEMI  '||V_EXTNUM);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'COLEMI  '||V_NEIGH);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'MUNEMI  '||V_CITY);  
-                    FILE_PUT_LINE (V_MANEJADOR, 'ESTEMI  '||V_STATE); 
-                    FILE_PUT_LINE (V_MANEJADOR, 'PAIEMI  '||V_COUNTRY);
-                    FILE_PUT_LINE (V_MANEJADOR, 'CODEMI  '||V_POSTAL_CODE);
+                    FILE_PUT_LINE (V_MANEJADOR, 'CALEMI  '||V_CALEMI);  
+                    FILE_PUT_LINE (V_MANEJADOR, 'NEXEMI  '||V_NEXEMI);  
+                    FILE_PUT_LINE (V_MANEJADOR, 'COLEMI  '||V_COLEMI);  
+                    FILE_PUT_LINE (V_MANEJADOR, 'MUNEMI  '||V_MUNEMI);  
+                    FILE_PUT_LINE (V_MANEJADOR, 'ESTEMI  '||V_ESTEMI); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'PAIEMI  '||V_PAIEMI);
+                    FILE_PUT_LINE (V_MANEJADOR, 'CODEMI  '||V_CODEMI);
                     FILE_PUT_LINE (V_MANEJADOR, '');  
                     
+                    
                     IF P_ORG_ID NOT IN (82, 84, 85) THEN
-                        FILE_PUT_LINE (V_MANEJADOR, 'CALEXP  '||UPPER(V_CALLE));  
-                        FILE_PUT_LINE (V_MANEJADOR, 'NEXEXP  '||REPLACE(V_NUMEXT,'N/A',''));  
-                        FILE_PUT_LINE (V_MANEJADOR, 'COLEXP  '||UPPER(REPLACE(V_COLONIA,'N/A','')));  
-                        FILE_PUT_LINE (V_MANEJADOR, 'MUNEXP  '||UPPER(V_CIUDAD));    
-                        FILE_PUT_LINE (V_MANEJADOR, 'LUGEXP  '||UPPER(V_PAIS||' '||V_ESTADO)); 
-                        FILE_PUT_LINE (V_MANEJADOR, 'ESTEXP  '||UPPER(V_ESTADO));    
-                        FILE_PUT_LINE (V_MANEJADOR, 'PAIEXP  '||UPPER(V_PAIS));  
-                        FILE_PUT_LINE (V_MANEJADOR, 'CODEXP  '||V_POSTAL);   
+                        FILE_PUT_LINE (V_MANEJADOR, 'CALEXP  '||UPPER(V_CALEXP));  
+                        FILE_PUT_LINE (V_MANEJADOR, 'NEXEXP  '||REPLACE(V_NEXEXP,'N/A',''));  
+                        FILE_PUT_LINE (V_MANEJADOR, 'COLEXP  '||UPPER(REPLACE(V_COLEXP,'N/A','')));  
+                        FILE_PUT_LINE (V_MANEJADOR, 'MUNEXP  '||UPPER(V_MUNEXP));    
+                        FILE_PUT_LINE (V_MANEJADOR, 'LUGEXP  '||UPPER(V_PAIEXP||' '||V_ESTEXP)); 
+                        FILE_PUT_LINE (V_MANEJADOR, 'ESTEXP  '||UPPER(V_ESTEXP));    
+                        FILE_PUT_LINE (V_MANEJADOR, 'PAIEXP  '||UPPER(V_PAIEXP));  
+                        FILE_PUT_LINE (V_MANEJADOR, 'CODEXP  '||V_CODEXP);   
                         FILE_PUT_LINE (V_MANEJADOR, '');  
                     END IF;
                     
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'RFCREC  '||UPPER(NVL(HED_REC.RFCEMI,HED_REC.RFC_RECEPTOR)));   
+                    FILE_PUT_LINE (V_MANEJADOR, 'RFCREC  '||UPPER(NVL(HED_REC.RFCEMI,HED_REC.RFCREC)));   
+
 
                     IF HED_REC.TIPO_DE_CLIENTE = 'PERSON' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'NOMREC  '||UPPER(HED_REC.NOMRECP));  
@@ -918,22 +910,28 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'NOMREC  '||UPPER(HED_REC.NOMRECO));          
                     END IF;    
                     
+                    
                     FILE_PUT_LINE (V_MANEJADOR, 'USOCFDI    ' || (CASE
                                                                     WHEN V_RFCEMI = 'PAC941215E50' AND HED_REC.TIPDOC = 'I'
                                                                     THEN 'G01'
                                                                     WHEN HED_REC.TIPDOC = 'E'
                                                                     THEN 'G02'
-                                                                    WHEN HED_REC.RFC_RECEPTOR = 'CSE941214C11' AND V_RFCEMI = 'PAC941215E50'
+                                                                    WHEN HED_REC.RFCREC = 'CSE941214C11' AND V_RFCEMI = 'PAC941215E50'
                                                                     THEN 'G03'
-                                                                    WHEN HED_REC.RFC_RECEPTOR = 'PAC941215E50' AND V_RFCEMI = 'ROBG560202PS5' 
+                                                                    WHEN HED_REC.RFCREC = 'PAC941215E50' AND V_RFCEMI = 'ROBG560202PS5' 
                                                                     THEN 'P01'
-                                                                    WHEN HED_REC.RFC_RECEPTOR = 'PAC941215E50' AND V_RFCEMI = 'ROBG560202PS5'
+                                                                    WHEN HED_REC.RFCREC = 'PAC941215E50' AND V_RFCEMI = 'ROBG560202PS5'
+                                                                    THEN 'P01'
+                                                                    WHEN HED_REC.RFCREC = 'GIT8406265M4' 
                                                                     THEN 'P01'
                                                                     ELSE 'P01'
                                                                   END));       
                     
+                    
                     IF HED_REC.TIPO_ADENDA IS NOT NULL THEN
-                        FILE_PUT_LINE (V_MANEJADOR, 'CALREC  '||REGEXP_REPLACE(UPPER(HED_REC.CALREC), '[^a-zA-Z0-9-,. ]', '')); 
+                        FILE_PUT_LINE (V_MANEJADOR, 'CALREC  '||REGEXP_REPLACE(UPPER(HED_REC.CALREC), '[^a-zA-Z0-9-,. ]', ''));
+                        
+                         
                         IF HED_REC.TIPO_ADENDA = 'SORIANA' THEN
                             FILE_PUT_LINE (V_MANEJADOR, 'NEXREC  '||REGEXP_REPLACE(REPLACE(HED_REC.NEXREC,'N/A',NULL), '[^a-zA-Z0-9-,. ]', '')||REGEXP_REPLACE(REPLACE(HED_REC.NINREC,'N/A',NULL), '[^a-zA-Z0-9-,. ]', ''));
                             FILE_PUT_LINE (V_MANEJADOR, 'NINREC  '||NULL);                    
@@ -941,19 +939,22 @@ BEGIN
                             FILE_PUT_LINE (V_MANEJADOR, 'NEXREC  '||REGEXP_REPLACE(REPLACE(HED_REC.NEXREC,'N/A',NULL), '[^a-zA-Z0-9-,. ]', ''));
                             FILE_PUT_LINE (V_MANEJADOR, 'NINREC  '||REGEXP_REPLACE(REPLACE(HED_REC.NINREC,'N/A',NULL), '[^a-zA-Z0-9-,. ]', ''));
                         END IF;
+                        
+                        
                         FILE_PUT_LINE (V_MANEJADOR, 'COLREC  '||REGEXP_REPLACE(UPPER(REPLACE(HED_REC.COLREC,'N/A',NULL)), '[^a-zA-Z0-9-,?. ]', ''));
-                        FILE_PUT_LINE (V_MANEJADOR, 'MUNREC  '||REGEXP_REPLACE(UPPER(HED_REC.CIUDAD), '[^a-zA-Z0-9-,. ]', ''));
-                        FILE_PUT_LINE (V_MANEJADOR, 'ESTREC  '||REGEXP_REPLACE(UPPER(HED_REC.ESTADO), '[^a-zA-Z0-9-,. ]', ''));        
-                        FILE_PUT_LINE (V_MANEJADOR, 'PAIREC  '||REPLACE(UPPER(HED_REC.PAIS),'?','E')); 
+                        FILE_PUT_LINE (V_MANEJADOR, 'MUNREC  '||REGEXP_REPLACE(UPPER(HED_REC.MUNREC), '[^a-zA-Z0-9-,. ]', ''));
+                        FILE_PUT_LINE (V_MANEJADOR, 'ESTREC  '||REGEXP_REPLACE(UPPER(HED_REC.ESTREC), '[^a-zA-Z0-9-,. ]', ''));        
+                        FILE_PUT_LINE (V_MANEJADOR, 'PAIREC  '||REPLACE(UPPER(HED_REC.PAIREC),'?','E')); 
                     ELSE
                         FILE_PUT_LINE (V_MANEJADOR, 'CALREC  '||UPPER(HED_REC.CALREC)); 
                         FILE_PUT_LINE (V_MANEJADOR, 'NEXREC  '||REPLACE(HED_REC.NEXREC,'N/A',NULL)); 
                         FILE_PUT_LINE (V_MANEJADOR, 'NINREC  '||REPLACE(HED_REC.NINREC,'N/A',NULL)); 
                         FILE_PUT_LINE (V_MANEJADOR, 'COLREC  '||UPPER(REPLACE(HED_REC.COLREC,'N/A',NULL)));
-                        FILE_PUT_LINE (V_MANEJADOR, 'MUNREC  '||UPPER(HED_REC.CIUDAD));
-                        FILE_PUT_LINE (V_MANEJADOR, 'ESTREC  '||UPPER(HED_REC.ESTADO));        
-                        FILE_PUT_LINE (V_MANEJADOR, 'PAIREC  '||UPPER(HED_REC.PAIS));                 
+                        FILE_PUT_LINE (V_MANEJADOR, 'MUNREC  '||UPPER(HED_REC.MUNREC));
+                        FILE_PUT_LINE (V_MANEJADOR, 'ESTREC  '||UPPER(HED_REC.ESTREC));        
+                        FILE_PUT_LINE (V_MANEJADOR, 'PAIREC  '||UPPER(HED_REC.PAIREC));                 
                     END IF;
+
 
                     FILE_PUT_LINE (V_MANEJADOR, 'CODREC  '||HED_REC.CODREC); 
                     
@@ -964,7 +965,8 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'EANREC  '||HED_REC.EANREC1); 
                     END IF;
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'MAIL    '||HED_REC.EMAIL); 
+                    
+                    FILE_PUT_LINE (V_MANEJADOR, 'MAIL    '||HED_REC.MAIL); 
                     FILE_PUT_LINE (V_MANEJADOR, 'NUMCLI  '||HED_REC.NUMCLI); 
                     FILE_PUT_LINE (V_MANEJADOR, ''); 
                     
@@ -972,8 +974,9 @@ BEGIN
                     IF HED_REC.NOMRECO = 'VENTAS PUBLICO EN GENERAL GALLINAZA (SCTH)' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'NOMENT  '||NULL);
                     ELSE
-                        FILE_PUT_LINE (V_MANEJADOR, 'NOMENT  '||UPPER(HED_REC.NOMBRE_RECEPTOR));
+                        FILE_PUT_LINE (V_MANEJADOR, 'NOMENT  '||UPPER(HED_REC.NOMENT));
                     END IF;
+
 
                     IF HED_REC.TIPO_ADENDA IS NOT NULL THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'CALENT  '||REGEXP_REPLACE(UPPER(V_CALENT), '[^a-zA-Z0-9-,. ]', '')); 
@@ -991,8 +994,10 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'ESTENT  '||UPPER(V_ESTENT));
                     END IF;
 
+
                     FILE_PUT_LINE (V_MANEJADOR, 'PAIENT  '||UPPER(V_PAIENT));
                     FILE_PUT_LINE (V_MANEJADOR, 'CODENT  '||V_CODENT);
+
 
                     IF HED_REC.TIPO_ADENDA = 'SORIANA' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'EANENT  '||HED_REC.EANENT);  
@@ -1005,7 +1010,9 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'NUMTIE  '||HED_REC.EANENT);
                     END IF;
                     
+                    
                     FILE_PUT_LINE (V_MANEJADOR, '');  
+
 
                     FOR LIN_REC IN LINES_CUR (HED_REC.CUSTOMER_TRX_ID) LOOP
                         BEGIN
@@ -1013,7 +1020,7 @@ BEGIN
                             BEGIN
                               
                               SELECT UNIQUE A.MFG_PART_NUM
-                                INTO V_EAN
+                                INTO V_CODUPC
                                 FROM MTL_MANUFACTURERS B, MTL_SYSTEM_ITEMS_B IT, MTL_MFG_PART_NUMBERS A
                                WHERE A.MANUFACTURER_ID = B.MANUFACTURER_ID
                                  AND A.INVENTORY_ITEM_ID = IT.INVENTORY_ITEM_ID
@@ -1025,23 +1032,30 @@ BEGIN
                                 FND_FILE.PUT_LINE (FND_FILE.LOG,'Error al obtener el EAN a nivel l?neas de la factura. '||SQLERRM);
                             END;
                             
+                            
                             IF (LIN_REC.INV_ITEM_ID = 879378) AND (HED_REC.TIPO_ADENDA = 'SORIANA') THEN
                                 SELECT MEANING
-                                  INTO V_EAN
+                                  INTO V_CODUPC
                                   FROM FND_LOOKUP_VALUES_VL
                                  WHERE TAG = 'CAJA 180';
                             END IF; 
                             
+                            
                             IF V_UNIDAD IS NULL THEN
                                V_UNIDAD := LIN_REC.UOM;
                             END IF;
+                            
+                            
                             IF V_UNIDAD IS NULL THEN 
                                V_UNIDAD := LIN_REC.UOM2;
                             END IF;
+                            
+                            
                             IF V_UNIDAD IS NULL THEN
                                V_UNIDAD := LIN_REC.UOM_LINE;
                             END IF;
-                            --=========================--
+                            
+                            
                             IF (V_UNIDAD IS NULL) AND (HED_REC.TIPDOC IN ('I','E')) THEN
                                IF (P_ORG_ID = 85) OR (P_ORG_ID = 84 AND P_ORIGEN = 1493) OR (P_ORG_ID = 83 AND P_ORIGEN = 1356) THEN
                                     V_UNIDAD := 'SERVICIOS';
@@ -1050,68 +1064,54 @@ BEGIN
                                END IF;
                             END IF;
 
-                            IF V_UNIDAD = 'PZ' AND HED_REC.SERFOL <> 'FETH' THEN 
+
+                            IF V_UNIDAD = 'PZ' AND HED_REC.SERFOL NOT IN ('FETH', 'FDTH') THEN 
                                 V_SEC_UOM := ' PIEZAS DE ';
-                                V_UNIDAD_PDF := 'PZ';
+                                
+                                
                                 IF V_UNIDAD = 'EA' AND LIN_REC.INV_ITEM_ID = 870378 THEN
                                     V_UNIDAD := 'PZ';
                                 END IF;
                             ELSIF V_UNIDAD = 'KG' AND P_ORIGEN <> 1026 THEN 
                                 V_SEC_UOM := ' CAJAS DE ';
-                                V_UNIDAD_PDF := 'KG';
                             ELSIF V_UNIDAD = 'KGM' AND P_ORIGEN = 1026 THEN 
-                                V_SEC_UOM := '';
-                                V_UNIDAD_PDF := 'KG';                            
+                                V_SEC_UOM := '';                          
                             END IF;
+
 
                             IF V_UNIDAD = 'EA' AND P_ORG_ID = 85 THEN 
                                 V_SEC_UOM := '';
-                                V_UNIDAD_PDF := 'PZ';
                                 V_UNIDAD := 'PZ';
                             END IF;
 
                             
-                            V_TOTAL_LIN := V_TOTAL_LIN + 1; 
+                            V_NUMLIN := V_NUMLIN + 1; 
                                 
                             
-                            FILE_PUT_LINE (V_MANEJADOR, 'CANTID  '||LIN_REC.CANT_FACTURADA); 
+                            FILE_PUT_LINE (V_MANEJADOR, 'CANTID  '||LIN_REC.CANTID); 
                             
                             DECLARE 
                                 VAR_CVEUNIDAD       VARCHAR2(10);
                             BEGIN
                             
-                                IF  V_UNIDAD NOT IN('SERVICIOS', 'NA') THEN
-                                
-                                
-                                    SELECT DISTINCT ATTRIBUTE1
-                                      INTO VAR_CVEUNIDAD
-                                      FROM MTL_UNITS_OF_MEASURE UOM
-                                     WHERE 1 = 1
-                                       AND UPPER(UOM.UOM_CODE) = UPPER(NVL(NVL(LIN_REC.UOM, LIN_REC.UOM2), LIN_REC.UOM_LINE));
-                                                  
-                                    FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || VAR_CVEUNIDAD);
-                                
-                                ELSE
-                                    SELECT DISTINCT ATTRIBUTE1
-                                      INTO VAR_CVEUNIDAD
-                                      FROM MTL_UNITS_OF_MEASURE UOM
-                                     WHERE 1 = 1
-                                       AND UPPER(UOM.UOM_CODE) = UPPER(NVL(NVL(LIN_REC.UOM, LIN_REC.UOM2), LIN_REC.UOM_LINE));
-                                                  
-                                    FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || VAR_CVEUNIDAD);
-                                END IF;                                         
+                                SELECT DISTINCT ATTRIBUTE1
+                                  INTO VAR_CVEUNIDAD
+                                  FROM MTL_UNITS_OF_MEASURE UOM
+                                 WHERE 1 = 1
+                                   AND UPPER(UOM.UOM_CODE) = UPPER(NVL(NVL(LIN_REC.UOM, LIN_REC.UOM2), LIN_REC.UOM_LINE));
+                                              
+                                FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || VAR_CVEUNIDAD);
                                 
                             EXCEPTION WHEN OTHERS THEN
                                 FND_FILE.PUT_LINE (FND_FILE.LOG, 'Error - CVEUNIDAD - ' || SQLERRM);
                             
-                                FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || LIN_REC.CLAVE_UNIDAD);
+                                FILE_PUT_LINE (V_MANEJADOR, 'CVEUNIDAD    ' || LIN_REC.CVEUNIDAD);
                             END;
                             
                             DECLARE
                                 VAR_CVEPRODSERV     VARCHAR2(10); 
                             BEGIN
                                  
-                                
                                 SELECT DISTINCT
                                        MC.SEGMENT3
                                   INTO VAR_CVEPRODSERV
@@ -1126,101 +1126,125 @@ BEGIN
                                    AND MC.SEGMENT3 IS NOT NULL;
                             
                                 FILE_PUT_LINE (V_MANEJADOR, 'CVEPRODSERV    ' || VAR_CVEPRODSERV);
-                                        
-                                IF VAR_CVEPRODSERV IS NULL THEN
-                                    RAISE CVEPRODSERV_EX; 
-                                END IF;
                                 
                             EXCEPTION WHEN OTHERS THEN
-                                FILE_PUT_LINE (V_MANEJADOR, 'CVEPRODSERV    ' || LIN_REC.CLAVE_PROD);
+                                FILE_PUT_LINE (V_MANEJADOR, 'CVEPRODSERV    ' || LIN_REC.CVEPRODSERV);
                             
                                 FND_FILE.PUT_LINE(FND_FILE.LOG, 'Error - CVEPRODSERV - ' || SQLERRM);
                             END;
                             
                             IF HED_REC.SERFOL = 'FCTH' THEN
 
-                                FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.DESCRIPCION||' Ton. '||LIN_REC.CANTIDAD_SECUNDARIA);
-                                FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.DESCRIPCION||' Ton. '||LIN_REC.CANTIDAD_SECUNDARIA);
-                                FILE_PUT_LINE (V_MANEJADOR, 'CANEMP  '||LIN_REC.CANT_FACTURADA);   
+                                FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.DESCRI||' Ton. '||LIN_REC.CANTIDAD_SECUNDARIA);
+                                FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.DESCRI||' Ton. '||LIN_REC.CANTIDAD_SECUNDARIA);
+                                FILE_PUT_LINE (V_MANEJADOR, 'CANEMP  '||LIN_REC.CANTID);   
                                 FILE_PUT_LINE (V_MANEJADOR, 'CVESKU  '||NULL);
-                                FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(V_EAN,13,'0'));
+                                
+                                
+                                IF HED_REC.TIPO_ADENDA = 'CHEDRAUI' AND V_CODUPC IS NULL THEN
+                                    FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(9,13,'9'));
+                                ELSE
+                                    FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(V_CODUPC,13,'0'));
+                                END IF;
+                                
+                                
                                 FILE_PUT_LINE (V_MANEJADOR, 'UNIDAD  '||V_UNIDAD);  
                                 FILE_PUT_LINE (V_MANEJADOR, 'PIEPEM  '||1); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'CODDUN  '||LPAD(V_EAN,13,'0'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'CODDUN  '||LPAD(V_CODUPC,13,'0'));
                                 FILE_PUT_LINE (V_MANEJADOR, 'PBRUDE  '||(CASE
-                                                                            WHEN LIN_REC.PRECIO_UNITARIO = 0
+                                                                            WHEN LIN_REC.PBRUDE = 0
                                                                             THEN 1
-                                                                            ELSE LIN_REC.PRECIO_UNITARIO
+                                                                            ELSE LIN_REC.PBRUDE
                                                                            END));  
-                                FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||LIN_REC.PRECIO_NETO);
+                                FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||LIN_REC.IMPBRU);
                                 FILE_PUT_LINE (V_MANEJADOR, 'TDECON  '||'0'); 
                                 FILE_PUT_LINE (V_MANEJADOR, 'MDECON  '||'0'); 
                                 FILE_PUT_LINE (V_MANEJADOR, 'CDECON  '||'0'); 
                                 FILE_PUT_LINE (V_MANEJADOR, 'VALUNI  '||(CASE
-                                                                            WHEN LIN_REC.PRECIO_UNITARIO = 0
+                                                                            WHEN LIN_REC.PBRUDE = 0
                                                                             THEN 1
-                                                                            ELSE LIN_REC.PRECIO_UNITARIO
+                                                                            ELSE LIN_REC.PBRUDE
                                                                            END));
-                                FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||LIN_REC.PRECIO_NETO); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||TO_CHAR(NVL(TO_CHAR(LIN_REC.TASA_IMPUESTO),0),'99D9999')); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(TO_CHAR(LIN_REC.TASA_IMPUESTO) / 100, '0D999999'));
-                                FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||NVL(TO_CHAR(LIN_REC.TTL_IMPUESTO),0)); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_TOTAL_LIN); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||TO_CHAR((LIN_REC.CANT_FACTURADA + LIN_REC.TARA))); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'PESDOS  '||LIN_REC.CANT_FACTURADA); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||LIN_REC.IMPBRU); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||TO_CHAR(NVL(TO_CHAR(LIN_REC.TASIPE),0),'99D9999')); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(TO_CHAR(LIN_REC.TASIPE) / 100, '0D999999'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||NVL(TO_CHAR(LIN_REC.MONIPE),0)); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_NUMLIN); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||TO_CHAR((LIN_REC.CANTID + LIN_REC.TARA))); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'PESDOS  '||LIN_REC.CANTID); 
                                 FILE_PUT_LINE (V_MANEJADOR, 'PETARA  '||TO_CHAR(LIN_REC.TARA)); 
                                 FILE_PUT_LINE (V_MANEJADOR, '');
-                            ELSE                              
+
+                            ELSE        
+
                                 IF HED_REC.CUST_TRX_TYPE_ID = 1030 THEN
-                                    FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||SUBSTR(LIN_REC.DESCRIPCION,1,35)); 
-                                    FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.DESCRIPCION);                                 
+                                    FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.DESCRI); 
+                                    FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.DESCRI);                                 
                                 ELSE
+
                                     IF HED_REC.ADUANA IS NOT NULL THEN
-                                        FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||SUBSTR(LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRIPCION,1,35)); 
-                                        FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||SUBSTR(LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRIPCION,1,35)
-                                                                                           ||' - Num. Pedimento: '||HED_REC.NUM_PED
-                                                                                           ||', Aduana: '||HED_REC.ADUANA
-                                                                                           ||', Fecha: '||HED_REC.FECH_PED||'.');  
+                                        FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI); 
+                                        FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI
+                                                                              ||' - Num. Pedimento: '||HED_REC.NUM_PED
+                                                                              ||', Aduana: '||HED_REC.ADUANA
+                                                                              ||', Fecha: '||HED_REC.FECH_PED||'.');  
                                     ELSE 
+
                                         IF P_ORG_ID IN (83,84,85) THEN
-                                            FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRIPCION); 
+                                            FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI); 
                                         ELSE
-                                            FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||SUBSTR(LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRIPCION,1,35)); 
-                                            FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRIPCION);  
+                                            FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI); 
+                                            FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI);  
                                         END IF;
+
                                     END IF;
+
                                 END IF;
-                                FILE_PUT_LINE (V_MANEJADOR, 'CANEMP  '||LIN_REC.CANT_FACTURADA);  
+
+
+                                FILE_PUT_LINE (V_MANEJADOR, 'CANEMP  '||LIN_REC.CANTID);  
                                 FILE_PUT_LINE (V_MANEJADOR, 'CVESKU  '||NULL);
-                                FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(V_EAN,13,'0'));
+                                
+                                IF HED_REC.TIPO_ADENDA = 'CHEDRAUI' AND V_CODUPC IS NULL THEN
+                                    FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(9,13,'9'));
+                                ELSE
+                                    FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(V_CODUPC,13,'0'));
+                                END IF;
+                                
+                                
                                 FILE_PUT_LINE (V_MANEJADOR, 'UNIDAD  '||V_UNIDAD);
                                 FILE_PUT_LINE (V_MANEJADOR, 'PIEPEM  '||TO_CHAR(1));
-                                FILE_PUT_LINE (V_MANEJADOR, 'CODDUN  '||LPAD(V_EAN,13,'0'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'CODDUN  '||LPAD(V_CODUPC,13,'0'));
                                 FILE_PUT_LINE (V_MANEJADOR, 'PBRUDE  '||(CASE
-                                                                            WHEN LIN_REC.PRECIO_UNITARIO = 0
+                                                                            WHEN LIN_REC.PBRUDE = 0
                                                                             THEN 1
-                                                                            ELSE LIN_REC.PRECIO_UNITARIO
+                                                                            ELSE LIN_REC.PBRUDE
                                                                            END));
-                                FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||LIN_REC.PRECIO_NETO); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||LIN_REC.IMPBRU); 
                                 FILE_PUT_LINE (V_MANEJADOR, 'TDECON  '||'0'); 
                                 FILE_PUT_LINE (V_MANEJADOR, 'MDECON  '||'0'); 
+
+
                                 IF HED_REC.TIPO_ADENDA <> 'OXXO' THEN
                                     FILE_PUT_LINE (V_MANEJADOR, 'CDECON  '||'0');
                                 END IF;
+                                
+
                                 FILE_PUT_LINE (V_MANEJADOR, 'VALUNI  '||(CASE
-                                                                            WHEN LIN_REC.PRECIO_UNITARIO = 0
+                                                                            WHEN LIN_REC.PBRUDE = 0
                                                                             THEN 1
-                                                                            ELSE LIN_REC.PRECIO_UNITARIO
+                                                                            ELSE LIN_REC.PBRUDE
                                                                            END));
-                                FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||LIN_REC.PRECIO_NETO);
-                                FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||TO_CHAR(NVL(TO_CHAR(LIN_REC.TASA_IMPUESTO),0),'99D9999'));
-                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(TO_CHAR(LIN_REC.TASA_IMPUESTO) / 100, '0D999999'));  
-                                FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||NVL(TO_CHAR(LIN_REC.TTL_IMPUESTO),0)); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_TOTAL_LIN); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||TO_CHAR(LIN_REC.CANT_FACTURADA + LIN_REC.TARA));
-                                FILE_PUT_LINE (V_MANEJADOR, 'PESDOS  '||LIN_REC.CANT_FACTURADA); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||LIN_REC.IMPBRU);
+                                FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||TO_CHAR(NVL(TO_CHAR(LIN_REC.TASIPE),0),'99D9999'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(TO_CHAR(LIN_REC.TASIPE) / 100, '0D999999'));  
+                                FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||NVL(TO_CHAR(LIN_REC.MONIPE),0)); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_NUMLIN); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||TO_CHAR(LIN_REC.CANTID + LIN_REC.TARA));
+                                FILE_PUT_LINE (V_MANEJADOR, 'PESDOS  '||LIN_REC.CANTID); 
                                 FILE_PUT_LINE (V_MANEJADOR, 'PETARA  '||TO_CHAR(LIN_REC.TARA)); 
                                 FILE_PUT_LINE (V_MANEJADOR, '');
+
                             END IF;
                        
 
@@ -1229,61 +1253,68 @@ BEGIN
                         END;
                         
                                   
-                            V_IVA_GLOBAL := V_IVA_GLOBAL + LIN_REC.TASA_IMPUESTO; 
-                            V_IVA_TOTAL := V_IVA_TOTAL + LIN_REC.TTL_IMPUESTO;    
-                            V_ISR_GLOBAL := V_ISR_GLOBAL + LIN_REC.TASA_ISR_RET;  
-                            V_ISR_RET_TOTAL := V_ISR_RET_TOTAL + ABS(LIN_REC.TTL_ISR_RET);
-                            V_IVA_RET_GLOBAL := V_IVA_RET_GLOBAL + ABS(LIN_REC.TASA_IVA_RET);
-                            V_IVA_RET_TOTAL := V_IVA_RET_TOTAL + ABS(LIN_REC.TTL_IVA_RET);
-                            V_IMPORTE_TOTAL := V_IMPORTE_TOTAL + LIN_REC.PRECIO_NETO;
-                            V_CANTIDAD_TOTAL := V_CANTIDAD_TOTAL +  LIN_REC.CANT_FACTURADA; 
+                            V_TOTIVA := V_TOTIVA + LIN_REC.TASIPE; 
+                            V_IVATRA := V_IVATRA + LIN_REC.MONIPE;    
+                            V_ISRRET := V_ISRRET + ABS(LIN_REC.TTL_ISR_RET);
+                            V_IVARET := V_IVARET + ABS(LIN_REC.TTL_IVA_RET);
+                            V_SUBTBR := V_SUBTBR + LIN_REC.IMPBRU;
+                            V_TOTCAN := V_TOTCAN +  LIN_REC.CANTID; 
                         
                     
                     END LOOP;
 
-                    V_IVA_GLOBAL := V_IVA_GLOBAL/V_TOTAL_LIN;
+                    V_TOTIVA := V_TOTIVA/V_NUMLIN;
 
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'TOTLPF  '||V_TOTAL_LIN); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'TOTLPF  '||V_NUMLIN); 
                     
+
                     IF HED_REC.TIPO_ADENDA = 'SORIANA' THEN
-                        FILE_PUT_LINE (V_MANEJADOR, 'TOTCAN  '||V_CANTIDAD_TOTAL);
+                        FILE_PUT_LINE (V_MANEJADOR, 'TOTCAN  '||V_TOTCAN);
                     END IF;
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'SUBTBR  '|| V_IMPORTE_TOTAL); 
+
+                    FILE_PUT_LINE (V_MANEJADOR, 'SUBTBR  '|| V_SUBTBR); 
                     FILE_PUT_LINE (V_MANEJADOR, 'CODDES  '||'0'); 
                     FILE_PUT_LINE (V_MANEJADOR, 'MONDET  '||'0'); 
                     FILE_PUT_LINE (V_MANEJADOR, 'PRCDSG  '||'0'); 
-                        
+                    
+
                     IF HED_REC.TIPO_ADENDA = 'CHEDRAUI' THEN
-                        FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||TO_CHAR(V_IMPORTE_TOTAL)); 
-                    ELSE                        
-                        IF V_IVA_GLOBAL = 16 THEN
+                        FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||TO_CHAR(V_SUBTBR)); 
+                    ELSE  
+
+                        IF V_TOTIVA = 16 THEN
                             FILE_PUT_LINE (V_MANEJADOR, 'SUBTSI  '||TO_CHAR(0));  
-                            FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||TO_CHAR(V_IMPORTE_TOTAL)); 
-                        ELSIF V_IVA_GLOBAL = 0 THEN
-                            FILE_PUT_LINE (V_MANEJADOR, 'SUBTSI  '||TO_CHAR(V_IMPORTE_TOTAL)); 
+                            FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||TO_CHAR(V_SUBTBR)); 
+                        ELSIF V_TOTIVA = 0 THEN
+                            FILE_PUT_LINE (V_MANEJADOR, 'SUBTSI  '||TO_CHAR(V_SUBTBR)); 
                             FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||TO_CHAR(0)); 
                         END IF;
+                    
                     END IF;    
-                    FILE_PUT_LINE (V_MANEJADOR, 'SUBTOT  '||TO_CHAR(V_IMPORTE_TOTAL)); 
-                        
-                    IF (V_IVA_GLOBAL = 0) OR (V_IVA_GLOBAL = 16) THEN 
-                        FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||TO_CHAR(V_IVA_GLOBAL));
+                    
+
+                    FILE_PUT_LINE (V_MANEJADOR, 'SUBTOT  '||TO_CHAR(V_SUBTBR)); 
+                    
+
+                    IF (V_TOTIVA = 0) OR (V_TOTIVA = 16) THEN 
+                        FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||TO_CHAR(V_TOTIVA));
                     ELSE
                         FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||TO_CHAR(0));  
                     END IF;
                         
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'IVATRA  '||TO_CHAR(ROUND(NVL(V_IVA_TOTAL,0),2)));
-                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET  '||ROUND(ABS(NVL(V_IVA_RET_TOTAL,0)),2)); 
-                    FILE_PUT_LINE (V_MANEJADOR, 'ISRRET  '||ROUND(ABS(NVL(V_ISR_RET_TOTAL,0)),2)); 
-                    FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG  '||TO_CHAR((V_TOTAL - ABS(NVL(V_IVA_RET_TOTAL,0)) - ABS(NVL(V_ISR_RET_TOTAL,0)))));
-                    FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG_ORI  '||TRUNC(V_TOTAL - ABS(NVL(V_IVA_RET_TOTAL,0)) - ABS(NVL(V_ISR_RET_TOTAL,0)),2));
+                    FILE_PUT_LINE (V_MANEJADOR, 'IVATRA  '||TO_CHAR(ROUND(NVL(V_IVATRA,0),2)));
+                    FILE_PUT_LINE (V_MANEJADOR, 'IVARET  '||ROUND(ABS(NVL(V_IVARET,0)),2)); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'ISRRET  '||ROUND(ABS(NVL(V_ISRRET,0)),2)); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG  '||TO_CHAR((V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)))));
+                    FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG_ORI  '||TRUNC(V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)),2));
                     UTL_FILE.FCLOSE (V_MANEJADOR);
+
                 ELSE
                     FND_FILE.PUT_LINE (FND_FILE.LOG, 'Las lineas de la factura NO coinciden con las l?neas del pedido, por favor val?delas y vuelva A correr el proceso de facturaci?n electr?nica para poder continuar.');
-                    FND_FILE.PUT_LINE (FND_FILE.LOG, 'Importe total de la factura: '||V_TOTAL);
+                    FND_FILE.PUT_LINE (FND_FILE.LOG, 'Importe total de la factura: '||V_TOTPAG);
                     FND_FILE.PUT_LINE (FND_FILE.LOG, 'Importe total del pedido: '||V_IMP_TOTAL_PED);
                 END IF;
                 
@@ -1293,10 +1324,12 @@ BEGIN
 
        END IF;
    END LOOP;
-
+       
+       FND_FILE.PUT_LINE(FND_FILE.LOG, '');
+       FND_FILE.PUT_LINE(FND_FILE.LOG, P_TIMBRAR);
    
        BEGIN
-           IF P_TIMBRAR = 'YES' THEN
+            IF P_TIMBRAR = 'YES' THEN
                V_REQUEST_ID := APPS.FND_REQUEST.SUBMIT_REQUEST( APPLICATION =>'AR',
                                                                 PROGRAM     =>'MUEVE_CFD',
                                                                 DESCRIPTION => NULL,
@@ -1318,10 +1351,8 @@ BEGIN
            FND_FILE.PUT_LINE (FND_FILE.LOG, 'ERROR lanzando concurrente. '||SQLERRM);
        END;
 EXCEPTION 
-    WHEN CVEPRODSERV_EX THEN
-    ERRBUF := 'NO SE HA DEFINIDO CLAVE PARA EL PRODUCTO.';
-    RETCODE:= 1;
     WHEN OTHERS THEN
+    RETCODE:= 1;
     FND_FILE.PUT_LINE (FND_FILE.OUTPUT, 'ERROR inesperado al generar factura. '||SQLERRM);
     FND_FILE.PUT_LINE (FND_FILE.LOG, 'Archivo generado: '||V_DIRECTORIO||'/'||V_ARCHIVO);
 END;
