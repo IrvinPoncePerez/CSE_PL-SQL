@@ -712,16 +712,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                       WHERE PA.PERSON_ID = PAPF.PERSON_ID
                         AND FT2.TERRITORY_CODE = PA.COUNTRY)                                        AS  PAIREC,
                     NVL(PAPF.EMAIL_ADDRESS, 'NULL')                                                 AS  MAIL,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBTBR,  
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  SUBEMP,  
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  TOTSEP_ANT, 
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))                         AS  TOTSEP_IND,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  ISRRET,
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))                             AS  MONDET,  
-                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_VIATICAL(PAA.ASSIGNMENT_ACTION_ID), '0'))                           AS  VIATICAL,
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBTBR(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  SUBTBR,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_SUBEMP(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  SUBEMP,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  TOTSEP_ANT, 
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_PER_TOTSEP(PAA.ASSIGNMENT_ACTION_ID), '0'))  AS  TOTSEP_IND,
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_ISRRET(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  ISRRET,
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_MONDET(PAA.ASSIGNMENT_ACTION_ID), '0'))      AS  MONDET,  
+                    SUM(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_VIATICAL(PAA.ASSIGNMENT_ACTION_ID), '0'))    AS  VIATICAL,
                     PAPF.EMPLOYEE_NUMBER                                                            AS  NOM_NUMEMP,
                     PAPF.NATIONAL_IDENTIFIER                                                        AS  NOM_CURP,
-                    PAC_CFDI_FUNCTIONS_PKG.GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)                                        AS  NOM_FECREL,
+                    PAC_CFDI_FUNCTIONS_PKG.GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)                 AS  NOM_FECREL,
                     (CASE
                         WHEN PAAF.EMPLOYEE_CATEGORY = '001CALV' THEN 'Sí'
                         WHEN PAAF.EMPLOYEE_CATEGORY = '002CALV' THEN 'No'
@@ -761,7 +761,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                             PTP.END_DATE
                      END)                                                                           AS  NOM_FECFIN,
                     TO_CHAR(REPLACE(REPLACE(PAPF.PER_INFORMATION3, ' ', ''),'-',''), '00000000000') AS  NOM_NUMSEG,   
-                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '1'))                          AS  NOM_DIAPAG,
+                    MAX(NVL(PAC_CFDI_FUNCTIONS_PKG.GET_DIAPAG(PAA.ASSIGNMENT_ACTION_ID), '1'))      AS  NOM_DIAPAG,
                     HOUV.NAME                                                                       AS  NOM_DEPTO,
                     (CASE
                         WHEN HOUV.REGION_1 = 'CAMP' THEN 'CAM'
@@ -792,7 +792,20 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         THEN '99'
                      END)                                                                           AS  NOM_FORPAG,
                     PTP.PERIOD_NUM                                                                  AS  NOM_NUMERONOM,
-                    APPS.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)               AS  NOM_REGPAT,
+                    APPS.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID)               AS  NOM_REGPATEMI,
+                    (SELECT NVL(FLV.DESCRIPTION, 3)
+                       FROM FND_LOOKUP_VALUES  FLV
+                      WHERE 1 = 1
+                        AND FLV.LOOKUP_TYPE = 'XXCALV_RIESGO_TRABAJO'
+                        AND FLV.ENABLED_FLAG = 'Y'
+                        AND FLV.LANGUAGE = USERENV('LANG')
+                        AND FLV.LOOKUP_CODE = APPS.PAC_HR_PAY_PKG.GET_EMPLOYER_REGISTRATION(PAAF.ASSIGNMENT_ID))           AS  NOM_RIEPTO,
+                    (SELECT TRUNC(((CASE
+                                        WHEN PCS.CONSOLIDATION_SET_NAME LIKE '%FINIQUITOS%' 
+                                        THEN PTP.END_DATE + 1
+                                        ELSE PTP.END_DATE
+                                     END) - PAC_CFDI_FUNCTIONS_PKG.GET_EFFECTIVE_START_DATE(PAPF.PERSON_ID)) / 7)  
+                       FROM DUAL)                                                                   AS  NOM_ANTIG,                    
                     MAX(NVL(PAC_RESULT_VALUES_PKG.GET_OTHER_VALUE(PAA.ASSIGNMENT_ACTION_ID,
                                             'Integrated Daily Wage',
                                             'Pay Value'), '0'))                                     AS  NOM_SDI,
@@ -974,7 +987,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
          
          DETAIL DETAILS;
          
-         PROCEDURE REGISTRING IS BEGIN dbms_lock.SLEEP(2); END;
+         PROCEDURE REGISTRING IS BEGIN /*dbms_lock.SLEEP(2);*/ NULL; END;
          
     BEGIN
         
@@ -1105,7 +1118,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 LOOP        
                 
                     CFDI_LOGGING(var_file_name, 'FLUSH DATA');  
-                    DBMS_LOCK.SLEEP(60);                          
+--                    DBMS_LOCK.SLEEP(60);                          
                 
                     FETCH DETAIL_LIST BULK COLLECT INTO DETAIL LIMIT 100;
                     
@@ -1316,7 +1329,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         END IF;
                         UTL_FILE.PUT_LINE(var_file, 'NOM_ENTFED  ' || DETAIL(rowIndex).NOM_ENTFED);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_NUMERONOM  ' || DETAIL(rowIndex).NOM_NUMERONOM);
-                        UTL_FILE.PUT_LINE(var_file, 'NOM_REGPAT  ' || DETAIL(rowIndex).NOM_REGPAT);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_REGPAT     ' || DETAIL(rowIndex).NOM_REGPATEMI);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_REGPATEMI  ' || DETAIL(rowIndex).NOM_REGPATEMI);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_RIEPTO     ' || DETAIL(rowIndex).NOM_RIEPTO);
+                        UTL_FILE.PUT_LINE(var_file, 'NOM_ANTIG      ' || 'P'||DETAIL(rowIndex).NOM_ANTIG||'W');                                                                                                     
                         UTL_FILE.PUT_LINE(var_file, 'NOM_TIPSAL  MIXTO');
                         UTL_FILE.PUT_LINE(var_file, 'NOM_CVENOM  ' || DETAIL(rowIndex).NOM_CVENOM);
                         UTL_FILE.PUT_LINE(var_file, 'NOM_PER_TOTSUL  ' || TO_CHAR(DETAIL(rowIndex).SUBTBR +
@@ -2206,7 +2222,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         END;
                     END LOOP;
                     
-                    DBMS_LOCK.SLEEP(60);
+--                    DBMS_LOCK.SLEEP(60);
                     CFDI_LOGGING(var_file_name, 'WAIT DOWNLOAD FILES');
                         
                     EXIT WHEN IS_DOWNLOADING(var_remote_directory,((var_file_records - var_errors) * 2)) = FALSE;
@@ -3327,7 +3343,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                 
                 FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || ' ' || var_employee_name);
                 
-                DBMS_LOCK.SLEEP(1);
+--                DBMS_LOCK.SLEEP(1);
                 CFDI_LOGGING(P_FILE_NAME, var_file_name || ' ' || var_employee_name);                    
                 
             END;
@@ -3381,7 +3397,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
                         
                         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, var_file_name || ' ' || var_employee_name);
                         
-                        DBMS_LOCK.SLEEP(1);
+--                        DBMS_LOCK.SLEEP(1);
                         CFDI_LOGGING(P_FILE_NAME, var_file_name || ' ' || var_employee_name);
                         
                     END IF;
