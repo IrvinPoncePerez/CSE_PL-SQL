@@ -145,9 +145,22 @@ SELECT ASMA.*
  WHERE 1 = 1
    AND ASM.SAVING_BANK_ID = 2
    AND ASM.MEMBER_ID = ASMA.MEMBER_ID
-   AND FINAL_BALANCE < 2
+   AND FINAL_BALANCE < 1
    AND FINAL_BALANCE > 0;
-   
+
+
+SELECT ASL.LOAN_ID,
+       ASM.MEMBER_ID,
+       ASM.EMPLOYEE_NUMBER,
+       ASM.EMPLOYEE_FULL_NAME,
+       ASL.LOAN_BALANCE
+  FROM ATET_SB_LOANS    ASL,
+       ATET_SB_MEMBERS  ASM
+ WHERE 1 = 1
+   AND ASL.MEMBER_ID = ASM.MEMBER_ID
+   AND ASM.SAVING_BANK_ID = 2
+   AND ASL.LOAN_BALANCE <> 0
+   AND ASL.LOAN_STATUS_FLAG NOT IN ('CANCELED', 'REJECTED');   
    
    
    
@@ -164,3 +177,15 @@ SELECT ASL.*
    AND ASM.MEMBER_ID = ASL.MEMBER_ID
    AND ASL.LOAN_STATUS_FLAG = 'ACTIVE'
    AND ASL.LOAN_BALANCE BETWEEN 0 AND 1;
+   
+   
+   
+
+   
+/****************************************************************************************/
+/*                  CONSULTA DE         EXPORT_ERROR                                    */
+/****************************************************************************************/   
+SELECT *
+  FROM ATET_SB_PAYMENTS_SCHEDULE    ASPS
+ WHERE 1 = 1
+   AND ASPS.STATUS_FLAG = 'EXPORT_ERROR';
