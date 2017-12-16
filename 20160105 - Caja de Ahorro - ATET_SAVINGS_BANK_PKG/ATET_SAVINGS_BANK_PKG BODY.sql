@@ -5815,7 +5815,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                       FROM ATET_SB_LOANS_TRANSACTIONS ASLT
                      WHERE 1 = 1
                        AND ASLT.LOAN_ID = P_LOAN_ID
-                       AND ASLT.TRANSACTION_CODE NOT IN ('OPENING', 'SETTLEMENT_LOAN');
+                       AND ASLT.TRANSACTION_CODE NOT IN ('OPENING');
                        
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'QUERY : var_aslt_payment_capital, var_aslt_payment_interest'); 
                 EXCEPTION WHEN OTHERS THEN
@@ -6440,10 +6440,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     /**********************************************************/
                     /******         IMPRESION DE TRANSACCION AHORRO       *****/
                     /**********************************************************/
-                    PRINT_SAVING_TRANSACTION(
-                        P_SAVING_TRANSACTION_ID => var_saving_transaction_id
-                        );
-
+                    IF P_IS_SAVING_RETIREMENT = 'Y' THEN
+                        PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID => var_saving_transaction_id);
+                    END IF;
                     /**********************************************************/
                     /*******             IMPRESIÓN DE RECIBO               ****/
                     /**********************************************************/
