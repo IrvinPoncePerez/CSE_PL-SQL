@@ -195,6 +195,7 @@ IS
          , TRAX.CUST_TRX_TYPE_ID
          , TRAX.ATTRIBUTE_CATEGORY
          , TRAX.ATTRIBUTE8                                                          CVEFORPAG
+         , TRAX.ATTRIBUTE9                                                          USOCFDI
       FROM RA_CUSTOMER_TRX_PARTIAL_CFD TRAX
      WHERE 1 = 1
        AND TRAX.ORG_ID = P_ORG_ID_H
@@ -694,8 +695,9 @@ BEGIN
                     
                     
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'E');
+                    
                     FILE_PUT_LINE (V_MANEJADOR, 'VERSIO  3.3');   
+                    FILE_PUT_LINE (V_MANEJADOR, 'E');
                     
                     
                     IF HED_REC.TIPO_ADENDA = 'WALMART' THEN
@@ -738,18 +740,12 @@ BEGIN
                     END IF;
 
 
-                    IF V_CTAPAG = 'N' AND V_RFCEMI = 'RTO840921RE4' THEN
-                        FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||''); 
-                    ELSIF V_CTAPAG = 'N' AND V_RFCEMI <> 'RTO840921RE4' THEN
-                        FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||'');             
-                    ELSE
-                        IF V_CTAPAG = 'N' THEN 
-                            V_CTAPAG := ''; 
-                        END IF;
-                        FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||V_CTAPAG); 
+                    IF V_CTAPAG = 'N' THEN 
+                        V_CTAPAG := ''; 
                     END IF;
-
-
+                    
+                    
+                    FILE_PUT_LINE (V_MANEJADOR, 'CTAPAG  '||V_CTAPAG);
                     FILE_PUT_LINE (V_MANEJADOR, 'FORPAG  '||V_FORPAG); 
                     FILE_PUT_LINE (V_MANEJADOR, 'METPAG  '||(CASE 
                                                                 WHEN UPPER(HED_REC.ATTRIBUTE_CATEGORY) = 'PAYMENT IN PARTIALITIES' THEN
@@ -770,8 +766,6 @@ BEGIN
                         ELSE
                             FILE_PUT_LINE (V_MANEJADOR, 'PELCHA  '||'AVES DE DESECHO, PROHIBIDO PELECHAR, SÓLO PARA SU SACRIFICIO.');
                         END IF;
-                    ELSE
-                        NULL;
                     END IF;
                     
                     
@@ -911,21 +905,23 @@ BEGIN
                     END IF;    
                     
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'USOCFDI    ' || (CASE
-                                                                    WHEN V_RFCEMI = 'PAC941215E50' AND HED_REC.TIPDOC = 'I'
-                                                                    THEN 'G01'
-                                                                    WHEN HED_REC.TIPDOC = 'E'
-                                                                    THEN 'G02'
-                                                                    WHEN HED_REC.RFCREC = 'CSE941214C11' AND V_RFCEMI = 'PAC941215E50'
-                                                                    THEN 'G03'
-                                                                    WHEN HED_REC.RFCREC = 'PAC941215E50' AND V_RFCEMI = 'ROBG560202PS5' 
-                                                                    THEN 'P01'
-                                                                    WHEN HED_REC.RFCREC = 'PAC941215E50' AND V_RFCEMI = 'ROBG560202PS5'
-                                                                    THEN 'P01'
-                                                                    WHEN HED_REC.RFCREC = 'GIT8406265M4' 
-                                                                    THEN 'P01'
-                                                                    ELSE 'P01'
-                                                                  END));       
+                    FILE_PUT_LINE (V_MANEJADOR, 'USOCFDI    ' || NVL(HED_REC.USOCFDI, (CASE
+                                                                                         WHEN HED_REC.RFCREC = 'GIT8406265M4' 
+                                                                                         THEN 'P01'
+                                                                                         WHEN HED_REC.RFCREC = 'DBM121023M10'
+                                                                                         THEN 'P01'
+                                                                                         WHEN V_RFCEMI = 'PAC941215E50' AND HED_REC.TIPDOC = 'I'
+                                                                                         THEN 'G01'
+                                                                                         WHEN HED_REC.TIPDOC = 'E'
+                                                                                         THEN 'G02'
+                                                                                         WHEN HED_REC.RFCREC = 'CSE941214C11' AND V_RFCEMI = 'PAC941215E50'
+                                                                                         THEN 'G03'
+                                                                                         WHEN HED_REC.RFCREC = 'PAC941215E50' AND V_RFCEMI = 'ROBG560202PS5' 
+                                                                                         THEN 'P01'
+                                                                                         WHEN HED_REC.RFCREC = 'PAC941215E50' AND V_RFCEMI = 'ROBG560202PS5'
+                                                                                         THEN 'P01'
+                                                                                         ELSE 'P01'
+                                                                                       END)));       
                     
                     
                     IF HED_REC.TIPO_ADENDA IS NOT NULL THEN
@@ -1134,54 +1130,13 @@ BEGIN
                             END;
                             
                             IF HED_REC.SERFOL = 'FCTH' THEN
-
                                 FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.DESCRI||' Ton. '||LIN_REC.CANTIDAD_SECUNDARIA);
                                 FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.DESCRI||' Ton. '||LIN_REC.CANTIDAD_SECUNDARIA);
-                                FILE_PUT_LINE (V_MANEJADOR, 'CANEMP  '||LIN_REC.CANTID);   
-                                FILE_PUT_LINE (V_MANEJADOR, 'CVESKU  '||NULL);
-                                
-                                
-                                IF HED_REC.TIPO_ADENDA = 'CHEDRAUI' AND V_CODUPC IS NULL THEN
-                                    FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(9,13,'9'));
-                                ELSE
-                                    FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(V_CODUPC,13,'0'));
-                                END IF;
-                                
-                                
-                                FILE_PUT_LINE (V_MANEJADOR, 'UNIDAD  '||V_UNIDAD);  
-                                FILE_PUT_LINE (V_MANEJADOR, 'PIEPEM  '||1); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'CODDUN  '||LPAD(V_CODUPC,13,'0'));
-                                FILE_PUT_LINE (V_MANEJADOR, 'PBRUDE  '||(CASE
-                                                                            WHEN LIN_REC.PBRUDE = 0
-                                                                            THEN 1
-                                                                            ELSE LIN_REC.PBRUDE
-                                                                           END));  
-                                FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||LIN_REC.IMPBRU);
-                                FILE_PUT_LINE (V_MANEJADOR, 'TDECON  '||'0'); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'MDECON  '||'0'); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'CDECON  '||'0'); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'VALUNI  '||(CASE
-                                                                            WHEN LIN_REC.PBRUDE = 0
-                                                                            THEN 1
-                                                                            ELSE LIN_REC.PBRUDE
-                                                                           END));
-                                FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||LIN_REC.IMPBRU); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||TO_CHAR(NVL(TO_CHAR(LIN_REC.TASIPE),0),'99D9999')); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(TO_CHAR(LIN_REC.TASIPE) / 100, '0D999999'));
-                                FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||NVL(TO_CHAR(LIN_REC.MONIPE),0)); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_NUMLIN); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||TO_CHAR((LIN_REC.CANTID + LIN_REC.TARA))); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'PESDOS  '||LIN_REC.CANTID); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'PETARA  '||TO_CHAR(LIN_REC.TARA)); 
-                                FILE_PUT_LINE (V_MANEJADOR, '');
-
                             ELSE        
-
                                 IF HED_REC.CUST_TRX_TYPE_ID = 1030 THEN
                                     FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.DESCRI); 
                                     FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.DESCRI);                                 
                                 ELSE
-
                                     IF HED_REC.ADUANA IS NOT NULL THEN
                                         FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI); 
                                         FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI
@@ -1189,64 +1144,97 @@ BEGIN
                                                                               ||', Aduana: '||HED_REC.ADUANA
                                                                               ||', Fecha: '||HED_REC.FECH_PED||'.');  
                                     ELSE 
-
                                         IF P_ORG_ID IN (83,84,85) THEN
                                             FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI); 
                                         ELSE
                                             FILE_PUT_LINE (V_MANEJADOR, 'DESCRI  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI); 
                                             FILE_PUT_LINE (V_MANEJADOR, 'DESCR2  '||LIN_REC.CANTIDAD_SECUNDARIA||V_SEC_UOM||LIN_REC.DESCRI);  
                                         END IF;
-
                                     END IF;
-
                                 END IF;
-
-
-                                FILE_PUT_LINE (V_MANEJADOR, 'CANEMP  '||LIN_REC.CANTID);  
-                                FILE_PUT_LINE (V_MANEJADOR, 'CVESKU  '||NULL);
-                                
-                                IF HED_REC.TIPO_ADENDA = 'CHEDRAUI' AND V_CODUPC IS NULL THEN
-                                    FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(9,13,'9'));
-                                ELSE
-                                    FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(V_CODUPC,13,'0'));
-                                END IF;
-                                
-                                
-                                FILE_PUT_LINE (V_MANEJADOR, 'UNIDAD  '||V_UNIDAD);
-                                FILE_PUT_LINE (V_MANEJADOR, 'PIEPEM  '||TO_CHAR(1));
-                                FILE_PUT_LINE (V_MANEJADOR, 'CODDUN  '||LPAD(V_CODUPC,13,'0'));
-                                FILE_PUT_LINE (V_MANEJADOR, 'PBRUDE  '||(CASE
-                                                                            WHEN LIN_REC.PBRUDE = 0
-                                                                            THEN 1
-                                                                            ELSE LIN_REC.PBRUDE
-                                                                           END));
-                                FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||LIN_REC.IMPBRU); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'TDECON  '||'0'); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'MDECON  '||'0'); 
-
-
-                                IF HED_REC.TIPO_ADENDA <> 'OXXO' THEN
-                                    FILE_PUT_LINE (V_MANEJADOR, 'CDECON  '||'0');
-                                END IF;
-                                
-
-                                FILE_PUT_LINE (V_MANEJADOR, 'VALUNI  '||(CASE
-                                                                            WHEN LIN_REC.PBRUDE = 0
-                                                                            THEN 1
-                                                                            ELSE LIN_REC.PBRUDE
-                                                                           END));
-                                FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||LIN_REC.IMPBRU);
-                                FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||TO_CHAR(NVL(TO_CHAR(LIN_REC.TASIPE),0),'99D9999'));
-                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(TO_CHAR(LIN_REC.TASIPE) / 100, '0D999999'));  
-                                FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||NVL(TO_CHAR(LIN_REC.MONIPE),0)); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_NUMLIN); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||TO_CHAR(LIN_REC.CANTID + LIN_REC.TARA));
-                                FILE_PUT_LINE (V_MANEJADOR, 'PESDOS  '||LIN_REC.CANTID); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'PETARA  '||TO_CHAR(LIN_REC.TARA)); 
-                                FILE_PUT_LINE (V_MANEJADOR, '');
-
                             END IF;
+                            
+                            FILE_PUT_LINE (V_MANEJADOR, 'CANEMP  '||LIN_REC.CANTID);   
+                            FILE_PUT_LINE (V_MANEJADOR, 'CVESKU  '||NULL);
                        
+                            
+                            IF HED_REC.TIPO_ADENDA = 'CHEDRAUI' AND V_CODUPC IS NULL THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(9,13,'9'));
+                            ELSE
+                                FILE_PUT_LINE (V_MANEJADOR, 'CODUPC  '||LPAD(V_CODUPC,13,'0'));
+                            END IF;
+                            
+                            
+                            FILE_PUT_LINE (V_MANEJADOR, 'UNIDAD  '||V_UNIDAD);  
+                            FILE_PUT_LINE (V_MANEJADOR, 'PIEPEM  '||TO_CHAR(1)); 
+                            FILE_PUT_LINE (V_MANEJADOR, 'CODDUN  '||LPAD(V_CODUPC,13,'0'));
+                            FILE_PUT_LINE (V_MANEJADOR, 'PBRUDE  '||(CASE
+                                                                        WHEN LIN_REC.PBRUDE = 0
+                                                                        THEN 1
+                                                                        ELSE LIN_REC.PBRUDE
+                                                                       END));  
+                            FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||LIN_REC.IMPBRU);
+                            FILE_PUT_LINE (V_MANEJADOR, 'TDECON  '||'0'); 
+                            FILE_PUT_LINE (V_MANEJADOR, 'MDECON  '||'0');
+                            
+                            
+                            IF HED_REC.TIPO_ADENDA <> 'OXXO' THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'CDECON  '||'0');
+                            END IF;
+                            
+                            
+                            FILE_PUT_LINE (V_MANEJADOR, 'VALUNI  '||(CASE
+                                                                        WHEN LIN_REC.PBRUDE = 0
+                                                                        THEN 1
+                                                                        ELSE LIN_REC.PBRUDE
+                                                                       END));
+                            FILE_PUT_LINE (V_MANEJADOR, 'IMPORT  '||LIN_REC.IMPBRU);
+                            
+                            
+                            IF V_RFCEMI = 'ATE920811K53' AND LIN_REC.TASIPE = 4 THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||TO_CHAR(NVL(TO_CHAR(16),0),'99D9999'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(TO_CHAR(16) / 100, '0D999999'));
+                            ELSE
+                                FILE_PUT_LINE (V_MANEJADOR, 'TASIPE  '||TO_CHAR(NVL(TO_CHAR(LIN_REC.TASIPE),0),'99D9999'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTTASIPE  ' || TO_CHAR(TO_CHAR(LIN_REC.TASIPE) / 100, '0D999999')); 
+                            END IF;
+                            
+                            
+                            FILE_PUT_LINE (V_MANEJADOR, 'MONIPE  '||NVL(TO_CHAR(LIN_REC.MONIPE),0)); 
+                            FILE_PUT_LINE (V_MANEJADOR, 'NUMLIN  '||V_NUMLIN);
+                                
+                            
+                            IF V_RFCEMI = 'ATE920811K53' AND LIN_REC.TASIPE = 4 THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'IMPORTIPE  ' || TO_CHAR(LIN_REC.PBRUDE*0.25));
+                            END IF;
+                            
+                            
+                            IF V_RFCEMI = 'ROBG560202PS5' AND LIN_REC.TASIPE = 16 THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'IMPORTIPE  ' || TO_CHAR(LIN_REC.PBRUDE));
+                            END IF;
+                            
+                            
+                            IF V_RFCEMI = 'ROBG560202PS5' AND LIN_REC.TASA_IVA_RET > 0 THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIVARE	' || 'Tasa');
+                                FILE_PUT_LINE (V_MANEJADOR, 'IVARET_P	' || TO_CHAR(TRUNC(LIN_REC.TASA_IVA_RET,4), '99D9999'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTIVARET_P    ' || TO_CHAR(TRUNC(LIN_REC.TASA_IVA_RET/100, 6), '0D999999'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'IVARET_D	' || LIN_REC.TTL_IVA_RET);
+                            END IF;
+                            
+                            
+                            IF V_RFCEMI = 'ROBG560202PS5' AND LIN_REC.TASA_ISR_RET > 0 THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'TIPISRRE   ' || 'Tasa');
+                                FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_P	' || TO_CHAR(TRUNC(LIN_REC.TASA_ISR_RET,4), '99D9999'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTISRRET_P	' || TO_CHAR(TRUNC(LIN_REC.TASA_ISR_RET/100, 6), '0D999999')); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_D	' || LIN_REC.TTL_ISR_RET);
+                            END IF;
+                                
+                                
+                            FILE_PUT_LINE (V_MANEJADOR, 'PESUNO  '||TO_CHAR(LIN_REC.CANTID + LIN_REC.TARA));
+                            FILE_PUT_LINE (V_MANEJADOR, 'PESDOS  '||LIN_REC.CANTID); 
+                            FILE_PUT_LINE (V_MANEJADOR, 'PETARA  '||TO_CHAR(LIN_REC.TARA)); 
+                            FILE_PUT_LINE (V_MANEJADOR, '');
+                            
 
                         EXCEPTION WHEN OTHERS THEN
                             FND_FILE.PUT_LINE (FND_FILE.LOG,'ERROR inesperado en las l?neas de la factura. '||SQLERRM);
@@ -1310,6 +1298,15 @@ BEGIN
                     FILE_PUT_LINE (V_MANEJADOR, 'ISRRET  '||ROUND(ABS(NVL(V_ISRRET,0)),2)); 
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG  '||TO_CHAR((V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)))));
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG_ORI  '||TRUNC(V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)),2));
+                    
+                    
+                    IF V_RFCEMI = 'ROBG560202PS5' AND ( V_IVATRA > 0 OR V_IVARET > 0 OR V_ISRRET > 0 ) THEN
+                        FILE_PUT_LINE (V_MANEJADOR, 'TOTTRA     ' || TO_CHAR(ROUND(NVL(V_IVATRA,0),2)));
+                        FILE_PUT_LINE (V_MANEJADOR, 'TOTRET     ' || TO_CHAR(ROUND(NVL(V_IVARET + V_ISRRET, 0),2))); 
+                    END IF;
+                    
+                    
+                    FILE_PUT_LINE (V_MANEJADOR, '');
                     UTL_FILE.FCLOSE (V_MANEJADOR);
 
                 ELSE
