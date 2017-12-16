@@ -6005,8 +6005,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                             ELSE
                                 RAISE MEMBER_EXCEPTION;
                             END IF;
-                            
-                            PRINT_SAVING_TRANSACTION(P_SAVING_TRANSACTION_ID => var_saving_transaction_id);
                         
                         END IF;
                         
@@ -6143,23 +6141,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                             RAISE SETTLEMENT_LOAN_EXCEPTION;
                         END;
                         
-                        /**********************************************************/
-                        /*******             IMPRESIÓN DE RECIBO               ****/
-                        /**********************************************************/
-                        BEGIN
-                                                      
-                            PRINT_PREPAID(
-                                P_LOAN_ID => P_LOAN_ID, 
-                                P_FOLIO => var_loan_receipt_seq,
-                                P_BONUS => var_bonus_interest,
-                                P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
-                                         );
-                                
-                            FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
-                        EXCEPTION WHEN OTHERS THEN
-                            RAISE PRINT_PREPAID_EXCEPTION;
-                        END;
-                        
                         /*********************************************/
                         /***          CREACION DE POLIZA           ***/
                         /*********************************************/
@@ -6260,7 +6241,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                         SYSDATE,
                                         FND_GLOBAL.USER_ID);
                              
-                                ATET_SB_BACK_OFFICE_PKG.PRINT_INTEREST_SUBSIDY(P_LOAN_ID);
                             
                             END IF;
                             
@@ -6448,6 +6428,40 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     EXCEPTION WHEN OTHERS THEN
                         RAISE CREATION_GL_EXCEPTION;
                     END;
+
+                    
+                    /**********************************************************/
+                    /*********    IMPRESION DE BONIFICACION DE INTERES    *****/
+                    /**********************************************************/
+                    IF var_bonus_interest > 0 THEN 
+                      ATET_SB_BACK_OFFICE_PKG.PRINT_INTEREST_SUBSIDY(P_LOAN_ID);
+                    END IF;
+
+                    /**********************************************************/
+                    /******         IMPRESION DE TRANSACCION AHORRO       *****/
+                    /**********************************************************/
+                    PRINT_SAVING_TRANSACTION(
+                        P_SAVING_TRANSACTION_ID => var_saving_transaction_id
+                        );
+
+                    /**********************************************************/
+                    /*******             IMPRESIÓN DE RECIBO               ****/
+                    /**********************************************************/
+                    BEGIN
+                                                  
+                        PRINT_PREPAID(
+                            P_LOAN_ID => P_LOAN_ID, 
+                            P_FOLIO => var_loan_receipt_seq,
+                            P_BONUS => var_bonus_interest,
+                            P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
+                                     );
+                            
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
+                    EXCEPTION WHEN OTHERS THEN
+                        RAISE PRINT_PREPAID_EXCEPTION;
+                    END; 
+
+
                     /************************************************************/
                     /***        OUTPUT MOVIMIENTOS DE AHORRO                  ***/
                     /************************************************************/
@@ -6562,7 +6576,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             END IF;
             
             
-            IF P_IS_SAVER = 'Y' THEN
+            IF P_IS_SAVER = 'N' THEN
             
                 BEGIN
                     SELECT ASMA.FINAL_BALANCE
@@ -6578,7 +6592,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     NULL;
                 END;            
             
-                IF P_IS_SAVER = 'Y' AND var_amount_saved = 0 THEN 
+                IF P_IS_SAVER = 'N' AND var_amount_saved = 0 THEN 
                     UPDATE ATET_SB_MEMBERS  ASM
                        SET ASM.IS_SAVER = 'N',
                            ASM.MEMBER_END_DATE = TO_DATE(SYSDATE, 'DD/MM/RRRR'),
@@ -8955,7 +8969,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    ASL.LOAN_ID,
                    ASMA3.CODE_COMBINATION_ID    AS LOAN_CODE_COMBINATION_ID,
                    ASL.LOAN_NUMBER,
-                   ASL.LOAN_BALANCE
+                   (
+                     SELECT SUM(NVL(ASPS.OWED_AMOUNT, ASPS.PAYMENT_AMOUNT))
+                       FROM ATET_SB_PAYMENTS_SCHEDULE ASPS
+                      WHERE 1  = 1
+                        AND ASPS.LOAN_ID = ASL.LOAN_ID 
+                        AND ASPS.STATUS_FLAG IN ('PENDING','EXPORTED','SKIP','PARTIAL')
+                    )                           AS LOAN_BALANCE             
               FROM ATET_SB_MEMBERS          ASM,
                    ATET_SB_MEMBERS_ACCOUNTS ASMA1,
                    ATET_SB_MEMBERS_ACCOUNTS ASMA2,
@@ -9522,6 +9542,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 END;
                 
                 BEGIN   
+                
                     SELECT ASPS.TIME_PERIOD_ID,
                            ASPS.PERIOD_NAME,
                            ASPS.PAYMENT_DATE,
@@ -9535,8 +9556,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                        AND ASPS.LOAN_ID = detail.LOAN_ID
                        AND ASPS.STATUS_FLAG IN ('PENDING', 'EXPORTED', 'SKIP', 'PARTIAL')
                        AND ROWNUM = 1;
+                       
                 EXCEPTION WHEN OTHERS THEN
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : LOAN_ID = ' || detail.LOAN_ID);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR : LOAN_ID = ' || detail.LOAN_ID ||  ' ' ||SQLERRM);
                     RAISE PAYMENTS_SCHEDULE_EX;
                 END;
                                
@@ -9913,14 +9935,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    AND ASM.MEMBER_ID = ASMA2.MEMBER_ID
                    AND ASMA1.ACCOUNT_DESCRIPTION = 'D071_CAJA DE AHORRO'
                    AND ASMA2.ACCOUNT_DESCRIPTION = 'INTERES GANADO'
-                   AND (ASMA1.FINAL_BALANCE + ASMA2.FINAL_BALANCE) > 0
+                   AND (    (ASMA1.FINAL_BALANCE + ASMA2.FINAL_BALANCE) > 0
+                        AND (ASMA1.FINAL_BALANCE + ASMA2.FINAL_BALANCE) <= 3000)
                    AND ASM.PERSON_ID = PAF.PERSON_ID
                    AND SYSDATE BETWEEN PAF.EFFECTIVE_START_DATE AND PAF.EFFECTIVE_END_DATE
                    AND PAF.ASSIGNMENT_ID = PPM.ASSIGNMENT_ID
                    AND SYSDATE BETWEEN PPM.EFFECTIVE_START_DATE AND PPM.EFFECTIVE_END_DATE
                    AND OPM.ORG_PAYMENT_METHOD_ID = PPM.ORG_PAYMENT_METHOD_ID
                    AND SYSDATE BETWEEN OPM.EFFECTIVE_START_DATE AND OPM.EFFECTIVE_END_DATE
-                   AND OPM.ORG_PAYMENT_METHOD_NAME LIKE '%EFECTIVO%';
+                   AND OPM.ORG_PAYMENT_METHOD_NAME LIKE '%EFECTIVO%'
+                   AND ATET_SAVINGS_BANK_PKG.GET_PERSON_TYPE(ASM.MEMBER_ID) IN ('Empleado', 'Employee');
                    
         CURSOR ACCOUNTED_DETAILS (PP_HEADER_ID NUMBER) IS
             SELECT AXL2.LINE_NUMBER,
@@ -10807,6 +10831,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
             EXCEPTION WHEN OTHERS THEN
                 RAISE UPDATE_SAVING_EX;
             END;
+            
         
         EXCEPTION WHEN OTHERS THEN
             RAISE INT_SAVING_RETIREMENT_EX;
@@ -11065,11 +11090,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                 P_RETIREMENT    => var_saving_retirement + var_interest_retirement,
                 P_CHECK_ID      => var_check_id
             );   
-            
-        /**********************************************************/
-        /*******             IMPRESIÓN DE CHEQUE               ****/
-        /**********************************************************/
-        PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID => var_check_id);  
         
         /**********************************************************/
         /*******             CREACIÓN DE POLIZA                ****/
@@ -11118,6 +11138,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                                                  P_SOURCE_ID               => var_check_id,
                                                  P_SOURCE_LINK_TABLE       => 'ATET_SB_CHECKS_ALL');                                                      
         
+
+        /**********************************************************/
+        /*******             IMPRESIÓN DE CHEQUE               ****/
+        /**********************************************************/
+        PRINT_SAVING_RETIREMENT_CHECK(P_CHECK_ID => var_check_id);  
+        
+        ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL();
+
         /**********************************************************/
         /*******                   OUTPUT                      ****/
         /**********************************************************/   
@@ -11298,7 +11326,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    AND SYSDATE BETWEEN PPM.EFFECTIVE_START_DATE AND PPM.EFFECTIVE_END_DATE
                    AND OPM.ORG_PAYMENT_METHOD_ID = PPM.ORG_PAYMENT_METHOD_ID
                    AND SYSDATE BETWEEN OPM.EFFECTIVE_START_DATE AND OPM.EFFECTIVE_END_DATE
-                   AND OPM.ORG_PAYMENT_METHOD_ID = P_PAYMENT_METHOD_ID;
+                   AND OPM.ORG_PAYMENT_METHOD_ID = P_PAYMENT_METHOD_ID
+                   AND ATET_SAVINGS_BANK_PKG.GET_PERSON_TYPE(ASM.MEMBER_ID) IN ('Empleado', 'Employee');
                    
         CURSOR ACCOUNTED_DETAILS (PP_HEADER_ID NUMBER) IS
             SELECT AXL2.LINE_NUMBER,
@@ -11887,7 +11916,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
            AND SYSDATE BETWEEN PPF.EFFECTIVE_START_DATE 
                            AND PPF.EFFECTIVE_END_DATE
            AND PPF.PERSON_TYPE_ID = PPTT.PERSON_TYPE_ID
-           AND PPTT.LANGUAGE = 'ESA'; 
+           AND PPTT.LANGUAGE = USERENV('LANG'); 
         
         RETURN var_person_type;
     END GET_PERSON_TYPE;
@@ -12288,29 +12317,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    ASL.LAST_UPDATED_BY = var_user_id
              WHERE 1 = 1
                AND ASL.LOAN_ID = P_LOAN_ID;
-        
-        
-            BEGIN
-                
-                SELECT ATET_SB_PREPAID_SEQ.NEXTVAL
-                  INTO var_prepaid_seq
-                  FROM DUAL;
-                      
-                PRINT_PREPAID
-                    (
-                        P_LOAN_ID => P_LOAN_ID, 
-                        P_FOLIO => var_prepaid_seq,
-                        P_BONUS => 0,
-                        P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
-                    );
-                    
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
-                
-            EXCEPTION 
-                WHEN OTHERS THEN
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
-                    RAISE PRINT_PREPAID_EX;
-            END;          
             
             
             BEGIN
@@ -12377,6 +12383,28 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                     FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
                     RAISE CREATE_JOURNAL_EX;
             END; 
+
+            BEGIN
+                
+                SELECT ATET_SB_PREPAID_SEQ.NEXTVAL
+                  INTO var_prepaid_seq
+                  FROM DUAL;
+                      
+                PRINT_PREPAID
+                    (
+                        P_LOAN_ID => P_LOAN_ID, 
+                        P_FOLIO => var_prepaid_seq,
+                        P_BONUS => 0,
+                        P_LOAN_TRANSACTION_ID=> var_loan_transaction_id
+                    );
+                    
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'PRINT : PREPAID');
+                
+            EXCEPTION 
+                WHEN OTHERS THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+                    RAISE PRINT_PREPAID_EX;
+            END;          
             
             COMMIT;
             ATET_SB_BACK_OFFICE_PKG.TRANSFER_JOURNALS_TO_GL;    
