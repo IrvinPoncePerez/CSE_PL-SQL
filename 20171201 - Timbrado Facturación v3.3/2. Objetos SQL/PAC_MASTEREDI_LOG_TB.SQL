@@ -1,0 +1,34 @@
+CREATE TABLE APPS.PAC_MASTEREDI_LOG_TB
+(
+    ROWINDEX            NUMBER,
+    RFCEMI              VARCHAR2(100),
+    RFCREC              VARCHAR2(100),
+    SERFOL              VARCHAR2(100),
+    NUMFOL              VARCHAR2(100),
+    EVE_DATE            VARCHAR2(100),
+    EVE_TITLE           VARCHAR2(1000),
+    EVE_DESC            VARCHAR2(2000)
+);
+CREATE OR REPLACE TRIGGER APPS.PAC_MASTEREDI_LOG_TGR
+BEFORE INSERT
+   ON PAC_MASTEREDI_LOG_TB
+   FOR EACH ROW
+DECLARE
+
+   var_rowindex     NUMBER;
+
+BEGIN
+
+    SELECT COUNT(ROWINDEX) + 1
+      INTO var_rowindex
+      FROM PAC_MASTEREDI_LOG_TB PML
+     WHERE 1 = 1
+       AND PML.RFCEMI = :NEW.RFCEMI
+       AND PML.RFCREC = :NEW.RFCREC
+       AND PML.SERFOL = :NEW.SERFOL
+       AND PML.NUMFOL = :NEW.NUMFOL;
+       
+      
+    :NEW.ROWINDEX := var_rowindex;
+
+END;
