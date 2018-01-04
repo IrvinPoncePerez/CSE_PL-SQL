@@ -1616,14 +1616,14 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
           || 'NOCYCLE';
                   
                   
-        EXECUTE IMMEDIATE 'DROP SEQUENCE ATET_SB_CHECK_NUMBER_SEQ';
+--        EXECUTE IMMEDIATE 'DROP SEQUENCE ATET_SB_CHECK_NUMBER_SEQ';
 
-        EXECUTE IMMEDIATE
-             'CREATE SEQUENCE ATET_SB_CHECK_NUMBER_SEQ '
-          || 'START WITH 1 '
-          || 'INCREMENT BY 1 '
-          || 'NOCACHE '
-          || 'NOCYCLE';
+--        EXECUTE IMMEDIATE
+--             'CREATE SEQUENCE ATET_SB_CHECK_NUMBER_SEQ '
+--          || 'START WITH 1 '
+--          || 'INCREMENT BY 1 '
+--          || 'NOCACHE '
+--          || 'NOCYCLE';
           
           
         EXECUTE IMMEDIATE 'DROP SEQUENCE ATET_SB_ENDORSEMENT_NUMBER_SEQ';
@@ -9216,11 +9216,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                         EARNED_DATE,
                         TIME_PERIOD_ID,
                         ELEMENT_NAME,
-                        ELEMENT_NAME,
+                        'REPARTO DE AHORRO',
                         ENTRY_NAME,
                         ENTRY_UNITS,
                         PP_PAYMENT_AMOUNT,
-                        TRANSACTION_CODE,
+                        'SAVING_DISTRIBUTION',
                         DEBIT_AMOUNT,
                         PP_PAYMENT_AMOUNT,
                         PP_PAYMENT_AMOUNT,
@@ -9349,7 +9349,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_SAVINGS_BANK_PKG IS
                    
                 ATET_SB_BACK_OFFICE_PKG.CREATE_XLA_HEADER (
                     P_ENTITY_CODE        => 'LOANS',
-                    P_EVENT_TYPE_CODE    => 'LOAN_PREPAID',
+                    P_EVENT_TYPE_CODE    => 'SAVING_DISTRIBUTION',
                     P_BATCH_NAME         => 'PAGO ANTICIPADO',
                     P_JOURNAL_NAME       => var_description,
                     P_HEADER_ID          => PP_HEADER_ID );
