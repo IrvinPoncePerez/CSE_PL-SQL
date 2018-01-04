@@ -129,11 +129,11 @@ AS
                                                ,payment_dateF VARCHAR (100) PATH '//nomina:Nomina/@FechaFinalPago'
                                                ,uuid VARCHAR (100) PATH '//tfd:TimbreFiscalDigital/@UUID'
                                                ,employee_num VARCHAR (100) PATH '//nomina:Nomina/@NumEmpleado'
-                                               ,beneficiary VARCHAR (100) PATH '//cfdi:Receptor/@nombre'
-                                               ,company VARCHAR (100) PATH '//cfdi:Emisor/@nombre'
-                                               ,rfc VARCHAR (100) PATH '//cfdi:Emisor/@rfc'
-                                               ,beneficiary_rfc VARCHAR (100) PATH '//cfdi:Receptor/@rfc'
-                                               ,amount VARCHAR (100) PATH '//@total'
+                                               ,beneficiary VARCHAR (100) PATH '//cfdi:Receptor/@Nombre'
+                                               ,company VARCHAR (100) PATH '//cfdi:Emisor/@Nombre'
+                                               ,rfc VARCHAR (100) PATH '//cfdi:Emisor/@Rfc'
+                                               ,beneficiary_rfc VARCHAR (100) PATH '//cfdi:Receptor/@Rfc'
+                                               ,amount VARCHAR (100) PATH '//@Total'
                                                ,currency VARCHAR (100) PATH '//@Moneda'
                                                );
 
@@ -610,12 +610,12 @@ IS
 BEGIN
 
     /* iponce 15-MAY-2017 */
-    debug_read_xml('valid_JuegoCon : p_jego_con : ' || p_jego_con);
-    debug_read_xml('valid_JuegoCon : p_file_name : ' || p_file_name);
-    debug_read_xml('valid_JuegoCon : p_date : ' || to_char(p_date));
-    debug_read_xml('valid_JuegoCon : p_beneficiario : ' || p_beneficiario);
-    debug_read_xml('valid_JuegoCon : p_num_emp : ' || p_num_emp);
-    debug_read_xml('valid_JuegoCon : p_tipo_nom : ' || p_tipo_nom);
+    log_error ('valid_JuegoCon : p_jego_con : ' || p_jego_con);
+    log_error ('valid_JuegoCon : p_file_name : ' || p_file_name);
+    log_error ('valid_JuegoCon : p_date : ' || to_char(p_date));
+    log_error ('valid_JuegoCon : p_beneficiario : ' || p_beneficiario);
+    log_error ('valid_JuegoCon : p_num_emp : ' || p_num_emp);
+    log_error ('valid_JuegoCon : p_tipo_nom : ' || p_tipo_nom);
 
 
     EXECUTE IMMEDIATE 'ALTER SESSION SET NLS_LANGUAGE = ''Latin American Spanish''';
@@ -726,13 +726,13 @@ END valid_CtaDest;
        IF valid_file_exists( p_file_name ) THEN
        
           /* iponce 15-MAY-2017 */
-          debug_read_xml('valid_file_exists : valid'); 
+--          debug_read_xml('valid_file_exists : valid'); 
 
           g_columns_pay := get_data_xml ( p_data_xml, p_file_name ) ;
           g_columns_pay.juego_con := get_Nemonicos('NOM_DESCRI',p_data_xml,1);
           
           /* iponce 15-MAY-2017 */
-          debug_read_xml('insert_xml : g_columns_pay.juego_con : ' || g_columns_pay.juego_con);
+--          debug_read_xml('insert_xml : g_columns_pay.juego_con : ' || g_columns_pay.juego_con);
           
           g_columns_pay.METODO_PAGO := get_Nemonicos('METPAG',p_data_xml,2);
           g_columns_pay.tipo_nomina := get_Nemonicos('NOM_CVENOM',p_data_xml,1);
@@ -743,21 +743,21 @@ END valid_CtaDest;
                                                                       ,g_columns_pay.rfc
                                                                       ,p_file_name );*/
 
---            log_error ('Juego con '||g_columns_pay.JUEGO_CON);
---            log_error ('Archivo '||p_file_name);
---            log_error ('Periodo '||g_columns_pay.periodI);
---            log_error ('Benificiario '||g_columns_pay.BENEFICIARY);
---            log_error ('nume empleado '||g_columns_pay.NUM_EMPLOYEE);
---            log_error ('Tipo Nomina '||g_columns_pay.TIPO_NOMINA);
---            log_error ('banco '||g_columns_pay.bank);
---            log_error ('pay date '||g_columns_pay.payment_date);
---            log_error ('fecha fin '||g_columns_pay.periodF);
---            log_error ('uuid '||g_columns_pay.uuid);
---            log_error ('comania '||g_columns_pay.COMPANY_NAME);
---            log_error ('RFC '||g_columns_pay.beneficiary_rfc);
---            log_error ('monto '||g_columns_pay.amount);
---            log_error ('moneda '||g_columns_pay.currency);
---            log_error ('comania '||g_columns_pay.company_name);
+            log_error ('Juego con '||g_columns_pay.JUEGO_CON);
+            log_error ('Archivo '||p_file_name);
+            log_error ('Periodo '||g_columns_pay.periodI);
+            log_error ('Benificiario '||g_columns_pay.BENEFICIARY);
+            log_error ('nume empleado '||g_columns_pay.NUM_EMPLOYEE);
+            log_error ('Tipo Nomina '||g_columns_pay.TIPO_NOMINA);
+            log_error ('banco '||g_columns_pay.bank);
+            log_error ('pay date '||g_columns_pay.payment_date);
+            log_error ('fecha fin '||g_columns_pay.periodF);
+            log_error ('uuid '||g_columns_pay.uuid);
+            log_error ('comania '||g_columns_pay.COMPANY_NAME);
+            log_error ('RFC '||g_columns_pay.beneficiary_rfc);
+            log_error ('monto '||g_columns_pay.amount);
+            log_error ('moneda '||g_columns_pay.currency);
+            log_error ('comania '||g_columns_pay.company_name);
 
             IF  ( g_columns_pay.company_name IS NOT NULL
             AND valid_JuegoCon(g_columns_pay.JUEGO_CON,p_file_name,g_columns_pay.periodI,g_columns_pay.BENEFICIARY,g_columns_pay.NUM_EMPLOYEE,g_columns_pay.TIPO_NOMINA)
@@ -765,6 +765,7 @@ END valid_CtaDest;
             AND valid_lenth_rfc ( g_columns_pay.beneficiary_rfc)
             AND valid_CtaDest ( g_columns_pay.num_employee, p_file_name )*/ ) THEN
 
+                fnd_file.put_line(fnd_file.log, '***************Valido');
                 l_id_sequence := get_sq_value (p_sequence_name => 'APPS.XXCALV_XMLFILES_CTRL_SEQ');
 
                     --     validate sequence value and UUID
@@ -961,7 +962,7 @@ END count_rows_load;
          l_file_name := i.filename;
          
          /* iponce 15-MAY-2017 */
-         debug_read_xml('read_xml : l_file_name' || l_file_name);
+--         debug_read_xml('read_xml : l_file_name' || l_file_name);
          PAC_CFDI_FUNCTIONS_PKG.CFDI_LOGGING(l_file_name, 'READ FILE : ' || l_file_name);
 
          l_count_rows := l_count_rows + 1;
@@ -1013,6 +1014,7 @@ END count_rows_load;
 
          insert_xml (p_file_name => i.filename
                          ,p_data_xml => l_xml );
+--         debug_read_xml('insert_xml ( p_file_name => ' || i.filename || ', p_data_xml=>  l_xml);');
         ELSE
            IF l_contador_vacios = 0 THEN
             log_error ('No hay el XML  ' || i.filename||sqlerrm);
