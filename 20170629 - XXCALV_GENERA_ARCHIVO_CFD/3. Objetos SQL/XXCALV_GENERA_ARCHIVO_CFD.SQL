@@ -415,7 +415,9 @@ IS
                             P_STRING_LINE   VARCHAR2)
    IS
    BEGIN 
-        UTL_FILE.PUT_LINE (P_MANEJADOR, P_STRING_LINE);
+        IF P_TIMBRAR = 'YES' THEN
+            UTL_FILE.PUT_LINE (P_MANEJADOR, P_STRING_LINE);
+        END IF;
         FND_FILE.PUT_LINE(FND_FILE.LOG, P_STRING_LINE);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, P_STRING_LINE);
    END FILE_PUT_LINE;
@@ -1166,14 +1168,22 @@ BEGIN
                             
                             
                             FILE_PUT_LINE (V_MANEJADOR, 'UNIDAD  '||V_UNIDAD);  
-                            FILE_PUT_LINE (V_MANEJADOR, 'PIEPEM  '||TO_CHAR(1)); 
+                            
+                            
+                            IF HED_REC.TIPO_ADENDA = 'CHEDRAUI' AND LIN_REC.INV_ITEM_ID = 2838603 THEN
+                                FILE_PUT_LINE (V_MANEJADOR, 'PIEPEM  '||TO_CHAR(12));
+                            ELSE
+                                FILE_PUT_LINE (V_MANEJADOR, 'PIEPEM  '||TO_CHAR(1)); 
+                            END IF;
+                            
+                            
                             FILE_PUT_LINE (V_MANEJADOR, 'CODDUN  '||LPAD(V_CODUPC,13,'0'));
                             FILE_PUT_LINE (V_MANEJADOR, 'PBRUDE  '||(CASE
                                                                         WHEN LIN_REC.PBRUDE = 0
                                                                         THEN 1
                                                                         ELSE LIN_REC.PBRUDE
                                                                        END));  
-                            FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||LIN_REC.IMPBRU);
+                            FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||TRUNC(LIN_REC.IMPBRU,2));
                             FILE_PUT_LINE (V_MANEJADOR, 'TDECON  '||'0'); 
                             FILE_PUT_LINE (V_MANEJADOR, 'MDECON  '||'0');
                             
@@ -1288,6 +1298,8 @@ BEGIN
 
                     IF (V_TOTIVA = 0) OR (V_TOTIVA = 16) THEN 
                         FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||TO_CHAR(V_TOTIVA));
+                    ELSIF (V_TOTIVA = 4) AND HED_REC.RFCEMI = 'ATE920811K53' THEN
+                        FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||TO_CHAR(16));
                     ELSE
                         FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||TO_CHAR(0));  
                     END IF;
