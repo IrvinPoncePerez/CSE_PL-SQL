@@ -129,7 +129,8 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                                   ,'PAYROLL_LOANS'
                                   ,'ENDORSEMENT_LOAN_CREATION'
                                   ,'REFINANCED_LOAN_CREATION'
-                                  ,'REPAYMENT_LOAN')
+                                  ,'REPAYMENT_LOAN'
+                                  ,'SAVING_DISTRIBUTION')
                            AND AXL.SOURCE_ID = (CASE
                                                     WHEN AXH.ENTITY_CODE = 'LOANS'
                                                      AND AXH.EVENT_TYPE_CODE = 'LOAN_CREATION'
@@ -173,6 +174,11 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                                                         THEN ASLT.LOAN_TRANSACTION_ID
                                                     WHEN AXH.ENTITY_CODE = 'LOANS'
                                                      AND AXH.EVENT_TYPE_CODE = 'LOAN_PREPAID'
+                                                     AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_PREPAID'
+                                                     AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
+                                                         THEN ASLT.LOAN_ID
+                                                    WHEN AXH.ENTITY_CODE = 'LOANS'
+                                                     AND AXH.EVENT_TYPE_CODE = 'SAVING_DISTRIBUTION'
                                                      AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_PREPAID'
                                                      AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
                                                          THEN ASLT.LOAN_ID
@@ -223,6 +229,11 @@ ALTER SESSION SET CURRENT_SCHEMA=APPS;
                                                              AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_PREPAID'
                                                              AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
                                                                  THEN 'SETTLEMENT_LOAN'  
+                                                            WHEN AXH.ENTITY_CODE = 'LOANS'
+                                                             AND AXH.EVENT_TYPE_CODE = 'SAVING_DISTRIBUTION'
+                                                             AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_PREPAID'
+                                                             AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
+                                                                 THEN 'SAVING_DISTRIBUTION'
                                                         END)
         UNION
                         SELECT AXH.HEADER_ID

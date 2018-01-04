@@ -157,7 +157,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_LOANS_TRANSACTIONS_PKG IS
                                   ,'PAYROLL_LOANS'
                                   ,'ENDORSEMENT_LOAN_CREATION'
                                   ,'REFINANCED_LOAN_CREATION'
-                                  ,'REPAYMENT_LOAN')
+                                  ,'REPAYMENT_LOAN'
+                                  ,'SAVING_DISTRIBUTION')
                            AND AXL.SOURCE_ID = (CASE
                                                     WHEN AXH.ENTITY_CODE = 'LOANS'
                                                      AND AXH.EVENT_TYPE_CODE = 'LOAN_CREATION'
@@ -201,6 +202,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_LOANS_TRANSACTIONS_PKG IS
                                                         THEN ASLT.LOAN_TRANSACTION_ID
                                                     WHEN AXH.ENTITY_CODE = 'LOANS'
                                                      AND AXH.EVENT_TYPE_CODE = 'LOAN_PREPAID'
+                                                     AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_PREPAID'
+                                                     AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
+                                                         THEN ASLT.LOAN_ID
+                                                    WHEN AXH.ENTITY_CODE = 'LOANS'
+                                                     AND AXH.EVENT_TYPE_CODE = 'SAVING_DISTRIBUTION'
                                                      AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_PREPAID'
                                                      AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
                                                          THEN ASLT.LOAN_ID
@@ -251,6 +257,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.ATET_LOANS_TRANSACTIONS_PKG IS
                                                              AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_PREPAID'
                                                              AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
                                                                  THEN 'SETTLEMENT_LOAN'
+                                                            WHEN AXH.ENTITY_CODE = 'LOANS'
+                                                             AND AXH.EVENT_TYPE_CODE = 'SAVING_DISTRIBUTION'
+                                                             AND AXL.ACCOUNTING_CLASS_CODE = 'LOAN_PREPAID'
+                                                             AND AXL.SOURCE_LINK_TABLE = 'ATET_SB_LOANS'
+                                                                 THEN 'SAVING_DISTRIBUTION'
                                                         END)
         UNION
                         SELECT 
