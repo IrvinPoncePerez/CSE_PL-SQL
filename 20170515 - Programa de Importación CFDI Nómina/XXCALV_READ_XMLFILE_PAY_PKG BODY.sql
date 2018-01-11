@@ -93,8 +93,8 @@ AS
 
    SELECT bank
               ,TO_CHAR( TO_DATE(payment_date, 'YYYY/MM/DD'), 'DD/MM/YYYY' ) AS payment_date
-              ,TO_CHAR( TO_DATE(payment_dateI, 'YYYY/MM/DD'), 'DD-MON-YY' ) as periodI
-              ,TO_CHAR( TO_DATE(payment_dateF, 'YYYY/MM/DD'), 'DD-MON-YY' ) as periodF
+              ,TO_CHAR( TO_DATE(payment_dateI, 'YYYY/MM/DD'), 'DD-MM-YY' ) as periodI
+              ,TO_CHAR( TO_DATE(payment_dateF, 'YYYY/MM/DD'), 'DD-MM-YY' ) as periodF
               ,uuid
               ,employee_num
               ,beneficiary
@@ -139,8 +139,8 @@ AS
 
     SELECT bank
               ,TO_CHAR( TO_DATE(payment_date, 'YYYY/MM/DD'), 'DD/MM/YYYY' ) AS payment_date
-              ,TO_CHAR( TO_DATE(payment_dateI, 'YYYY/MM/DD'), 'DD-MON-YY' ) as periodI
-              ,TO_CHAR( TO_DATE(payment_dateF, 'YYYY/MM/DD'), 'DD-MON-YY' ) as periodF
+              ,TO_CHAR( TO_DATE(payment_dateI, 'YYYY/MM/DD'), 'DD-MM-YY' ) as periodI
+              ,TO_CHAR( TO_DATE(payment_dateF, 'YYYY/MM/DD'), 'DD-MM-YY' ) as periodF
               ,employee_num
     INTO     l_bank
             ,l_payment_date
