@@ -166,6 +166,23 @@ AS
         g_columns_pay.periodF := NVL(g_columns_pay.periodF ,l_periodF);
         g_columns_pay.num_employee := NVL(g_columns_pay.num_employee,l_num_employee);
 
+--        log_error ('g_columns_pay.bank => ' || to_char(g_columns_pay.bank));
+--        log_error ('g_columns_pay.payment_date => ' || to_char(g_columns_pay.payment_date));
+--        log_error ('g_columns_pay.periodI => ' || to_char(g_columns_pay.periodI));
+--        log_error ('g_columns_pay.periodF => ' || to_char(g_columns_pay.periodF));
+--        log_error ('g_columns_pay.uuid => ' || to_char(g_columns_pay.uuid));
+--        log_error ('g_columns_pay.num_employee => ' || to_char(g_columns_pay.num_employee));
+--        log_error ('g_columns_pay.beneficiary => ' || to_char(g_columns_pay.beneficiary));
+--        log_error ('g_columns_pay.COMPANY_NAME => ' || to_char(g_columns_pay.COMPANY_NAME));
+--        log_error ('g_columns_pay.beneficiary_rfc => ' || to_char(g_columns_pay.beneficiary_rfc));
+--        log_error ('g_columns_pay.amount => ' || to_char(g_columns_pay.amount));
+--        log_error ('g_columns_pay.currency => ' || to_char(g_columns_pay.currency));
+--        log_error ('g_columns_pay.company_name => ' || to_char(g_columns_pay.company_name));
+--        log_error ('l_bank => ' || to_char(l_bank));
+--        log_error ('l_payment_date => ' || to_char(l_payment_date));
+--        log_error ('l_periodI => ' || to_char(l_periodI));
+--        log_error ('l_periodF => ' || to_char(l_periodF));
+--        log_error ('l_num_employee => ' || to_char(l_num_employee));
 
       RETURN g_columns_pay;
 
@@ -362,9 +379,6 @@ IS
     --Variables
     l_file_name VARCHAR2(2000) := NULL;
 BEGIN
-
-    /* iponce 15-MAY-2017 */
-    debug_read_xml('valid_file_exists : p_file_name : ' || p_file_name);
     
      SELECT file_name
         INTO l_file_name
@@ -506,6 +520,14 @@ IS
     l_tipo_nomina varchar(300);
 BEGIN
  IF p_jego_con = 'FINIQUITOS' OR p_jego_con = 'PTU' OR p_jego_con = 'GRATIFICACION' THEN
+ 
+    log_error (' valid_quick : ' ||
+               ' p_jego_con  => ' || to_char(p_jego_con ) ||
+               ' p_file_name  => ' || to_char(p_file_name ) ||
+               ' p_date  => ' || to_char(p_date ) ||
+               ' p_num_emp  => ' || to_char(p_num_emp ) ||
+               ' p_tipo_nom => ' || to_char(p_tipo_nom));
+ 
  SELECT
         REGEXP_SUBSTR(paa.ASSIGNMENT_NUMBER,'[^-]+', 1,1) numero_empleado,
         pro.PAYROLL_NAME
@@ -515,10 +537,10 @@ BEGIN
         pay_payroll_actions pac1
         ,PAY_ASSIGNMENT_ACTIONS_V paa
         WHERE 1= 1
-        AND TO_DATE(paa.EFFECTIVE_DATE,'DD/MM/YYYY') = (CASE
+        AND TO_DATE(paa.EFFECTIVE_DATE,'DD/MM/RRRR') = (CASE
                                                             WHEN p_jego_con = 'FINIQUITOS'
-                                                            THEN TO_DATE(p_date,'DD/MM/YYYY') -1
-                                                            ELSE TO_DATE(p_date,'DD/MM/YYYY')
+                                                            THEN TO_DATE(paa.EFFECTIVE_DATE,'DD/MM/RRRR')
+                                                            ELSE TO_DATE(p_date,'DD/MM/RRRR')
                                                         END)
         AND pac1.ACTION_TYPE = 'Q'
         AND pac1.payroll_action_id = paa.PAYROLL_ACTION_ID
@@ -575,9 +597,6 @@ IS
     --Variables
 BEGIN
 
-/* iponce 15-MAY-2017 */
-debug_read_xml('valid_JuegoCon_lookup : p_jego_con : ' || p_jego_con); 
-
 SELECT  description
     INTO g_columns_pay.juego_con
 FROM fnd_lookup_values
@@ -609,14 +628,12 @@ IS
     l_tipo_nomina varchar(300):='';
 BEGIN
 
-    /* iponce 15-MAY-2017 */
-    log_error ('valid_JuegoCon : p_jego_con : ' || p_jego_con);
-    log_error ('valid_JuegoCon : p_file_name : ' || p_file_name);
-    log_error ('valid_JuegoCon : p_date : ' || to_char(p_date));
-    log_error ('valid_JuegoCon : p_beneficiario : ' || p_beneficiario);
-    log_error ('valid_JuegoCon : p_num_emp : ' || p_num_emp);
-    log_error ('valid_JuegoCon : p_tipo_nom : ' || p_tipo_nom);
-
+--    log_error ('p_jego_con => ' || to_char(p_jego_con) ||
+--               'p_file_name => ' || to_char(p_file_name) ||
+--               'p_date => ' || to_char(p_date) ||
+--               'p_beneficiario => ' || to_char(p_beneficiario) ||
+--               'p_num_emp => ' || to_char(p_num_emp) ||
+--               'p_tipo_nom => ' || to_char(p_tipo_nom));
 
     EXECUTE IMMEDIATE 'ALTER SESSION SET NLS_LANGUAGE = ''Latin American Spanish''';
     SELECT
@@ -638,10 +655,6 @@ BEGIN
         AND pay_payroll_actions_pkg.v_name (pac1.payroll_action_id ,pac1.action_type ,pac1.consolidation_set_id ,pac1.display_run_number ,pac1.element_set_id ,pac1.assignment_set_id ,pac1.effective_date) = p_jego_con
         ;
         
-        /* iponce 15-MAY-2017 */
-        debug_read_xml('valid_JuegoCon : l_juego_con : ' || l_juego_con);
-        debug_read_xml('valid_JuegoCon : l_num_empleado : ' || l_num_empleado); 
-        debug_read_xml('valid_JuegoCon : l_tipo_nomina : ' || l_tipo_nomina);
         
         IF p_jego_con <> 'FINIQUITOS' AND p_jego_con <> 'PTU' AND p_jego_con <> 'GRATIFICACION'
         AND p_num_emp <> l_num_empleado THEN
@@ -663,9 +676,7 @@ EXCEPTION
         log_error ('Error Function valid_JuegoCon de Consolidacio  Existen mas de un Registro: ' || SQLERRM || '  ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE );
         RETURN (FALSE);
     WHEN No_Data_Found THEN
-    
-        /* iponce 15-MAY-2017 */
-        debug_read_xml('EXCEPTION valid_JuegoCon : p_jego_con : ' || p_jego_con); 
+     
 
         IF p_jego_con <> 'FINIQUITOS' AND p_jego_con <> 'PTU' AND p_jego_con <> 'GRATIFICACION' THEN
            IF valid_num_empleado ( p_jego_con, p_file_name ,p_date ,p_num_emp ) THEN
@@ -725,14 +736,10 @@ END valid_CtaDest;
 
        IF valid_file_exists( p_file_name ) THEN
        
-          /* iponce 15-MAY-2017 */
---          debug_read_xml('valid_file_exists : valid'); 
 
           g_columns_pay := get_data_xml ( p_data_xml, p_file_name ) ;
           g_columns_pay.juego_con := get_Nemonicos('NOM_DESCRI',p_data_xml,1);
           
-          /* iponce 15-MAY-2017 */
---          debug_read_xml('insert_xml : g_columns_pay.juego_con : ' || g_columns_pay.juego_con);
           
           g_columns_pay.METODO_PAGO := get_Nemonicos('METPAG',p_data_xml,2);
           g_columns_pay.tipo_nomina := get_Nemonicos('NOM_CVENOM',p_data_xml,1);
@@ -742,22 +749,7 @@ END valid_CtaDest;
          /* g_columns_pay := get_data_values_pay ( g_columns_pay.company_name
                                                                       ,g_columns_pay.rfc
                                                                       ,p_file_name );*/
-
-            log_error ('Juego con '||g_columns_pay.JUEGO_CON);
-            log_error ('Archivo '||p_file_name);
-            log_error ('Periodo '||g_columns_pay.periodI);
-            log_error ('Benificiario '||g_columns_pay.BENEFICIARY);
-            log_error ('nume empleado '||g_columns_pay.NUM_EMPLOYEE);
-            log_error ('Tipo Nomina '||g_columns_pay.TIPO_NOMINA);
-            log_error ('banco '||g_columns_pay.bank);
-            log_error ('pay date '||g_columns_pay.payment_date);
-            log_error ('fecha fin '||g_columns_pay.periodF);
-            log_error ('uuid '||g_columns_pay.uuid);
-            log_error ('comania '||g_columns_pay.COMPANY_NAME);
-            log_error ('RFC '||g_columns_pay.beneficiary_rfc);
-            log_error ('monto '||g_columns_pay.amount);
-            log_error ('moneda '||g_columns_pay.currency);
-            log_error ('comania '||g_columns_pay.company_name);
+                                                                      
 
             IF  ( g_columns_pay.company_name IS NOT NULL
             AND valid_JuegoCon(g_columns_pay.JUEGO_CON,p_file_name,g_columns_pay.periodI,g_columns_pay.BENEFICIARY,g_columns_pay.NUM_EMPLOYEE,g_columns_pay.TIPO_NOMINA)
@@ -961,8 +953,6 @@ END count_rows_load;
          l_dest_offset := 1;
          l_file_name := i.filename;
          
-         /* iponce 15-MAY-2017 */
---         debug_read_xml('read_xml : l_file_name' || l_file_name);
          PAC_CFDI_FUNCTIONS_PKG.CFDI_LOGGING(l_file_name, 'READ FILE : ' || l_file_name);
 
          l_count_rows := l_count_rows + 1;
@@ -1014,7 +1004,7 @@ END count_rows_load;
 
          insert_xml (p_file_name => i.filename
                          ,p_data_xml => l_xml );
---         debug_read_xml('insert_xml ( p_file_name => ' || i.filename || ', p_data_xml=>  l_xml);');
+                         
         ELSE
            IF l_contador_vacios = 0 THEN
             log_error ('No hay el XML  ' || i.filename||sqlerrm);
@@ -1080,8 +1070,6 @@ END count_rows_load;
       l_src_path         VARCHAR2 (250);
    BEGIN
    
-      /* iponce 15-MAY-2017 */
-      debug_read_xml('main : lsrc_path : ' || l_src_path);
       
       -- get source directory path
       write_output('Begin... ');
