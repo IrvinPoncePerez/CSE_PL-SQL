@@ -41,7 +41,7 @@ IS
        estado_civil, regimen_matrimonial, estatus, fecha_baja, unic_ingreso,
        no_cred_inf, fecha_cred_inf, tipo_descuento_inf, valor_descuento_inf,
        saldo_inicial_inf, saldo_actual_inf, no_cuenta_despensa,
-       no_targeta_desp,tp_pago_despensa, metodo_pago_desp, cuenta_pago, banco_pago, REPLACE(REPLACE(targeta_pago, CHR(10), ''), CHR(13), '') AS TARGETA_PAGO,
+       no_targeta_desp,tp_pago_despensa, metodo_pago_desp, cuenta_pago, clabe, banco_pago, REPLACE(REPLACE(targeta_pago, CHR(10), ''), CHR(13), '') AS TARGETA_PAGO,
        tipo_pago, cuenta_pension_a,banco_pension, tipo_pago_pension,porcentaje_pension, monto_pension
   FROM pac_employee_act_v 
  WHERE 1 = 1
@@ -234,6 +234,7 @@ BEGIN
                         'TIPO PAGO DESPENSA,'||
                         'METODO DE PAGO DE DESPENSA,'||
                         'CUENTA DE PAGO,'||
+                        'CLABE DE PAGO,'||
                         'BANCO DE PAGO,'||
                         'TARJETA BANCARIA,' ||
                         'TIPO DE PAGO SUELDO,'||
@@ -332,6 +333,7 @@ BEGIN
                                                     DETAIL(rowIndex).TP_PAGO_DESPENSA           || ',' ||
                                                     DETAIL(rowIndex).METODO_PAGO_DESP           || ',' ||
                                                     DETAIL(rowIndex).CUENTA_PAGO                || ',' ||
+                                                    DETAIL(rowIndex).CLABE                      || ',' ||
                                                     DETAIL(rowIndex).BANCO_PAGO                 || ',' ||
                                                     DETAIL(rowIndex).TARGETA_PAGO               || ',' ||
                                                     DETAIL(rowIndex).TIPO_PAGO                  || ',' ||

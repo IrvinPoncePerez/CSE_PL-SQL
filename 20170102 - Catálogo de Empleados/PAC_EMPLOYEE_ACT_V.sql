@@ -1,4 +1,4 @@
-/* Formatted on 2017/01/02 12:54 (Formatter Plus v4.8.8) */
+/* Formatted on 2018/01/18 11:28 (Formatter Plus v4.8.8) */
 CREATE OR REPLACE FORCE VIEW apps.pac_employee_act_v (person_id,
                                                       assignment_id,
                                                       ano,
@@ -62,6 +62,7 @@ CREATE OR REPLACE FORCE VIEW apps.pac_employee_act_v (person_id,
                                                       tp_pago_despensa,
                                                       metodo_pago_desp,
                                                       cuenta_pago,
+                                                      clabe,
                                                       banco_pago,
                                                       targeta_pago,
                                                       tipo_pago,
@@ -108,7 +109,7 @@ AS
                   ) no_targeta_desp,
           NVL (UPPER (desp.met_pago_desp), 'EFECTIVO') tp_pago_despensa,
           desp.banco_despensa metodo_pago_desp,
-          pago.n_cuenta_pago cuenta_pago, pago.banco_pago banco_pago,
+          pago.n_cuenta_pago cuenta_pago, clabe, pago.banco_pago banco_pago,
           pago.n_targ_pag targeta_pago,
           NVL (UPPER (pago.tipo_pag), 'EFECTIVO') tipo_pago,
           pensio.n_cuenta_pension cuenta_pension_a, pensio.banco_pension,
@@ -406,7 +407,7 @@ AS
                                INSTR (popm.org_payment_method_name, '-', 1, 1)
                              + 1
                             ) banco_pago,
-                         pea.segment3 n_cuenta_pago,
+                         pea.segment3 n_cuenta_pago, pea.segment5 clabe,
                          popm.org_payment_method_name forma_pago,
                          CASE
                             WHEN pptv.payment_type_name IN
