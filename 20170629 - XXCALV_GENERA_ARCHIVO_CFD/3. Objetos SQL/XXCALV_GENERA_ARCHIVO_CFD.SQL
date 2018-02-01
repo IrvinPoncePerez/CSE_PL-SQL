@@ -85,7 +85,11 @@ IS
    V_FORPAG                 VARCHAR2(240);
    V_CTAPAG                 VARCHAR2(240) := 'N';
    V_RELUUID                VARCHAR2(100);
-
+   V_RELNUM                 NUMBER;
+   V_RELSER                 VARCHAR2(100);
+   V_RELFOL                 VARCHAR2(100);
+   
+   V_IS_CREDIT_NOTE         VARCHAR2(100);
    
    CURSOR HEADERS_CUR(P_ORG_ID_H        NUMBER,
                       P_TIPO_DOC_H      VARCHAR2,
@@ -400,15 +404,22 @@ IS
     
     CURSOR REL_CUR(P_CUSTOMER_TRX_ID NUMBER)
     IS
-    SELECT AN.TEXT      REL_UUID
+    SELECT AN.TEXT                      REL_UUID,
+           TRAX.DOC_SEQUENCE_VALUE      REL_FOL,
+           (SELECT SEQ.ATTRIBUTE1 
+              FROM FND_DOCUMENT_SEQUENCES SEQ
+             WHERE SEQ.TABLE_NAME = 'RA_CUSTOMER_TRX_ALL' 
+               AND SEQ.DOC_SEQUENCE_ID = TRAX.DOC_SEQUENCE_ID) REL_SER       
       FROM AR_RECEIVABLE_APPLICATIONS_ALL   ARAA,
+           RA_CUSTOMER_TRX_PARTIAL_CFD      TRAX,
            AR_NOTES                         AN
      WHERE 1 = 1 
        AND ARAA.APPLIED_CUSTOMER_TRX_ID = AN.CUSTOMER_TRX_ID
-       AND ARAA.CUSTOMER_TRX_ID = P_CUSTOMER_TRX_ID;
+       AND ARAA.CUSTOMER_TRX_ID = P_CUSTOMER_TRX_ID
+       AND TRAX.CUSTOMER_TRX_ID = AN.CUSTOMER_TRX_ID;
     
     
-    
+   CREDIT_NOTE_EXCEPTION    EXCEPTION;
     
     
    PROCEDURE FILE_PUT_LINE (P_MANEJADOR     UTL_FILE.FILE_TYPE,
@@ -840,25 +851,6 @@ BEGIN
                     ELSE    
                         FILE_PUT_LINE (V_MANEJADOR, 'ADDEND  '||'0'); 
                     END IF;
-                    
-                    
-                    FILE_PUT_LINE (V_MANEJADOR, ''); 
-                        
-                    
-                    IF HED_REC.NOMDOC LIKE 'NOTA DE CREDITO'  THEN
-                    
-                        FILE_PUT_LINE (V_MANEJADOR, 'RELTIP     ' || '01');
-                        
-                        FOR REL_REC IN REL_CUR(HED_REC.CUSTOMER_TRX_ID) LOOP
-                            V_RELUUID := NULL;
-                            V_RELUUID := REL_REC.REL_UUID;                      
-                            FILE_PUT_LINE (V_MANEJADOR, 'RELUUID    ' || V_RELUUID);
-                        END LOOP;
-                    
-                    END IF;
-                    
-                    
-                    FILE_PUT_LINE (V_MANEJADOR, '');  
                                         
                    
                     FILE_PUT_LINE (V_MANEJADOR, 'RFCEMI  '||V_RFCEMI);  
@@ -1086,6 +1078,41 @@ BEGIN
                             V_NUMLIN := V_NUMLIN + 1; 
                                 
                             
+                            FILE_PUT_LINE (V_MANEJADOR, ''); 
+                        
+                    
+                            IF HED_REC.NOMDOC LIKE 'NOTA DE CREDITO'  THEN
+                            
+                                V_IS_CREDIT_NOTE := 'N';
+                            
+                                FILE_PUT_LINE (V_MANEJADOR, 'RELTIP     ' || '01');
+                                V_RELNUM := 1;
+                                
+                                FOR REL_REC IN REL_CUR(HED_REC.CUSTOMER_TRX_ID) LOOP
+                                    V_RELUUID := NULL;
+                                    V_IS_CREDIT_NOTE := 'Y';
+                                    
+                                    V_RELUUID := REL_REC.REL_UUID;    
+                                    V_RELSER  := REL_REC.REL_SER;
+                                    V_RELFOL  := REL_REC.REL_FOL;
+                                                      
+                                    FILE_PUT_LINE (V_MANEJADOR, 'RELUUID'||TO_CHAR(V_RELNUM)||'   ' || V_RELUUID);
+                                    FILE_PUT_LINE (V_MANEJADOR, 'RELSER'||TO_CHAR(V_RELNUM)||'   ' || V_RELSER);
+                                    FILE_PUT_LINE (V_MANEJADOR, 'RELFOL'||TO_CHAR(V_RELNUM)||'   ' || V_RELFOL);
+                                    
+                                    V_RELNUM := V_RELNUM +1;
+                                END LOOP;
+                                
+                                IF V_IS_CREDIT_NOTE = 'N' THEN
+                                    RAISE CREDIT_NOTE_EXCEPTION;
+                                END IF;
+                            
+                            END IF;
+                            
+                            
+                            FILE_PUT_LINE (V_MANEJADOR, '');  
+                            
+                            
                             FILE_PUT_LINE (V_MANEJADOR, 'CANTID  '||LIN_REC.CANTID); 
                             
                             DECLARE 
@@ -1183,7 +1210,7 @@ BEGIN
                                                                         THEN 1
                                                                         ELSE LIN_REC.PBRUDE
                                                                        END));  
-                            FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||TRUNC(LIN_REC.IMPBRU,2));
+                            FILE_PUT_LINE (V_MANEJADOR, 'IMPBRU  '||LIN_REC.IMPBRU);
                             FILE_PUT_LINE (V_MANEJADOR, 'TDECON  '||'0'); 
                             FILE_PUT_LINE (V_MANEJADOR, 'MDECON  '||'0');
                             
@@ -1225,18 +1252,18 @@ BEGIN
                             
                             
                             IF V_RFCEMI = 'ROBG560202PS5' AND LIN_REC.TASA_IVA_RET > 0 THEN
-                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIVARE	' || 'Tasa');
-                                FILE_PUT_LINE (V_MANEJADOR, 'IVARET_P	' || TO_CHAR(TRUNC(LIN_REC.TASA_IVA_RET,4), '99D9999'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'TIPIVARE    ' || 'Tasa');
+                                FILE_PUT_LINE (V_MANEJADOR, 'IVARET_P    ' || TO_CHAR(TRUNC(LIN_REC.TASA_IVA_RET,4), '99D9999'));
                                 FILE_PUT_LINE (V_MANEJADOR, 'FCTIVARET_P    ' || TO_CHAR(TRUNC(LIN_REC.TASA_IVA_RET/100, 6), '0D999999'));
-                                FILE_PUT_LINE (V_MANEJADOR, 'IVARET_D	' || LIN_REC.TTL_IVA_RET);
+                                FILE_PUT_LINE (V_MANEJADOR, 'IVARET_D    ' || LIN_REC.TTL_IVA_RET);
                             END IF;
                             
                             
                             IF V_RFCEMI = 'ROBG560202PS5' AND LIN_REC.TASA_ISR_RET > 0 THEN
                                 FILE_PUT_LINE (V_MANEJADOR, 'TIPISRRE   ' || 'Tasa');
-                                FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_P	' || TO_CHAR(TRUNC(LIN_REC.TASA_ISR_RET,4), '99D9999'));
-                                FILE_PUT_LINE (V_MANEJADOR, 'FCTISRRET_P	' || TO_CHAR(TRUNC(LIN_REC.TASA_ISR_RET/100, 6), '0D999999')); 
-                                FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_D	' || LIN_REC.TTL_ISR_RET);
+                                FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_P    ' || TO_CHAR(TRUNC(LIN_REC.TASA_ISR_RET,4), '99D9999'));
+                                FILE_PUT_LINE (V_MANEJADOR, 'FCTISRRET_P    ' || TO_CHAR(TRUNC(LIN_REC.TASA_ISR_RET/100, 6), '0D999999')); 
+                                FILE_PUT_LINE (V_MANEJADOR, 'ISRRET_D    ' || LIN_REC.TTL_ISR_RET);
                             END IF;
                                 
                                 
@@ -1309,7 +1336,7 @@ BEGIN
                     FILE_PUT_LINE (V_MANEJADOR, 'IVARET  '||ROUND(ABS(NVL(V_IVARET,0)),2)); 
                     FILE_PUT_LINE (V_MANEJADOR, 'ISRRET  '||ROUND(ABS(NVL(V_ISRRET,0)),2)); 
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG  '||TO_CHAR((V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)))));
-                    FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG_ORI  '||TRUNC(V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)),2));
+                    FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG_ORI  '||TRUNC(V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)),6));
                     
                     
                     IF V_RFCEMI = 'ROBG560202PS5' AND ( V_IVATRA > 0 OR V_IVARET > 0 OR V_ISRRET > 0 ) THEN
