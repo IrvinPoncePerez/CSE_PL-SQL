@@ -1,13 +1,10 @@
-/*****************************************************
- *      Creación de objeto tipo tabla.
- ****************************************************/
-CREATE OR REPLACE TYPE APPS.CFDI_MESSAGES_LIST AS TABLE OF VARCHAR2(1000);
+
 
 
 /*****************************************************************
  *      Sentencia para eliminar un objeto JAVA SOURCE
  *****************************************************************/
-DROP JAVA SOURCE "CFDI_MESSAGES";
+DROP JAVA SOURCE "CFDI";
 
 
 /*****************************************************
