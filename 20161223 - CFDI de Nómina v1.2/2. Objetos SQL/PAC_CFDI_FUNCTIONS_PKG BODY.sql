@@ -3461,9 +3461,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_CFDI_FUNCTIONS_PKG AS
            AND UUID.NUMEMPLOYEE = P_EMPLOYEE_NUMBER 
            AND REPLACE(UUID.PERIOD, ' ', '') = (CASE 
                                                     WHEN P_CONSOLIDATION_SET_NAME LIKE 'NORMAL' THEN
-                                                         TO_CHAR(TO_DATE(P_START_DATE, 'DD/MM/RRRR'), 'DD-MON-RR') || TO_CHAR(TO_DATE(P_END_DATE,'DD/MM/RRRR'), 'DD-MON-RR')
+                                                         TO_CHAR(TO_DATE(P_START_DATE, 'DD/MM/RRRR'), 'DD-MM-RR') || TO_CHAR(TO_DATE(P_END_DATE,'DD/MM/RRRR'), 'DD-MM-RR')
                                                     ELSE 
-                                                         TO_CHAR(TO_DATE(P_END_DATE, 'DD/MM/RRRR'), 'DD-MON-RR') || TO_CHAR(TO_DATE(P_END_DATE,'DD/MM/RRRR'), 'DD-MON-RR')
+                                                         TO_CHAR(TO_DATE(P_END_DATE, 'DD/MM/RRRR'), 'DD-MM-RR') || TO_CHAR(TO_DATE(P_END_DATE,'DD/MM/RRRR'), 'DD-MM-RR')
                                                 END)
            AND UUID.JUEGO_CONSOLIDACION = (CASE
                                                WHEN P_CONSOLIDATION_SET_NAME LIKE 'GRATIFICACIÓN' THEN
