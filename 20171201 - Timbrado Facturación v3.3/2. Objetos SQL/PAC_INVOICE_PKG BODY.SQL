@@ -783,7 +783,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
             P_ERRBUF   := 'DOWNLOAD_PDF_EXCEPTION : Error al descargar el archivo *.PDF del archivo ' || var_file_name || '.';
             P_RETCODE  := 1;
         WHEN FATAL_EXCEPTION THEN
-            P_ERRBUF   := 'EXCEPTION : Excepciï¿½n no manejada.';
+            P_ERRBUF   := 'EXCEPTION : Excepción no manejada.';
             P_RETCODE  := 2;
     END SIGNED; 
     
