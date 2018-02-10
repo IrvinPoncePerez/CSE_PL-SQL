@@ -166,18 +166,18 @@ IS
                       1, INSTR(TRAX.RAC_SHIP_TO_CUSTOMER_NAME, '(')-1),
                TRAX.RAC_SHIP_TO_CUSTOMER_NAME)                                      NOMENT
          , TRAX.SHIP_TO_TAXPAYER_ID                                                 RFCREC
-         , (SELECT DECODE(TRAX.CUST_ATTRIBUTE7, 
-                          'WALMART', DECODE(OE.CUST_PO_NUMBER, 
-                                            '0', NULL, 
-                                            OE.CUST_PO_NUMBER),
-                          'SORIANA', DECODE(OE.CUST_PO_NUMBER, 
-                                            '0', '0', 
-                                            OE.CUST_PO_NUMBER),
-                          LPAD(OE.CUST_PO_NUMBER, 10, '0'))
-              FROM OE_ORDER_HEADERS_ALL OE 
-             WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
-               AND  ROWNUM = 1 
-               AND OE.ORG_ID = P_ORG_ID_H)                                          NUMEOC
+         , NVL((SELECT DECODE(TRAX.CUST_ATTRIBUTE7, 
+                              'WALMART', DECODE(OE.CUST_PO_NUMBER, 
+                                                '0', NULL, 
+                                                OE.CUST_PO_NUMBER),
+                              'SORIANA', DECODE(OE.CUST_PO_NUMBER, 
+                                                '0', '0', 
+                                                OE.CUST_PO_NUMBER),
+                              LPAD(OE.CUST_PO_NUMBER, 10, '0'))
+                  FROM OE_ORDER_HEADERS_ALL OE 
+                 WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
+                   AND  ROWNUM = 1 
+                   AND OE.ORG_ID = P_ORG_ID_H), TRAX.PURCHASE_ORDER)                NUMEOC
          , (SELECT TO_DATE(ATTRIBUTE9,'YYYY-MM-DD HH24:MI:SS')
               FROM OE_ORDER_HEADERS_ALL OE 
              WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
@@ -200,6 +200,7 @@ IS
          , TRAX.ATTRIBUTE_CATEGORY
          , TRAX.ATTRIBUTE8                                                          CVEFORPAG
          , TRAX.ATTRIBUTE9                                                          USOCFDI
+         , TRAX.ATTRIBUTE10                                                         RELTIP
       FROM RA_CUSTOMER_TRX_PARTIAL_CFD TRAX
      WHERE 1 = 1
        AND TRAX.ORG_ID = P_ORG_ID_H
@@ -432,6 +433,20 @@ IS
         FND_FILE.PUT_LINE(FND_FILE.LOG, P_STRING_LINE);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, P_STRING_LINE);
    END FILE_PUT_LINE;
+   
+   FUNCTION ROUND_TOT (P_AMOUNT     NUMBER)
+     RETURN NUMBER
+   IS 
+        var_result_round    NUMBER;
+   BEGIN
+        SELECT DECODE(MOD(P_AMOUNT,TRUNC(P_AMOUNT,2)),
+                      0.005, ROUND(P_AMOUNT,2),
+                      P_AMOUNT)
+          INTO var_result_round  
+          FROM DUAL; 
+          
+       RETURN var_result_round;
+   END;
 
 BEGIN
    BEGIN
@@ -1085,7 +1100,12 @@ BEGIN
                             
                                 V_IS_CREDIT_NOTE := 'N';
                             
-                                FILE_PUT_LINE (V_MANEJADOR, 'RELTIP     ' || '01');
+                                IF HED_REC.RELTIP IS NULL THEN
+                                    FILE_PUT_LINE (V_MANEJADOR, 'RELTIP     ' || '01');
+                                ELSE
+                                    FILE_PUT_LINE (V_MANEJADOR, 'RELTIP     ' || HED_REC.RELTIP);
+                                END IF;
+                                
                                 V_RELNUM := 1;
                                 
                                 FOR REL_REC IN REL_CUR(HED_REC.CUSTOMER_TRX_ID) LOOP
@@ -1299,28 +1319,28 @@ BEGIN
                     END IF;
                     
 
-                    FILE_PUT_LINE (V_MANEJADOR, 'SUBTBR  '|| V_SUBTBR); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'SUBTBR  '|| ROUND_TOT(V_SUBTBR)); 
                     FILE_PUT_LINE (V_MANEJADOR, 'CODDES  '||'0'); 
                     FILE_PUT_LINE (V_MANEJADOR, 'MONDET  '||'0'); 
                     FILE_PUT_LINE (V_MANEJADOR, 'PRCDSG  '||'0'); 
                     
 
                     IF HED_REC.TIPO_ADENDA = 'CHEDRAUI' THEN
-                        FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||TO_CHAR(V_SUBTBR)); 
+                        FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||ROUND_TOT(V_SUBTBR)); 
                     ELSE  
 
                         IF V_TOTIVA = 16 THEN
                             FILE_PUT_LINE (V_MANEJADOR, 'SUBTSI  '||TO_CHAR(0));  
-                            FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||TO_CHAR(V_SUBTBR)); 
+                            FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||ROUND_TOT(V_SUBTBR)); 
                         ELSIF V_TOTIVA = 0 THEN
-                            FILE_PUT_LINE (V_MANEJADOR, 'SUBTSI  '||TO_CHAR(V_SUBTBR)); 
+                            FILE_PUT_LINE (V_MANEJADOR, 'SUBTSI  '||ROUND_TOT(V_SUBTBR)); 
                             FILE_PUT_LINE (V_MANEJADOR, 'SUBTAI  '||TO_CHAR(0)); 
                         END IF;
                     
                     END IF;    
                     
 
-                    FILE_PUT_LINE (V_MANEJADOR, 'SUBTOT  '||TO_CHAR(V_SUBTBR)); 
+                    FILE_PUT_LINE (V_MANEJADOR, 'SUBTOT  '||ROUND_TOT(V_SUBTBR)); 
                     
 
                     IF (V_TOTIVA = 0) OR (V_TOTIVA = 16) THEN 
@@ -1335,7 +1355,7 @@ BEGIN
                     FILE_PUT_LINE (V_MANEJADOR, 'IVATRA  '||TO_CHAR(ROUND(NVL(V_IVATRA,0),2)));
                     FILE_PUT_LINE (V_MANEJADOR, 'IVARET  '||ROUND(ABS(NVL(V_IVARET,0)),2)); 
                     FILE_PUT_LINE (V_MANEJADOR, 'ISRRET  '||ROUND(ABS(NVL(V_ISRRET,0)),2)); 
-                    FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG  '||TO_CHAR((V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)))));
+                    FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG  '||ROUND_TOT((V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)))));
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG_ORI  '||TRUNC(V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)),6));
                     
                     
