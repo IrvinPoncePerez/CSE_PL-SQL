@@ -56,8 +56,6 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         )
     IS
         var_message         VARCHAR2(2000);
-        var_customer_trx_id NUMBER;
-        var_created_by      NUMBER;
         
         CURSOR INVOICES 
         IS
@@ -70,7 +68,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                PMR.EMIDIA
           FROM PAC_MASTEREDI_REPORT_TB  PMR
          WHERE 1 = 1
-           AND PMR.CUSTOMER_TRX_ID IS NULL
+           AND PMR.NOMREC IS NULL
            AND PMR.EMIANIO = P_EMIANIO
            AND PMR.EMIMES = P_EMIMES;
         
@@ -87,31 +85,13 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         FND_FILE.PUT_LINE(FND_FILE.LOG, '');
         
         FOR INVOICE IN INVOICES LOOP
-            
-            var_customer_trx_id := NULL;
-            var_created_by := NULL;
         
             BEGIN
-                SELECT RCT.CUSTOMER_TRX_ID,
-                       RCT.CREATED_BY
-                  INTO var_customer_trx_id,
-                       var_created_by
-                  FROM RA_CUSTOMER_TRX_ALL  RCT
-                 WHERE 1 = 1
-                   AND RCT.DOC_SEQUENCE_VALUE = INVOICE.NUMFOL
-                   AND (SELECT SEQ.ATTRIBUTE1 
-                          FROM FND_DOCUMENT_SEQUENCES SEQ
-                         WHERE SEQ.TABLE_NAME = 'RA_CUSTOMER_TRX_ALL' 
-                           AND SEQ.DOC_SEQUENCE_ID = RCT.DOC_SEQUENCE_ID) = INVOICE.SERFOL;
-                       
                 
                 UPDATE PAC_MASTEREDI_REPORT_TB  PMR
-                   SET PMR.CUSTOMER_TRX_ID = var_customer_trx_id,
-                       PMR.CREATED_BY = var_created_by,
-                       PMR.CREATION_DATE = TO_DATE(PMR.EMIANIO||'-'||
-                                                   PMR.EMIMES||'-'||
-                                                   PMR.EMIDIA||'-'||
-                                                   PMR.EMIHORA,'RRRR-MM-DD HH24:MI:SS')
+                   SET PMR.EMITION_DATE = TO_DATE(PMR.EMIDIA||'/'||
+                                                  PMR.EMIMES||'/'||
+                                                  PMR.EMIANIO,'DD/MM/RRRR')
                  WHERE 1 = 1
                    AND PMR.RFCEMI = INVOICE.RFCEMI
                    AND PMR.RFCREC = INVOICE.RFCREC
@@ -177,14 +157,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                         P_CONN  => var_connection
                     );
                     
-                var_file_name := '/var/tmp/CARGAS/CALVARIO/'||var_file_name||'.XML';
                 FND_FILE.PUT_LINE(FND_FILE.LOG, var_file_name);    
-                var_result := READ_XML(var_file_name);
+                var_result := READ_XML('/var/tmp/CARGAS/CALVARIO/'||var_file_name||'.XML');
                 IF var_result LIKE '%-CHANGE-%' THEN
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**************************************************************');
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, '     EL NODO DE XML O LOS NOMBRES DE ATRIBUTOS HAN CAMBIADO   ');
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, var_result);
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**************************************************************');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'EL NODO DE XML O LOS NOMBRES DE ATRIBUTOS HAN CAMBIADO   ' || var_result);
                     P_RETCODE  := 2;
                 END IF;
                 
@@ -267,6 +243,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         INSERT_NOTES_EXCEPTION      EXCEPTION;
         DOWNLOAD_XML_EXCEPTION      EXCEPTION;
         DOWNLOAD_PDF_EXCEPTION      EXCEPTION;
+        FATAL_EXCEPTION             EXCEPTION;
         
         CURSOR MESSAGES_CUR 
         IS
@@ -465,14 +442,15 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                             P_EMIMES            => var_month,
                             P_EMIDIA            => var_day
                         );
-                        
-            IF var_uuid LIKE '-OK-%' THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'UUID : ' || var_uuid);                        
+               
+            IF var_uuid LIKE '-OK-null%'THEN
+                RAISE FATAL_EXCEPTION;
+            ELSIF var_uuid LIKE '-OK-%' THEN
                 var_waiting := 1;
                 
                 UPDATE PAC_MASTEREDI_REPORT_TB
-                   SET CUSTOMER_TRX_ID = P_CUSTOMER_TRX_ID,
-                       CREATION_DATE = SYSDATE,
-                       CREATED_BY = var_user_id
+                   SET EMITION_DATE = TO_DATE(SYSDATE,'DD/MM/RRRR')
                  WHERE 1 = 1 
                    AND RFCEMI = P_RFCEMI
                    AND RFCREC = P_RFCREC
@@ -557,7 +535,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                     (
                         P_CONN      => var_connection,
                         P_FROM_DIR  => 'CALVARIO',
-                        P_FROM_FILE => var_file_name || '.xml',
+                        P_FROM_FILE => var_file_name || '.XML',
                         P_TO_FILE   => '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.XML'
                     );
                               
@@ -569,10 +547,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                     
                     var_result := READ_XML('/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.XML');
                     IF var_result LIKE '%-CHANGE-%' THEN
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, '**************************************************************');
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, '     EL NODO DE XML O LOS NOMBRES DE ATRIBUTOS HAN CAMBIADO   ');
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, var_result);
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, '**************************************************************');
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, 'EL NODO DE XML O LOS NOMBRES DE ATRIBUTOS HAN CAMBIADO   ' || var_result);
                         P_RETCODE  := 2;
                     END IF;
                     
@@ -713,10 +688,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                                         DESCRIPTION => NULL,
                                         START_TIME  => NULL,
                                         SUB_REQUEST => FALSE,
-                                        ARGUMENT1   => P_RFCEMI,
-                                        ARGUMENT2   => P_RFCREC,
-                                        ARGUMENT3   => P_SERFOL,
-                                        ARGUMENT4   => P_NUMFOL
+                                        ARGUMENT1   => P_SERFOL,
+                                        ARGUMENT2   => P_NUMFOL,
+                                        ARGUMENT3   => P_RFCREC,
+                                        ARGUMENT4   => P_RFCEMI
                                      );
                                      
             STANDARD.COMMIT;
@@ -777,7 +752,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                                         ARGUMENT1   => var_source_dir,
                                         ARGUMENT2   => var_file_name,
                                         ARGUMENT3   => var_out_file_name,
-                                        ARGUMENT4   => var_pdf_file_name
+                                        ARGUMENT4   => var_pdf_file_name,
+                                        ARGUMENT5   => 'XML',
+                                        ARGUMENT6   => 'PDF'
                                     );                      
                                                                
         END IF;
@@ -805,6 +782,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         WHEN DOWNLOAD_PDF_EXCEPTION THEN
             P_ERRBUF   := 'DOWNLOAD_PDF_EXCEPTION : Error al descargar el archivo *.PDF del archivo ' || var_file_name || '.';
             P_RETCODE  := 1;
+        WHEN FATAL_EXCEPTION THEN
+            P_ERRBUF   := 'EXCEPTION : Excepci�n no manejada.';
+            P_RETCODE  := 2;
     END SIGNED; 
     
     

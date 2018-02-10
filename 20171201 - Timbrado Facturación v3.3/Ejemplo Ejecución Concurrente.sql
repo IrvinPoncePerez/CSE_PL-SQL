@@ -25,9 +25,9 @@ BEGIN
                                                     START_TIME  => NULL,
                                                     SUB_REQUEST => FALSE,
                                                     ARGUMENT1 => 'PAC941215E50',
-                                                    ARGUMENT2 => 'TCH850701RM1',
-                                                    ARGUMENT3 => 'FAVE',
-                                                    ARGUMENT4 => '31749',
+                                                    ARGUMENT2 => 'XAXX010101000',
+                                                    ARGUMENT3 => 'FCTH',
+                                                    ARGUMENT4 => '21225',
                                                     ARGUMENT5 => 3441432
                                                   );
 

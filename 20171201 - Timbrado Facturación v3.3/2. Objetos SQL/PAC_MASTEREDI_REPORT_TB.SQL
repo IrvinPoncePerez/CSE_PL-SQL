@@ -1,6 +1,5 @@
 CREATE TABLE APPS.PAC_MASTEREDI_REPORT_TB
 (
-    CUSTOMER_TRX_ID     NUMBER,
     RFCEMI              VARCHAR2(100),
     RFCREC              VARCHAR2(100),
     SERFOL              VARCHAR2(100),
@@ -20,8 +19,7 @@ CREATE TABLE APPS.PAC_MASTEREDI_REPORT_TB
     UUID                VARCHAR2(100),
     VERSIO              VARCHAR2(100),
     CODMETPAG           VARCHAR2(100),
-    CREATION_DATE       DATE,
-    CREATED_BY          NUMBER
+    EMITION_DATE        DATE
 );
 
 

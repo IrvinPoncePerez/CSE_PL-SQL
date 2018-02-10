@@ -512,17 +512,17 @@ public class CFDI {
                 COMMIT
             };
             
-            if (rSerie == "") { rSerie = "-CHANGE-"; }
-            if (rFolio == "") { rFolio = "-CHANGE-"; }
-            if (rFormaPago == "") { rFormaPago = "-CHANGE-"; }
-            if (rSubTotal == "") { rSubTotal = "-CHANGE-"; }
-            if (rTotal == "") { rTotal = "-CHANGE-"; }
-            if (rRfcEmisor == "") { rRfcEmisor = "-CHANGE-"; }
-            if (rRfcReceptor == "") { rRfcReceptor = "-CHANGE-"; }
-            if (rNombre == "") { rNombre = "-CHANGE-"; }
-            if (rUsoCFDI == "") { rUsoCFDI = "-CHANGE-"; }
-            if (rCodMetPag == "") { rCodMetPag = "-CHANGE-"; }
-            if (rVersio == "") { rVersio = "-CHANGE-"; }
+            if (rSerie == "") { rSerie = "-CHANGE-SERFOL"; }
+            if (rFolio == "") { rFolio = "-CHANGE-NUMFOL"; }
+            if (rFormaPago == "") { rFormaPago = "-CHANGE-FORPAG"; }
+            if (rSubTotal == "") { rSubTotal = "-CHANGE-SUBTOT"; }
+            if (rTotal == "") { rTotal = "-CHANGE-TOTAL"; }
+            if (rRfcEmisor == "") { rRfcEmisor = "-CHANGE-RFCEMI"; }
+            if (rRfcReceptor == "") { rRfcReceptor = "-CHANGE-RFCREC"; }
+            if (rNombre == "") { rNombre = "-CHANGE-NOMREC"; }
+            if (rUsoCFDI == "") { rUsoCFDI = "-CHANGE-USOCFDI"; }
+            if (rCodMetPag == "") { rCodMetPag = "-CHANGE-CODMETPAG"; }
+            if (rVersio == "") { rVersio = "-CHANGE-VERSIO"; }
             
             result = result + "|" + rSerie;
             result = result + "|" + rFolio;
