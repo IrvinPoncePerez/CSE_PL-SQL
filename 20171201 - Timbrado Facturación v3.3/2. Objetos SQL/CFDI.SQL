@@ -10,6 +10,13 @@ import java.sql.Statement;
 import java.sql.ResultSet;
 import java.sql.DriverManager;
 import java.io.IOException;
+import java.io.File;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Node;
+import org.w3c.dom.Element;
 /**
  *
  * @author Irvin Ponce Perez
@@ -26,7 +33,7 @@ public class CFDI {
             
         try{
             
-            String url = "jdbc:sqlserver://192.1.1.119:1433;databaseName=masfacturadb;user=iponce;password=P@55M3";
+            String url = "jdbc:sqlserver://192.1.1.119:1433;databaseName=masfacturadb;user=iponce;password=Pa55M3";
             String query = "select rep_rfc " +
                                   ",rep_rfc_receptor "+
                                   ",rep_serie "+
@@ -110,7 +117,12 @@ public class CFDI {
                               )     
                     };
                 
-                } catch (SQLException ex) {}
+                } catch (SQLException ex) {
+                    if (objResultSet != null) try { objResultSet.close(); } catch(Exception exe) { return exe.getMessage(); }
+                    if (objStatement != null) try { objStatement.close(); } catch(Exception exe) { return exe.getMessage(); }
+                    if (objSQLConnection != null) try { objSQLConnection.close(); } catch(Exception exe) { return exe.getMessage(); }
+                    return "-DUPLICATE-"+uuid;
+                }
                 
                 #sql {
                     COMMIT
@@ -138,7 +150,7 @@ public class CFDI {
             
         try{
             
-            String url = "jdbc:sqlserver://192.1.1.119:1433;databaseName=masfacturadb;user=iponce;password=P@55M3";
+            String url = "jdbc:sqlserver://192.1.1.119:1433;databaseName=masfacturadb;user=iponce;password=Pa55M3";
             String query = "select eve.eve_date," +
                                   "eve.eve_title,"+
                                   "eve.eve_desc " +
@@ -208,7 +220,7 @@ public class CFDI {
             
         try{
             
-            String url = "jdbc:sqlserver://192.1.1.119:1433;databaseName=masfacturadb;user=iponce;password=P@55M3";
+            String url = "jdbc:sqlserver://192.1.1.119:1433;databaseName=masfacturadb;user=iponce;password=Pa55M3";
             String query = "select rep_rfc " +
                                   ",rep_rfc_receptor "+
                                   ",rep_serie "+
@@ -310,6 +322,230 @@ public class CFDI {
         
         return message;
         
+    }
+    
+    public static String readXML(String filename){
+    
+        String result = "";
+        
+        String nComprobante = "";
+        String nEmisor = "";
+        String nReceptor = "";
+        String nImpuestos = "";
+        
+        try {
+            #sql{
+                SELECT PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_NODES','COMPROBANTE'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_NODES','EMISOR'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_NODES','RECEPTOR'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_NODES','IMPUESTOS')
+                  INTO :nComprobante,
+                       :nEmisor,
+                       :nReceptor,
+                       :nImpuestos
+                  FROM DUAL
+            };
+        } catch (SQLException ex) {
+            return ex.getMessage();
+        }
+        
+        result = result + "|" + nComprobante;
+        result = result + "|" + nEmisor;
+        result = result + "|" + nReceptor;
+        result = result + "|" + nImpuestos;
+        
+        String aSerie = "";
+        String aFolio = "";
+        String aFormaPago = "";
+        String aSubTotal = "";
+        String aTotal = "";
+        String aRfcEmisor = "";
+        String aRfcReceptor = "";
+        String aNombre = "";
+        String aUsoCFDI = "";
+        String aCodMetPag = "";
+        String aVersio = "";
+        String aImpuestosRetenidos = "";
+        String aImpuestosTrasladados = "";
+        
+        String rSerie = "";
+        String rFolio = "";
+        String rFormaPago = "";
+        String rSubTotal = "";
+        String rTotal = "";
+        String rRfcEmisor = "";
+        String rRfcReceptor = "";
+        String rNombre = "";
+        String rUsoCFDI = "";
+        String rCodMetPag = "";
+        String rVersio = "";
+        String rImpuestosRetenidos = "";
+        String rImpuestosTrasladados = "";
+        
+        try {
+            #sql{
+                SELECT PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','SERIE'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','FOLIO'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','FORMA_PAGO'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','SUB_TOTAL'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','TOTAL'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','RFC_EMISOR'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','RFC_RECEPTOR'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','NOMBRE'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','USO_CFDI'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','CODMETPAG'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','VERSIO'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','TOTAL_IMPUESTOS_RETENIDOS'),
+                       PAC_INVOICE_PKG.GET_DESCRIPTION_VALUE('PAC_SAT_ATTRIBUTES','TOTAL_IMPUESTOS_TRASLADADOS')
+                  INTO :aSerie, 
+                       :aFolio,
+                       :aFormaPago,
+                       :aSubTotal,
+                       :aTotal,
+                       :aRfcEmisor,
+                       :aRfcReceptor,
+                       :aNombre,
+                       :aUsoCFDI,
+                       :aCodMetPag,
+                       :aVersio,
+                       :aImpuestosRetenidos,
+                       :aImpuestosTrasladados
+                  FROM DUAL
+            };
+        } catch (SQLException ex) {
+            return ex.getMessage();
+        }
+        
+        result = result + "|" + aSerie;
+        result = result + "|" + aFolio;
+        result = result + "|" + aFormaPago;
+        result = result + "|" + aSubTotal;
+        result = result + "|" + aTotal;
+        result = result + "|" + aRfcEmisor;
+        result = result + "|" + aRfcReceptor;
+        result = result + "|" + aNombre;
+        result = result + "|" + aUsoCFDI;
+        result = result + "|" + aCodMetPag;
+        result = result + "|" + aVersio;
+        result = result + "|" + aImpuestosRetenidos;
+        result = result + "|" + aImpuestosTrasladados;
+        
+        try {
+
+            File objFile = new File(filename);
+            DocumentBuilderFactory objFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder objBuilder = objFactory.newDocumentBuilder();
+            Document objDocument = objBuilder.parse(objFile);
+            objDocument.getDocumentElement().normalize();
+
+            NodeList objList = objDocument.getElementsByTagName(nComprobante);
+
+            for (int temp = 0; temp < objList.getLength(); temp++) {
+                Node objNode = objList.item(temp);
+                if (objNode.getNodeType() == Node.ELEMENT_NODE) {
+                    Element objElement = (Element) objNode;
+                    rSerie = objElement.getAttribute(aSerie);
+                    rFolio = objElement.getAttribute(aFolio);
+                    rFormaPago = objElement.getAttribute(aFormaPago);
+                    rSubTotal = objElement.getAttribute(aSubTotal);
+                    rTotal = objElement.getAttribute(aTotal);
+                    rCodMetPag = objElement.getAttribute(aCodMetPag);
+                    rVersio = objElement.getAttribute(aVersio); 
+                }
+            }
+            
+            objList = objDocument.getElementsByTagName(nEmisor);
+
+            for (int temp = 0; temp < objList.getLength(); temp++) {
+                Node objNode = objList.item(temp);
+                if (objNode.getNodeType() == Node.ELEMENT_NODE) {
+                    Element objElement = (Element) objNode;
+                    rRfcEmisor = objElement.getAttribute(aRfcEmisor);
+                }
+            }
+            
+            objList = objDocument.getElementsByTagName(nReceptor);
+
+            for (int temp = 0; temp < objList.getLength(); temp++) {
+                Node objNode = objList.item(temp);
+                if (objNode.getNodeType() == Node.ELEMENT_NODE) {
+                    Element objElement = (Element) objNode;
+                    rRfcReceptor = objElement.getAttribute(aRfcReceptor);
+                    rNombre = objElement.getAttribute(aNombre);
+                    rUsoCFDI = objElement.getAttribute(aUsoCFDI);
+                }
+            }
+            
+            objList = objDocument.getElementsByTagName(nImpuestos);
+
+            for (int temp = 0; temp < objList.getLength(); temp++) {
+                Node objNode = objList.item(temp);
+                if (objNode.getNodeType() == Node.ELEMENT_NODE) {
+                    Element objElement = (Element) objNode;
+                    if (objElement.getAttribute(aImpuestosRetenidos) != "") {
+                        rImpuestosRetenidos = objElement.getAttribute(aImpuestosRetenidos);
+                    }
+                    if (objElement.getAttribute(aImpuestosTrasladados) != "") {
+                        rImpuestosTrasladados = objElement.getAttribute(aImpuestosTrasladados);
+                    }
+                }
+            }
+            
+            #sql{
+                UPDATE PAC_MASTEREDI_REPORT_TB
+                   SET NOMREC = :rNombre,
+                       FORPAG = :rFormaPago,
+                       SUBTBR = :rSubTotal,
+                       TOTTRA = :rImpuestosTrasladados,
+                       TOTRET = :rImpuestosRetenidos,
+                       USOCFDI = :rUsoCFDI,
+                       CODMETPAG = :rCodMetPag,
+                       VERSIO = :rVersio
+                 WHERE 1 = 1
+                   AND RFCEMI = :rRfcEmisor
+                   AND RFCREC = :rRfcReceptor
+                   AND SERFOL = :rSerie
+                   AND NUMFOL = :rFolio
+            };
+            
+            #sql{
+                COMMIT
+            };
+            
+            if (rSerie == "") { rSerie = "-CHANGE-"; }
+            if (rFolio == "") { rFolio = "-CHANGE-"; }
+            if (rFormaPago == "") { rFormaPago = "-CHANGE-"; }
+            if (rSubTotal == "") { rSubTotal = "-CHANGE-"; }
+            if (rTotal == "") { rTotal = "-CHANGE-"; }
+            if (rRfcEmisor == "") { rRfcEmisor = "-CHANGE-"; }
+            if (rRfcReceptor == "") { rRfcReceptor = "-CHANGE-"; }
+            if (rNombre == "") { rNombre = "-CHANGE-"; }
+            if (rUsoCFDI == "") { rUsoCFDI = "-CHANGE-"; }
+            if (rCodMetPag == "") { rCodMetPag = "-CHANGE-"; }
+            if (rVersio == "") { rVersio = "-CHANGE-"; }
+            
+            result = result + "|" + rSerie;
+            result = result + "|" + rFolio;
+            result = result + "|" + rFormaPago;
+            result = result + "|" + rSubTotal;
+            result = result + "|" + rTotal;
+            result = result + "|" + rRfcEmisor;
+            result = result + "|" + rRfcReceptor;
+            result = result + "|" + rNombre;
+            result = result + "|" + rUsoCFDI;
+            result = result + "|" + rCodMetPag;
+            result = result + "|" + rVersio;
+            result = result + "|" + rImpuestosRetenidos;
+            result = result + "|" + rImpuestosTrasladados;
+            result = result + "|";
+            
+            result = result + "-OK-";
+            
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        
+        return result;
     }
         
 };

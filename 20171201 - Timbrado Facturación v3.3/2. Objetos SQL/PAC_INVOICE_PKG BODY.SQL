@@ -37,6 +37,15 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
     AS
         LANGUAGE JAVA NAME 'CFDI.sync(java.lang.String, java.lang.String) return java.lang.String';   
         
+        
+    FUNCTION READ_XML
+        (
+            P_FILE_NAME         VARCHAR2
+        )
+        RETURN VARCHAR2
+    AS
+        LANGUAGE JAVA NAME 'CFDI.readXML(java.lang.String) return java.lang.String';
+    
     
     PROCEDURE SYNC
         (
@@ -61,7 +70,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                PMR.EMIDIA
           FROM PAC_MASTEREDI_REPORT_TB  PMR
          WHERE 1 = 1
-           AND PMR.CUSTOMER_TRX_ID IS NULL;
+           AND PMR.CUSTOMER_TRX_ID IS NULL
+           AND PMR.EMIANIO = P_EMIANIO
+           AND PMR.EMIMES = P_EMIMES;
         
     BEGIN
         
@@ -128,6 +139,68 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
             END;                   
             
             COMMIT;
+            
+            DECLARE
+                var_connection          UTL_TCP.CONNECTION;
+                var_result              VARCHAR2(2000);
+                var_host                VARCHAR2(50) := '192.1.1.119';
+                var_user                VARCHAR2(50) := 'cfd';
+                var_pass                VARCHAR2(50) := 'Facturacion01';
+                var_port_transfer       VARCHAR2(10) := '2100';
+                var_file_name           VARCHAR2(100):= INVOICE.RFCEMI || '_' ||
+                                                        INVOICE.RFCREC || '_' ||
+                                                        INVOICE.SERFOL || '_' ||
+                                                        INVOICE.NUMFOL;
+            BEGIN
+                var_connection := FTP.LOGIN
+                                    (
+                                        P_HOST => var_host,
+                                        P_PORT => var_port_transfer,
+                                        P_USER => var_user,
+                                        P_PASS => var_pass
+                                    );
+                                        
+                FTP.BINARY
+                    (
+                        P_CONN => var_connection
+                    );
+                        
+                FTP.GET
+                    (
+                        P_CONN      => var_connection,
+                        P_FROM_FILE => '/'||INVOICE.RFCEMI||'/'||INVOICE.EMIANIO||'/'||TRIM(TO_CHAR(INVOICE.EMIMES, '09'))||'/'||var_file_name||'.XML',
+                        P_TO_DIR    => 'CALVARIO',
+                        P_TO_FILE   => '/'||var_file_name||'.XML');
+                    
+                FTP.LOGOUT
+                    (
+                        P_CONN  => var_connection
+                    );
+                    
+                var_file_name := '/var/tmp/CARGAS/CALVARIO/'||var_file_name||'.XML';
+                FND_FILE.PUT_LINE(FND_FILE.LOG, var_file_name);    
+                var_result := READ_XML(var_file_name);
+                IF var_result LIKE '%-CHANGE-%' THEN
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**************************************************************');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '     EL NODO DE XML O LOS NOMBRES DE ATRIBUTOS HAN CAMBIADO   ');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, var_result);
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '**************************************************************');
+                    P_RETCODE  := 2;
+                END IF;
+                
+                FND_FILE.PUT_LINE(FND_FILE.LOG, var_result);
+                    
+                UTL_FILE.FREMOVE
+                (
+                    LOCATION => 'CALVARIO',
+                    FILENAME => var_file_name || '.XML'
+                );
+                        
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.XML descargado.');
+            EXCEPTION
+                WHEN OTHERS THEN
+                    NULL;
+            END;
         
         END LOOP;
         
@@ -440,6 +513,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                 
                 DECLARE
                     var_connection  UTL_TCP.CONNECTION;
+                    var_result      VARCHAR2(2000);
                 BEGIN
                     var_connection := FTP.LOGIN
                                         (
@@ -457,9 +531,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                     FTP.GET
                         (
                             P_CONN      => var_connection,
-                            P_FROM_FILE => '/'||P_RFCEMI||'/'||var_year||'/'||TRIM(TO_CHAR(var_month, '09'))||'/'||var_file_name||'.xml',
+                            P_FROM_FILE => '/'||P_RFCEMI||'/'||var_year||'/'||TRIM(TO_CHAR(var_month, '09'))||'/'||var_file_name||'.XML',
                             P_TO_DIR    => 'CALVARIO',
-                            P_TO_FILE   => '/'||var_file_name||'.xml');
+                            P_TO_FILE   => '/'||var_file_name||'.XML');
                     
                     FTP.LOGOUT
                         (
@@ -484,7 +558,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                         P_CONN      => var_connection,
                         P_FROM_DIR  => 'CALVARIO',
                         P_FROM_FILE => var_file_name || '.xml',
-                        P_TO_FILE   => '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.xml'
+                        P_TO_FILE   => '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.XML'
                     );
                               
                     FTP.LOGOUT
@@ -492,13 +566,23 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                         P_CONN => var_connection
                     );    
                     
+                    
+                    var_result := READ_XML('/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.XML');
+                    IF var_result LIKE '%-CHANGE-%' THEN
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, '**************************************************************');
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, '     EL NODO DE XML O LOS NOMBRES DE ATRIBUTOS HAN CAMBIADO   ');
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, var_result);
+                        FND_FILE.PUT_LINE(FND_FILE.LOG, '**************************************************************');
+                        P_RETCODE  := 2;
+                    END IF;
+                    
                     UTL_FILE.FREMOVE
                     (
                         LOCATION => 'CALVARIO',
-                        FILENAME => var_file_name || '.xml'
+                        FILENAME => var_file_name || '.XML'
                     );
                         
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.xml descargado.');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.XML descargado.');
                 EXCEPTION
                     WHEN OTHERS THEN
                         RAISE DOWNLOAD_XML_EXCEPTION;
@@ -523,9 +607,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                     FTP.GET
                         (
                             P_CONN      => var_connection,
-                            P_FROM_FILE => '/'||P_RFCEMI||'/'||var_year||'/'||TRIM(TO_CHAR(var_month, '09'))||'/'||var_file_name||'.pdf',
+                            P_FROM_FILE => '/'||P_RFCEMI||'/'||var_year||'/'||TRIM(TO_CHAR(var_month, '09'))||'/'||var_file_name||'.PDF',
                             P_TO_DIR    => 'CALVARIO',
-                            P_TO_FILE   => '/'||var_file_name||'.pdf');
+                            P_TO_FILE   => '/'||var_file_name||'.PDF');
                     
                     FTP.LOGOUT
                         (
@@ -549,8 +633,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                     (
                         P_CONN      => var_connection,
                         P_FROM_DIR  => 'CALVARIO',
-                        P_FROM_FILE => var_file_name || '.pdf',
-                        P_TO_FILE   => '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.pdf'
+                        P_FROM_FILE => var_file_name || '.PDF',
+                        P_TO_FILE   => '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.PDF'
                     );
                               
                     FTP.LOGOUT
@@ -561,10 +645,10 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                     UTL_FILE.FREMOVE
                     (
                         LOCATION => 'CALVARIO',
-                        FILENAME => var_file_name || '.pdf'
+                        FILENAME => var_file_name || '.PDF'
                     );
                     
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.pdf descargado.');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.PDF descargado.');
                 EXCEPTION
                     WHEN OTHERS THEN
                         RAISE DOWNLOAD_PDF_EXCEPTION;
@@ -572,6 +656,33 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                 
                 EXIT;
             
+            ELSIF var_uuid LIKE '-DUPLICATE-%' THEN
+                var_result := GET_CFDI_MESSAGES
+                                (
+                                    P_RFCEMI    =>  P_RFCEMI,
+                                    P_RFCREC    =>  P_RFCREC,
+                                    P_SERFOL    =>  P_SERFOL,
+                                    P_NUMFOL    =>  P_NUMFOL
+                                );
+                            
+                IF var_result = 'OK' THEN
+                    FOR MESSAGE IN MESSAGES_CUR LOOP
+                        FND_FILE.PUT_LINE(FND_FILE.LOG,MESSAGE.EVE_DATE     ||'  '||
+                                                       MESSAGE.EVE_TITLE   ||'  '||
+                                                       MESSAGE.EVE_DESC);
+                    END LOOP;
+                END IF;
+                            
+                DELETE FROM PAC_MASTEREDI_LOG_TB PML
+                 WHERE 1 = 1
+                   AND RFCEMI = P_RFCEMI
+                   AND RFCREC = P_RFCREC
+                   AND SERFOL = P_SERFOL
+                   AND NUMFOL = P_NUMFOL;
+                               
+                COMMIT;
+                            
+                RAISE CFDI_ERROR_EXCEPTION;
             ELSE
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '');
                 FND_FILE.PUT_LINE(FND_FILE.LOG, var_uuid);
@@ -689,12 +800,38 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
             P_ERRBUF   := 'INSERT_NOTES_EXCEPTION : Error al insertar el UUID como AR_NOTE para el archivo ' || var_file_name || '.';
             P_RETCODE  := 1;
         WHEN DOWNLOAD_XML_EXCEPTION THEN
-            P_ERRBUF   := 'DOWNLOAD_XML_EXCEPTION : Error al descargar el archivo *.xml del archivo ' || var_file_name || '.';
+            P_ERRBUF   := 'DOWNLOAD_XML_EXCEPTION : Error al descargar el archivo *.XML del archivo ' || var_file_name || '.';
             P_RETCODE  := 1;
         WHEN DOWNLOAD_PDF_EXCEPTION THEN
-            P_ERRBUF   := 'DOWNLOAD_PDF_EXCEPTION : Error al descargar el archivo *.pdf del archivo ' || var_file_name || '.';
+            P_ERRBUF   := 'DOWNLOAD_PDF_EXCEPTION : Error al descargar el archivo *.PDF del archivo ' || var_file_name || '.';
             P_RETCODE  := 1;
     END SIGNED; 
+    
+    
+    FUNCTION GET_DESCRIPTION_VALUE
+        (
+            P_FLEX_VALUE_SET_NAME   VARCHAR2,
+            P_FLEX_VALUE            VARCHAR2
+        )
+    RETURN VARCHAR2
+    IS
+        var_result  VARCHAR2(100);
+    BEGIN
+    
+        SELECT FFVVT.DESCRIPTION 
+          INTO var_result
+          FROM FND_FLEX_VALUE_SETS  FFVS,
+               FND_FLEX_VALUES      FFVV,
+               FND_FLEX_VALUES_TL   FFVVT
+         WHERE 1 = 1
+           AND FFVS.FLEX_VALUE_SET_NAME = P_FLEX_VALUE_SET_NAME
+           AND FFVS.FLEX_VALUE_SET_ID = FFVV.FLEX_VALUE_SET_ID
+           AND FFVV.FLEX_VALUE_ID = FFVVT.FLEX_VALUE_ID
+           AND FFVVT.LANGUAGE = USERENV('LANG')
+           AND FFVV.FLEX_VALUE = P_FLEX_VALUE;    
+    
+        RETURN var_result;
+    END GET_DESCRIPTION_VALUE;
     
 
 END PAC_INVOICE_PKG;

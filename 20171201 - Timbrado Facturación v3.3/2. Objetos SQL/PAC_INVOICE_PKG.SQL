@@ -18,5 +18,18 @@ CREATE OR REPLACE PACKAGE APPS.PAC_INVOICE_PKG IS
             P_EMIANIO           VARCHAR2,
             P_EMIMES            VARCHAR2
         ); 
+        
+    FUNCTION GET_DESCRIPTION_VALUE
+        (
+            P_FLEX_VALUE_SET_NAME   VARCHAR2,
+            P_FLEX_VALUE            VARCHAR2
+        )
+    RETURN VARCHAR2;
+    
+    FUNCTION READ_XML
+        (
+            P_FILE_NAME         VARCHAR2
+        )
+        RETURN VARCHAR2;
 
 END PAC_INVOICE_PKG;
