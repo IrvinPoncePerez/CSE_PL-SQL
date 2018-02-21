@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE ftp AS
+CREATE OR REPLACE PACKAGE apps.ftp AS
 -- --------------------------------------------------------------------------
 -- Name         : https://oracle-base.com/dba/miscellaneous/ftp.pks
 -- Author       : Tim Hall

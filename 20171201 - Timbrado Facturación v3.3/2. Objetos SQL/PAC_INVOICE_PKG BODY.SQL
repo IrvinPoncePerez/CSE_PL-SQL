@@ -222,7 +222,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         var_port_transfer       VARCHAR2(10) := '2100';
         var_port_error          VARCHAR2(10) := '2200';
         
-        var_put_host            VARCHAR2(50) := '192.1.1.194';
+        var_put_host            VARCHAR2(50) := '192.1.1.191';
         var_put_user            VARCHAR2(50) := 'nomina';
         var_put_pass            VARCHAR2(50) := 'oracle';
         

@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY ftp AS
+CREATE OR REPLACE PACKAGE BODY apps.ftp AS
 -- --------------------------------------------------------------------------
 -- Name         : https://oracle-base.com/dba/miscellaneous/ftp.pkb
 -- Author       : Tim Hall
