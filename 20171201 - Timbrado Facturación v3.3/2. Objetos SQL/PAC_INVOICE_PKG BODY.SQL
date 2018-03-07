@@ -192,7 +192,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
             P_RFCREC            VARCHAR2,
             P_SERFOL            VARCHAR2,
             P_NUMFOL            VARCHAR2,
-            P_CUSTOMER_TRX_ID   NUMBER
+            P_CUSTOMER_TRX_ID   NUMBER,
+            P_REPORT            VARCHAR2
          )
     IS
         var_request_id          NUMBER := FND_GLOBAL.CONC_REQUEST_ID;
@@ -222,7 +223,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         var_port_transfer       VARCHAR2(10) := '2100';
         var_port_error          VARCHAR2(10) := '2200';
         
-        var_put_host            VARCHAR2(50) := '192.1.1.191';
+        var_put_host            VARCHAR2(50) := '192.1.1.190';
         var_put_user            VARCHAR2(50) := 'nomina';
         var_put_pass            VARCHAR2(50) := 'oracle';
         
@@ -273,8 +274,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         
         DECLARE
             var_connection    UTL_TCP.CONNECTION;
-        BEGIN      
-                
+        BEGIN          
             var_connection := FTP.LOGIN
                                 (   
                                     P_HOST => var_host,
@@ -332,7 +332,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                 var_connection      UTL_TCP.CONNECTION;
                 var_list_error      FTP.T_STRING_TABLE;
             BEGIN
-            
+                
                 var_connection := FTP.LOGIN
                                     (
                                         P_HOST => var_host,
@@ -354,15 +354,15 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                     );
                   
                 IF var_list_error.COUNT > 0 THEN
-                    
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.txt con error.');
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, RPAD('*',40,'*'));
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, RPAD(' ',15, ' ')||'ERROR DE TIMBRADO');
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, RPAD('*',40,'*'));
                 
                     FOR I IN var_list_error.FIRST .. var_list_error.LAST LOOP
                 
                         IF var_list_error(I) LIKE '%' || var_file_name || '%' THEN
+                        
+                            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.txt con error.');
+                            FND_FILE.PUT_LINE(FND_FILE.LOG, RPAD('*',40,'*'));
+                            FND_FILE.PUT_LINE(FND_FILE.LOG, RPAD(' ',15, ' ')||'ERROR DE TIMBRADO');
+                            FND_FILE.PUT_LINE(FND_FILE.LOG, RPAD('*',40,'*'));
                         
                             BEGIN
                                 var_connection := FTP.LOGIN
@@ -445,22 +445,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
             FND_FILE.PUT_LINE(FND_FILE.LOG, 'UUID : ' || var_uuid);                        
                
             IF var_uuid LIKE '-OK-null%'THEN
-                RAISE FATAL_EXCEPTION;
+                FND_FILE.PUT_LINE(FND_FILE.LOG, 'RESULT : NULL');
             ELSIF var_uuid LIKE '-OK-%' THEN
-                var_waiting := 1;
-                
-                UPDATE PAC_MASTEREDI_REPORT_TB
-                   SET EMITION_DATE = TO_DATE(SYSDATE,'DD/MM/RRRR')
-                 WHERE 1 = 1 
-                   AND RFCEMI = P_RFCEMI
-                   AND RFCREC = P_RFCREC
-                   AND SERFOL = P_SERFOL
-                   AND NUMFOL = P_NUMFOL
-                   AND EMIANIO = var_year
-                   AND EMIMES = var_month
-                   AND EMIDIA = var_day;
-                   
-                COMMIT;   
+                var_waiting := 1;  
                 
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '');
                 FND_FILE.PUT_LINE(FND_FILE.LOG, 'Respuesta : ' || var_uuid);
@@ -482,6 +469,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                         (
                            P_NOTES_REC => NOTES_REC
                         );
+
+                    COMMIT;                        
                         
                     FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.txt UUID insertado.');
                 EXCEPTION
@@ -544,8 +533,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                         P_CONN => var_connection
                     );    
                     
-                    
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, var_file_name);
                     var_result := READ_XML('/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.XML');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, var_result);
                     IF var_result LIKE '%-CHANGE-%' THEN
                         FND_FILE.PUT_LINE(FND_FILE.LOG, 'EL NODO DE XML O LOS NOMBRES DE ATRIBUTOS HAN CAMBIADO   ' || var_result);
                         P_RETCODE  := 2;
@@ -663,101 +653,100 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                 FND_FILE.PUT_LINE(FND_FILE.LOG, var_uuid);
                 FND_FILE.PUT_LINE(FND_FILE.LOG, '');       
             END IF;
-            
-            EXIT WHEN var_waiting = 1;
         
         END LOOP;   
         
-        
-        IF var_waiting = 1 THEN
-        
-            var_layout_value := FND_REQUEST.ADD_LAYOUT 
-                                (
-                                   TEMPLATE_APPL_NAME   => 'AR',
-                                   TEMPLATE_CODE        => 'PAC_INVOICE_REPORT',
-                                   TEMPLATE_LANGUAGE    => 'Spanish', 
-                                   TEMPLATE_TERRITORY   => 'Mexico', 
-                                   OUTPUT_FORMAT        => 'PDF' 
-                                );
+        IF P_REPORT IN ('Y', 'YES') THEN
+            IF var_waiting = 1 THEN
+            
+                var_layout_value := FND_REQUEST.ADD_LAYOUT 
+                                    (
+                                       TEMPLATE_APPL_NAME   => 'AR',
+                                       TEMPLATE_CODE        => 'PAC_INVOICE_REPORT',
+                                       TEMPLATE_LANGUAGE    => 'Spanish', 
+                                       TEMPLATE_TERRITORY   => 'Mexico', 
+                                       OUTPUT_FORMAT        => 'PDF' 
+                                    );
 
 
-            var_report_request_id := FND_REQUEST.SUBMIT_REQUEST
-                                     ( 
-                                        APPLICATION =>'AR',
-                                        PROGRAM     =>'PAC_INVOICE_REPORT',
-                                        DESCRIPTION => NULL,
-                                        START_TIME  => NULL,
-                                        SUB_REQUEST => FALSE,
-                                        ARGUMENT1   => P_SERFOL,
-                                        ARGUMENT2   => P_NUMFOL,
-                                        ARGUMENT3   => P_RFCREC,
-                                        ARGUMENT4   => P_RFCEMI
-                                     );
-                                     
-            STANDARD.COMMIT;
-         
-            waiting := FND_CONCURRENT.WAIT_FOR_REQUEST 
-                       (
-                            REQUEST_ID  => var_report_request_id,
-                            INTERVAL    => 1,
-                            MAX_WAIT    => 0,
-                            PHASE       => phase,
-                            STATUS      => status,
-                            DEV_PHASE   => dev_phase,
-                            DEV_STATUS  => dev_status,
-                            MESSAGE     => message
-                       );                                   
-        
-        END IF;
-        
-        IF var_waiting = 1 THEN
-            SELECT FCR.OUTFILE_NAME,
-                   FCO.FILE_NAME
-              INTO var_out_file_name,
-                   var_pdf_file_name
-              FROM FND_CONCURRENT_REQUESTS  FCR,
-                   FND_CONC_REQ_OUTPUTS     FCO
-             WHERE 1 = 1
-               AND FCR.REQUEST_ID = var_report_request_id
-               AND FCR.REQUEST_ID = FCO.CONCURRENT_REQUEST_ID
-               AND FCO.FILE_TYPE IN ('PDF', 'pdf');
-               
-               
-            SELECT DD.DIRECTORY_PATH
-              INTO var_source_dir
-              FROM DBA_DIRECTORIES DD
-             WHERE 1 = 1
-               AND DD.DIRECTORY_NAME = 'CALVARIO';
-               
-            FND_GLOBAL.APPS_INITIALIZE 
-            (
-                USER_ID        => 3397,
-                RESP_ID        => 50627,
-                RESP_APPL_ID   => 222
-            );
-                       
-            MO_GLOBAL.SET_POLICY_CONTEXT 
-            (   
-                P_ACCESS_MODE => 'S', 
-                P_ORG_ID => 1329
-            );                       
-                       
-            var_move_request_id := FND_REQUEST.SUBMIT_REQUEST
-                                   ( 
-                                        APPLICATION =>'AR',
-                                        PROGRAM     =>'PAC_INVOICE_MOVE',
-                                        DESCRIPTION => NULL,
-                                        START_TIME  => NULL,
-                                        SUB_REQUEST => FALSE,
-                                        ARGUMENT1   => var_source_dir,
-                                        ARGUMENT2   => var_file_name,
-                                        ARGUMENT3   => var_out_file_name,
-                                        ARGUMENT4   => var_pdf_file_name,
-                                        ARGUMENT5   => 'XML',
-                                        ARGUMENT6   => 'PDF'
-                                    );                      
-                                                               
-        END IF;
+                var_report_request_id := FND_REQUEST.SUBMIT_REQUEST
+                                         ( 
+                                            APPLICATION =>'AR',
+                                            PROGRAM     =>'PAC_INVOICE_REPORT',
+                                            DESCRIPTION => NULL,
+                                            START_TIME  => NULL,
+                                            SUB_REQUEST => FALSE,
+                                            ARGUMENT1   => P_SERFOL,
+                                            ARGUMENT2   => P_NUMFOL,
+                                            ARGUMENT3   => P_RFCREC,
+                                            ARGUMENT4   => P_RFCEMI
+                                         );
+                                         
+                STANDARD.COMMIT;
+             
+                waiting := FND_CONCURRENT.WAIT_FOR_REQUEST 
+                           (
+                                REQUEST_ID  => var_report_request_id,
+                                INTERVAL    => 1,
+                                MAX_WAIT    => 0,
+                                PHASE       => phase,
+                                STATUS      => status,
+                                DEV_PHASE   => dev_phase,
+                                DEV_STATUS  => dev_status,
+                                MESSAGE     => message
+                           );                                   
+            
+            END IF;
+            
+            IF var_waiting = 1 THEN
+                SELECT FCR.OUTFILE_NAME,
+                       FCO.FILE_NAME
+                  INTO var_out_file_name,
+                       var_pdf_file_name
+                  FROM FND_CONCURRENT_REQUESTS  FCR,
+                       FND_CONC_REQ_OUTPUTS     FCO
+                 WHERE 1 = 1
+                   AND FCR.REQUEST_ID = var_report_request_id
+                   AND FCR.REQUEST_ID = FCO.CONCURRENT_REQUEST_ID
+                   AND FCO.FILE_TYPE IN ('PDF', 'pdf');
+                   
+                   
+                SELECT DD.DIRECTORY_PATH
+                  INTO var_source_dir
+                  FROM DBA_DIRECTORIES DD
+                 WHERE 1 = 1
+                   AND DD.DIRECTORY_NAME = 'CALVARIO';
+                   
+                FND_GLOBAL.APPS_INITIALIZE 
+                (
+                    USER_ID        => 3397,
+                    RESP_ID        => 50627,
+                    RESP_APPL_ID   => 222
+                );
+                           
+                MO_GLOBAL.SET_POLICY_CONTEXT 
+                (   
+                    P_ACCESS_MODE => 'S', 
+                    P_ORG_ID => 1329
+                );                       
+                           
+                var_move_request_id := FND_REQUEST.SUBMIT_REQUEST
+                                       ( 
+                                            APPLICATION =>'AR',
+                                            PROGRAM     =>'PAC_INVOICE_MOVE',
+                                            DESCRIPTION => NULL,
+                                            START_TIME  => NULL,
+                                            SUB_REQUEST => FALSE,
+                                            ARGUMENT1   => var_source_dir,
+                                            ARGUMENT2   => var_file_name,
+                                            ARGUMENT3   => var_out_file_name,
+                                            ARGUMENT4   => var_pdf_file_name,
+                                            ARGUMENT5   => 'XML',
+                                            ARGUMENT6   => 'PDF'
+                                        );                      
+                                                                   
+            END IF;
+        END IF;      
                                                       
         
     EXCEPTION

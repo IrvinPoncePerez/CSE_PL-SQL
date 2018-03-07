@@ -55,8 +55,7 @@ public class CFDI {
                            " and rep.rep_serie = '"+serfol+"'"+
                            " and rep.rep_folio = '"+numfol+"'"+
                            " and rep.rep_emianio = '"+emianio+"'"+
-                           " and rep.rep_emimes = '"+emimes+"'"+
-                           " and rep.rep_emidia = '"+emidia+"';";
+                           " and rep.rep_emimes = '"+emimes+"';";
 
         
             
@@ -98,7 +97,8 @@ public class CFDI {
                                TOTPAG,
                                UUID,
                                VERSIO,
-                               CODMETPAG
+                               CODMETPAG,
+                               EMITION_DATE
                                ) 
                         VALUES 
                              (
@@ -114,8 +114,13 @@ public class CFDI {
                                :rep_monto,
                                :uuid,
                                :rep_Versio,
-                               :rep_CodMetPag
+                               :rep_CodMetPag,
+                               TO_DATE(:rep_emidia||'/'||:rep_emimes||'/'||:rep_emianio, 'DD/MM/RRRR')
                               )     
+                    };
+                    
+                    #sql {
+                        COMMIT
                     };
                 
                 } catch (SQLException ex) {

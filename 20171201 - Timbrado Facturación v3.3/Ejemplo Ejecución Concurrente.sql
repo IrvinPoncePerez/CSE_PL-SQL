@@ -20,15 +20,15 @@ BEGIN
     
 
     V_REQUEST_ID := APPS.FND_REQUEST.SUBMIT_REQUEST( APPLICATION =>'AR',
-                                                    PROGRAM     =>'PAC_FACTURACION_TIMBRADO',
+                                                    PROGRAM     =>'PAC_INVOICE_SIGNED',
                                                     DESCRIPTION => NULL,
                                                     START_TIME  => NULL,
                                                     SUB_REQUEST => FALSE,
                                                     ARGUMENT1 => 'PAC941215E50',
-                                                    ARGUMENT2 => 'XAXX010101000',
-                                                    ARGUMENT3 => 'FCTH',
-                                                    ARGUMENT4 => '21225',
-                                                    ARGUMENT5 => 3441432
+                                                    ARGUMENT2 => 'NWM9709244W4',
+                                                    ARGUMENT3 => 'CRTG',
+                                                    ARGUMENT4 => '244',
+                                                    ARGUMENT5 => 3488964
                                                   );
 
     DBMS_OUTPUT.PUT_LINE(V_REQUEST_ID);
@@ -63,8 +63,8 @@ BEGIN
                                                     DESCRIPTION => NULL,
                                                     START_TIME  => NULL,
                                                     SUB_REQUEST => FALSE,
-                                                    ARGUMENT1 => 2014,
-                                                    ARGUMENT2 => 11
+                                                    ARGUMENT1 => 2018,
+                                                    ARGUMENT2 => 2
                                                   );
 
     DBMS_OUTPUT.PUT_LINE(V_REQUEST_ID);

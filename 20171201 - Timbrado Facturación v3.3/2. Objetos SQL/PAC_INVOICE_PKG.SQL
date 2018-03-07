@@ -8,7 +8,8 @@ CREATE OR REPLACE PACKAGE APPS.PAC_INVOICE_PKG IS
             P_RFCREC            VARCHAR2,
             P_SERFOL            VARCHAR2,
             P_NUMFOL            VARCHAR2,
-            P_CUSTOMER_TRX_ID   NUMBER
+            P_CUSTOMER_TRX_ID   NUMBER,
+            P_REPORT            VARCHAR2
          );   
          
     PROCEDURE SYNC
