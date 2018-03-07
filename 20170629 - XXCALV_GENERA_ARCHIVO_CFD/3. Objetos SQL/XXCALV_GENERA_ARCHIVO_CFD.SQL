@@ -91,6 +91,9 @@ IS
    
    V_IS_CREDIT_NOTE         VARCHAR2(100);
    
+   V_HEADERS_COUNT          NUMBER;
+   V_REPORT                 VARCHAR2(10);
+   
    CURSOR HEADERS_CUR(P_ORG_ID_H        NUMBER,
                       P_TIPO_DOC_H      VARCHAR2,
                       P_ORIGEN_H        NUMBER,
@@ -178,6 +181,7 @@ IS
                  WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                    AND  ROWNUM = 1 
                    AND OE.ORG_ID = P_ORG_ID_H), TRAX.PURCHASE_ORDER)                NUMEOC
+         , TRAX.PURCHASE_ORDER_DATE                                                 FECHOC
          , (SELECT TO_DATE(ATTRIBUTE9,'YYYY-MM-DD HH24:MI:SS')
               FROM OE_ORDER_HEADERS_ALL OE 
              WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
@@ -421,6 +425,7 @@ IS
     
     
    CREDIT_NOTE_EXCEPTION    EXCEPTION;
+   NO_INVOICE_FOUND         EXCEPTION;
     
     
    PROCEDURE FILE_PUT_LINE (P_MANEJADOR     UTL_FILE.FILE_TYPE,
@@ -494,6 +499,25 @@ BEGIN
    EXCEPTION WHEN OTHERS THEN
         FND_FILE.PUT_LINE (FND_FILE.LOG,'Error inesperado al obtener calle y n?mero exterior de CEDIS. '||SQLERRM);
    END;
+
+   
+   
+    SELECT COUNT(1)
+      INTO V_HEADERS_COUNT 
+      FROM RA_CUSTOMER_TRX_PARTIAL_CFD TRAX
+     WHERE 1 = 1
+       AND TRAX.ORG_ID = P_ORG_ID
+       AND TRAX.CUST_TRX_TYPE_ID = P_ORIGEN
+       AND TRAX.CTT_CLASS = NVL (P_TIPO_DOC,TRAX.CTT_CLASS)
+       AND TO_NUMBER(TRAX.DOC_SEQUENCE_VALUE) BETWEEN NVL ( P_DOC_INI, TO_NUMBER(TRAX.DOC_SEQUENCE_VALUE))
+                                                  AND NVL ( P_DOC_FIN, TO_NUMBER(TRAX.DOC_SEQUENCE_VALUE))
+       AND TRUNC(TRAX.TRX_DATE) BETWEEN TRUNC(NVL(TO_DATE(P_FECHA_INI,'RRRR/MM/DD HH24:MI:SS'),TRAX.TRX_DATE))
+                                    AND TRUNC(NVL(TO_DATE(P_FECHA_FIN,'RRRR/MM/DD HH24:MI:SS'),TRAX.TRX_DATE))           
+     ORDER BY TO_NUMBER(TRAX.DOC_SEQUENCE_VALUE);
+     
+    IF V_HEADERS_COUNT = 0 THEN
+        RAISE NO_INVOICE_FOUND;
+    END IF;
 
     
    FOR HED_REC IN HEADERS_CUR(P_ORG_ID, P_TIPO_DOC, P_ORIGEN, P_DOC_INI, P_DOC_FIN, P_FECHA_INI, P_FECHA_FIN) LOOP
@@ -844,16 +868,14 @@ BEGIN
                         FILE_PUT_LINE (V_MANEJADOR, 'CONTRA  '||V_CONTRA); 
                     END IF;                    
                     
-                    
-                    FILE_PUT_LINE (V_MANEJADOR, 'FECHOC  '||V_FECHOC);  
-                    
+                    FILE_PUT_LINE (V_MANEJADOR, 'FECHOC  '||NVL(V_FECHOC,TO_CHAR(HED_REC.FECHOC,'YYYY-MM-DD')));  
                     
                     IF HED_REC.TIPO_ADENDA = 'SORIANA' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'FECCON  '||HED_REC.FECCON);  
                     END IF;
                     
                     
-                    FILE_PUT_LINE (V_MANEJADOR, 'NOTAS3 '||REPLACE (UPPER(IBY_AMOUNT_IN_WORDS.GET_AMOUNT_IN_WORDS(V_TOTPAG,'MXN')), 'MXN', HED_REC.TIPMON));
+--                    FILE_PUT_LINE (V_MANEJADOR, 'NOTAS3 '||REPLACE (UPPER(IBY_AMOUNT_IN_WORDS.GET_AMOUNT_IN_WORDS(ROUND_TOT((V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)))),'MXN')), 'MXN', HED_REC.TIPMON));
                     FILE_PUT_LINE (V_MANEJADOR, 'TRANSP  '||V_TRANSP);  
                     FILE_PUT_LINE (V_MANEJADOR, 'SELLO1  '||V_SELLO1); 
                     FILE_PUT_LINE (V_MANEJADOR, 'SELLO2  '||V_SELLO2); 
@@ -1293,8 +1315,12 @@ BEGIN
                             FILE_PUT_LINE (V_MANEJADOR, '');
                             
 
-                        EXCEPTION WHEN OTHERS THEN
-                            FND_FILE.PUT_LINE (FND_FILE.LOG,'ERROR inesperado en las l?neas de la factura. '||SQLERRM);
+                        EXCEPTION
+                            WHEN CREDIT_NOTE_EXCEPTION THEN
+                                FND_FILE.PUT_LINE(FND_FILE.LOG, 'ERROR en aplicación de las notas de crédito.');
+                                UTL_FILE.FREMOVE(V_DIRECTORIO, V_ARCHIVO);
+                            WHEN OTHERS THEN
+                                FND_FILE.PUT_LINE (FND_FILE.LOG,'ERROR inesperado en las l?neas de la factura. '||SQLERRM);
                         END;
                         
                                   
@@ -1345,16 +1371,18 @@ BEGIN
 
                     IF (V_TOTIVA = 0) OR (V_TOTIVA = 16) THEN 
                         FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||TO_CHAR(V_TOTIVA));
-                    ELSIF (V_TOTIVA = 4) AND HED_REC.RFCEMI = 'ATE920811K53' THEN
+                    ELSIF V_TOTIVA = 4 AND V_RFCEMI = 'ATE920811K53' THEN
                         FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||TO_CHAR(16));
                     ELSE
                         FILE_PUT_LINE (V_MANEJADOR, 'TOTIVA  '||TO_CHAR(0));  
                     END IF;
-                        
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '*TOTIVA    ' ||TO_CHAR(V_TOTIVA)); 
+                    FND_FILE.PUT_LINE(FND_FILE.LOG, '*RFCEMI    ' ||V_RFCEMI);   
                     
                     FILE_PUT_LINE (V_MANEJADOR, 'IVATRA  '||TO_CHAR(ROUND(NVL(V_IVATRA,0),2)));
                     FILE_PUT_LINE (V_MANEJADOR, 'IVARET  '||ROUND(ABS(NVL(V_IVARET,0)),2)); 
                     FILE_PUT_LINE (V_MANEJADOR, 'ISRRET  '||ROUND(ABS(NVL(V_ISRRET,0)),2)); 
+                                        FILE_PUT_LINE (V_MANEJADOR, 'NOTAS3 '||REPLACE (UPPER(IBY_AMOUNT_IN_WORDS.GET_AMOUNT_IN_WORDS(ROUND_TOT((V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)))),'MXN')), 'MXN', HED_REC.TIPMON));
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG  '||ROUND_TOT((V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)))));
                     FILE_PUT_LINE (V_MANEJADOR, 'TOTPAG_ORI  '||TRUNC(V_TOTPAG - ABS(NVL(V_IVARET,0)) - ABS(NVL(V_ISRRET,0)),6));
                     
@@ -1379,36 +1407,65 @@ BEGIN
            END;
 
        END IF;
+       
+       
+       IF P_TIMBRAR = 'YES' THEN
+            IF V_HEADERS_COUNT = 1 THEN 
+                V_REPORT := 'YES';
+            ELSIF V_HEADERS_COUNT > 1 THEN 
+                V_REPORT := 'NO';
+            END IF;                          
+       
+       
+             V_REQUEST_ID := APPS.FND_REQUEST.SUBMIT_REQUEST( APPLICATION =>'AR',
+                                                              PROGRAM     =>'PAC_INVOICE_SIGNED',
+                                                              DESCRIPTION => NULL,
+                                                              START_TIME  => NULL,
+                                                              SUB_REQUEST => FALSE,
+                                                            ARGUMENT1 => V_RFCEMI,
+                                                            ARGUMENT2 => UPPER(NVL(HED_REC.RFCEMI,HED_REC.RFCREC)),
+                                                            ARGUMENT3 => HED_REC.SERFOL,
+                                                            ARGUMENT4 => HED_REC.NUMFOL,
+                                                            ARGUMENT5 => HED_REC.CUSTOMER_TRX_ID,
+                                                            ARGUMENT6 => V_REPORT                                                                            
+                                                          );
+       END IF;
+       
    END LOOP;
        
-       FND_FILE.PUT_LINE(FND_FILE.LOG, '');
-       FND_FILE.PUT_LINE(FND_FILE.LOG, P_TIMBRAR);
-   
-       BEGIN
-            IF P_TIMBRAR = 'YES' THEN
-               V_REQUEST_ID := APPS.FND_REQUEST.SUBMIT_REQUEST( APPLICATION =>'AR',
-                                                                PROGRAM     =>'MUEVE_CFD',
-                                                                DESCRIPTION => NULL,
-                                                                START_TIME  => NULL,
-                                                                SUB_REQUEST => FALSE
-                                                              );
-               COMMIT;
-               FND_FILE.PUT_LINE (FND_FILE.LOG, 'Request_id: '||V_REQUEST_ID);
-               WAITING := FND_CONCURRENT.WAIT_FOR_REQUEST
-                                        (V_REQUEST_ID,1,0,
-                                         PHASE,
-                                         STATUS,
-                                         DEV_PHASE,
-                                         DEV_STATUS,
-                                         MESSAGE
-                                        );
-            END IF;                                        
-       EXCEPTION WHEN OTHERS THEN
-           FND_FILE.PUT_LINE (FND_FILE.LOG, 'ERROR lanzando concurrente. '||SQLERRM);
-       END;
+--       FND_FILE.PUT_LINE(FND_FILE.LOG, '');
+--       FND_FILE.PUT_LINE(FND_FILE.LOG, P_TIMBRAR);
+--   
+--       BEGIN
+--            IF P_TIMBRAR = 'YES' THEN
+--               V_REQUEST_ID := APPS.FND_REQUEST.SUBMIT_REQUEST( APPLICATION =>'AR',
+--                                                                PROGRAM     =>'MUEVE_CFD',
+--                                                                DESCRIPTION => NULL,
+--                                                                START_TIME  => NULL,
+--                                                                SUB_REQUEST => FALSE
+--                                                              );
+--               COMMIT;
+--               FND_FILE.PUT_LINE (FND_FILE.LOG, 'Request_id: '||V_REQUEST_ID);
+--               WAITING := FND_CONCURRENT.WAIT_FOR_REQUEST
+--                                        (V_REQUEST_ID,1,0,
+--                                         PHASE,
+--                                         STATUS,
+--                                         DEV_PHASE,
+--                                         DEV_STATUS,
+--                                         MESSAGE
+--                                        );
+--            END IF;                                        
+--       EXCEPTION WHEN OTHERS THEN
+--           FND_FILE.PUT_LINE (FND_FILE.LOG, 'ERROR lanzando concurrente. '||SQLERRM);
+--       END;
+
+
 EXCEPTION 
+    WHEN NO_INVOICE_FOUND THEN
+        RETCODE:= 1;
+        FND_FILE.PUT_LINE (FND_FILE.OUTPUT, 'NO EXISTEN RESULTADOS QUE CORRESPONDAN A LOS PARAMETROS');
     WHEN OTHERS THEN
-    RETCODE:= 1;
-    FND_FILE.PUT_LINE (FND_FILE.OUTPUT, 'ERROR inesperado al generar factura. '||SQLERRM);
-    FND_FILE.PUT_LINE (FND_FILE.LOG, 'Archivo generado: '||V_DIRECTORIO||'/'||V_ARCHIVO);
+        RETCODE:= 1;
+        FND_FILE.PUT_LINE (FND_FILE.OUTPUT, 'ERROR inesperado al generar factura. '||SQLERRM);
+        FND_FILE.PUT_LINE (FND_FILE.LOG, 'Archivo generado: '||V_DIRECTORIO||'/'||V_ARCHIVO);
 END;

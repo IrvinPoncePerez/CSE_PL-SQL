@@ -1,3 +1,6 @@
+ALTER SESSION SET CURRENT_SCHEMA=APPS;    
+    
+    
     SELECT TRAX.DOC_SEQUENCE_VALUE                                                  NUMFOL
          , TRAX.CUSTOMER_TRX_ID
          , TRAX.ORG_ID
@@ -77,6 +80,7 @@
                  WHERE OE.ORDER_NUMBER = NVL(TRAX.CT_REFERENCE,0) 
                    AND  ROWNUM = 1 
                    AND OE.ORG_ID = :P_ORG_ID_H),TRAX.PURCHASE_ORDER)                NUMEOC
+         , TRAX.PURCHASE_ORDER_DATE                                                 FECHOC            
          , TRAX.CUST_ATTRIBUTE7
          , TRAX.CT_REFERENCE      
          , (SELECT TO_DATE(ATTRIBUTE9,'YYYY-MM-DD HH24:MI:SS')
