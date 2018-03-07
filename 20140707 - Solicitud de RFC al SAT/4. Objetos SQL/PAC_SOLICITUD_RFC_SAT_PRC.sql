@@ -29,6 +29,7 @@ IS
                             WHERE COMPANY.lookup_type= 'NOMINAS POR EMPLEADOR LEGAL'
                               AND COMPANY.lookup_code = P_COMPANY_ID
                               AND INFORMATION.ORG_INFORMATION_CONTEXT = 'MX_TAX_REGISTRATION')  AS RFC_COMPANIA,
+                            PAPF.EMAIL_ADDRESS                                          AS  EMAIL_ADDRESS,
                            (PEEVF.SCREEN_ENTRY_VALUE / 30)                              AS  SALARIO_DIARIO                              
                           FROM PER_ALL_PEOPLE_F             PAPF,
                                PER_ALL_ASSIGNMENTS_F        PAAF, 
@@ -63,10 +64,11 @@ IS
                            AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PEEVF.EFFECTIVE_START_DATE AND PEEVF.EFFECTIVE_END_DATE
                            AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PIVF.EFFECTIVE_START_DATE AND PIVF.EFFECTIVE_END_DATE
                          ORDER BY PAPF.NATIONAL_IDENTIFIER;
+
     
     
     
-    CURSOR  BAJAS_DETAILS IS
+    CURSOR  BAJAS_DETAILS IS             
              SELECT DISTINCT
                     PAPF.PERSON_ID                                              AS  PERSON_ID,                           
                     PAPF.PER_INFORMATION2                                       AS  RFC,
@@ -74,7 +76,7 @@ IS
                     PAPF.LAST_NAME                                              AS  AP_PATERNO,
                     PAPF.PER_INFORMATION1                                       AS  AP_MATERNO,
                     PAPF.FIRST_NAME || ' ' || PAPF.MIDDLE_NAMES                 AS  NOMBRES,
-                    TO_DATE(PPOS.ACTUAL_TERMINATION_DATE, 'DD/MM/RRRR')      AS  FECHA,
+                    TO_DATE(PPOS.ACTUAL_TERMINATION_DATE, 'DD/MM/RRRR')         AS  FECHA,
                       (SELECT DISTINCT
                             INFORMATION.ORG_INFORMATION2
                         FROM FND_LOOKUP_VALUES                     COMPANY     
@@ -82,7 +84,8 @@ IS
                         INNER JOIN HR_ORGANIZATION_INFORMATION     INFORMATION      ON INFORMATION.ORGANIZATION_ID = ORGANIZATIONS.ORGANIZATION_ID
                         WHERE COMPANY.lookup_type= 'NOMINAS POR EMPLEADOR LEGAL'
                           AND COMPANY.lookup_code = P_COMPANY_ID
-                          AND INFORMATION.ORG_INFORMATION_CONTEXT = 'MX_TAX_REGISTRATION')  AS RFC_COMPANIA
+                          AND INFORMATION.ORG_INFORMATION_CONTEXT = 'MX_TAX_REGISTRATION')  AS RFC_COMPANIA,
+                    PAPF.EMAIL_ADDRESS                                          AS  EMAIL_ADDRESS
                   FROM PER_ALL_PEOPLE_F             PAPF,  
                        PER_ALL_ASSIGNMENTS_F        PAAF, 
                        PAY_PAYROLLS_F               PPF,      
@@ -93,13 +96,11 @@ IS
                    AND PPOS.PERSON_ID= PAPF.PERSON_ID 
                    AND SUBSTR(PPF.PAYROLL_NAME, 1, 2) = P_COMPANY_ID
                    AND PPF.PAYROLL_ID = NVL(P_PAYROLL_ID, PPF.PAYROLL_ID)  
-                   AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN var_start_date AND var_end_date   
-                   AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PAPF.EFFECTIVE_START_DATE AND PAPF.EFFECTIVE_END_DATE
-                   AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PAAF.EFFECTIVE_START_DATE AND PAAF.EFFECTIVE_END_DATE
-                   AND NVL(PPOS.ADJUSTED_SVC_DATE, PAPF.ORIGINAL_DATE_OF_HIRE) BETWEEN PPF.EFFECTIVE_START_DATE AND PPF.EFFECTIVE_END_DATE
+                   AND PPOS.ACTUAL_TERMINATION_DATE BETWEEN var_start_date AND var_end_date   
                    AND PAAF.PERIOD_OF_SERVICE_ID = PPOS.PERIOD_OF_SERVICE_ID
                    AND PPOS.ACTUAL_TERMINATION_DATE IS NOT NULL
                  ORDER BY PAPF.NATIONAL_IDENTIFIER;
+
      
 BEGIN
 
@@ -125,7 +126,8 @@ BEGIN
             ELSE
                 var_detail := var_detail || '2' || '|';
             END IF;                                  
-            var_detail := var_detail || DETAIL.RFC_COMPANIA;                        --Campo 8 (7): RFC Compañía. Longitud limitada a 13 posiciones. 
+            var_detail := var_detail || DETAIL.RFC_COMPANIA;                        --Campo 8 (7): RFC Compañía. Longitud limitada a 13 posiciones.
+            var_detail := var_detail || DETAIL.EMAIL_ADDRESS; 
             
             dbms_output.put_line(var_detail);
             FND_FILE.PUT_LINE(FND_FILE.LOG, var_detail);
@@ -144,7 +146,8 @@ BEGIN
             var_detail := var_detail || TRIM(DETAIL.NOMBRES) || '|';                --Campo 5 (4): Nombres, requerido. Longitud limitada a 40 posiciones.
             var_detail := var_detail || TO_CHAR(DETAIL.FECHA, 'DD/MM/RRRR') || '|';                        --Campo 6 (5): Fecha del movimiento, requerido. Longitud limitada a 8 posiciones. Formato DD/MM/AAAA
             var_detail := var_detail || '1' || '|';                             --Campo 7 (6): Indicador de movimiento, requerido. Longitud limitada a 1 posición.                                      
-            var_detail := var_detail || DETAIL.RFC_COMPANIA;                        --Campo 8 (7): RFC Compañía. Longitud limitada a 13 posiciones. 
+            var_detail := var_detail || DETAIL.RFC_COMPANIA;                        --Campo 8 (7): RFC Compañía. Longitud limitada a 13 posiciones.
+            var_detail := var_detail || DETAIL.EMAIL_ADDRESS; 
             
             dbms_output.put_line(var_detail);
             FND_FILE.PUT_LINE(FND_FILE.LOG, var_detail);
