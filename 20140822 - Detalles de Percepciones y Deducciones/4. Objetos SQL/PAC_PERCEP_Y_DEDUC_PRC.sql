@@ -566,7 +566,7 @@ IS
                        AND PPA.PAYROLL_ID = NVL(P_PAYROLL_ID,  PPA.PAYROLL_ID)
                        AND PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME) = NVL(P_PERIOD_TYPE, PAC_HR_PAY_PKG.GET_PERIOD_TYPE(PPF.PAYROLL_NAME))
                        AND PPA.CONSOLIDATION_SET_ID = NVL(P_CONSOLIDATION_SET_ID, PPA.CONSOLIDATION_SET_ID)
-                       AND PPA.ACTION_TYPE IN ('Q', 'R', 'B')             
+                       AND PPA.ACTION_TYPE IN ('Q', 'R', 'B', 'V')             
                        AND PTP.PERIOD_NAME LIKE '%' || P_YEAR || '%'
                        AND PTP.PERIOD_NAME = NVL(P_PERIOD_NAME, PTP.PERIOD_NAME)
                        AND (EXTRACT(MONTH FROM PTP.END_DATE) >= P_START_MONTH
