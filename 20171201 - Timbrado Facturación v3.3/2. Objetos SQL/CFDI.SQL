@@ -127,12 +127,14 @@ public class CFDI {
                     if (objResultSet != null) try { objResultSet.close(); } catch(Exception exe) { return exe.getMessage(); }
                     if (objStatement != null) try { objStatement.close(); } catch(Exception exe) { return exe.getMessage(); }
                     if (objSQLConnection != null) try { objSQLConnection.close(); } catch(Exception exe) { return exe.getMessage(); }
+                    
+                    
+                    #sql {
+                        ROLLBACK
+                    };
+                    
                     return "-DUPLICATE-"+uuid;
                 }
-                
-                #sql {
-                    COMMIT
-                };
             }
         
         } catch (SQLException ex) {
@@ -162,6 +164,7 @@ public class CFDI {
                                   "eve.eve_desc " +
                            "from dbo.eventos eve "+
                            "where 1 = 1 " +
+                           "and eve.eve_title <> 'Error tecnico num:91' " +
                            "and eve.eve_desc like '%"+rfcemi+"_"+rfcrec+"_"+serfol+"_"+numfol+"%';";
 
         

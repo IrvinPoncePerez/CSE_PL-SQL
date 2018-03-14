@@ -1,5 +1,9 @@
 CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
 
+    SUBTYPE LOG_TYPE IS BINARY_INTEGER RANGE 0..1;
+      P_LOG     CONSTANT LOG_TYPE := 0;
+      P_DEBUG   CONSTANT LOG_TYPE := 1;
+    
 
     FUNCTION GET_CFDI_UUID
     (
@@ -46,6 +50,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
     AS
         LANGUAGE JAVA NAME 'CFDI.readXML(java.lang.String) return java.lang.String';
     
+    FUNCTION MERGE_PDF
+        (
+            P_FILES             PAC_PDF_FILES,
+            P_OUTPUT_DIRECTORY  VARCHAR2,
+            P_USERNAME          VARCHAR2,
+            P_REQUEST_ID        VARCHAR2
+        )
+        RETURN VARCHAR2
+    AS  
+        LANGUAGE JAVA NAME 'MERGE_PDF.mergePDF(oracle.sql.ARRAY, java.lang.String, java.lang.String, java.lang.String) return java.lang.String';
     
     PROCEDURE SYNC
         (
@@ -228,6 +242,7 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         var_put_pass            VARCHAR2(50) := 'oracle';
         
         var_result              VARCHAR2(10);
+        var_validate            NUMBER;
         
         var_year                NUMBER := EXTRACT(YEAR FROM SYSDATE);
         var_month               NUMBER := EXTRACT(MONTH FROM SYSDATE);
@@ -242,9 +257,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         LISTING_ERRORS_EXCEPTION    EXCEPTION;
         CFDI_ERROR_EXCEPTION        EXCEPTION;
         INSERT_NOTES_EXCEPTION      EXCEPTION;
+        READ_XML_EXCEPTION          EXCEPTION;
         DOWNLOAD_XML_EXCEPTION      EXCEPTION;
         DOWNLOAD_PDF_EXCEPTION      EXCEPTION;
         FATAL_EXCEPTION             EXCEPTION;
+        CFDI_DUPLICATE_EXCEPTION    EXCEPTION;
         
         CURSOR MESSAGES_CUR 
         IS
@@ -256,14 +273,24 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
            AND RFCEMI = P_RFCEMI
            AND RFCREC = P_RFCREC
            AND SERFOL = P_SERFOL
-           AND NUMFOL = P_NUMFOL;        
+           AND NUMFOL = P_NUMFOL;  
+           
+        PROCEDURE PUT_LOG(P_LEVEL     LOG_TYPE,
+                          P_MESSAGE   VARCHAR2)
+        IS
+        BEGIN
+            IF P_LEVEL IN (P_LOG) THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG, P_MESSAGE);
+            END IF;    
+        END PUT_LOG;     
+                 
     BEGIN
         
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'REQUEST_ID : ' || var_request_id);
-        FND_FILE.PUT_LINE(FND_FILE.LOG, 'TIMBRADO(P_RFCEMI => ' || P_RFCEMI ||
-                                               ' ,P_RFCREC => ' || P_RFCREC ||
-                                               ' ,P_SERFOL => ' || P_SERFOL ||
-                                               ' ,P_NUMFOL => ' || P_NUMFOL || ')');
+        PUT_LOG(P_LOG,'REQUEST_ID > var_request_id:' || var_request_id);
+        PUT_LOG(P_LOG,'PROCESS > TIMBRADO(P_RFCEMI=>' || P_RFCEMI ||
+                                       ', P_RFCREC=>' || P_RFCREC ||
+                                       ', P_SERFOL=>' || P_SERFOL ||
+                                       ', P_NUMFOL=>' || P_NUMFOL || ')');
                                                
         var_file_name := var_file_name;
         var_file_name := var_file_name || P_RFCEMI || '_';
@@ -275,17 +302,22 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
         DECLARE
             var_connection    UTL_TCP.CONNECTION;
         BEGIN          
+        
+            PUT_LOG(P_DEBUG,'FTP CONNECTION > var_host:' || var_host || ' var_port_post:' || var_port_post);    
+        
             var_connection := FTP.LOGIN
                                 (   
                                     P_HOST => var_host,
                                     P_PORT => var_port_post,
                                     P_USER => var_user,
                                     P_PASS => var_pass
-                                );
+                                );                    
             FTP.BINARY
             (
                 P_CONN => var_connection
             );
+            
+            PUT_LOG(P_LOG,'FTP PUT > FROM_FILE:' || var_file_name || '.txt TO_FILE:' || '/' || var_file_name || '.txt');
                         
             FTP.PUT
             (
@@ -294,34 +326,38 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                 P_FROM_FILE => var_file_name || '.txt',
                 P_TO_FILE   => '/' || var_file_name || '.txt'
             );
+            
+            PUT_LOG(P_DEBUG,'FTP LOGOUT');
                       
             FTP.LOGOUT
             (
                 P_CONN => var_connection
             );
             
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.txt transferido.');
+            PUT_LOG(P_LOG,'FILE > ' || var_file_name || '.txt transferido');
           
         EXCEPTION 
             WHEN OTHERS THEN
+                PUT_LOG(P_LOG, 'EXCEPTION > POST_FILE_EXCEPTION');
                 RAISE POST_FILE_EXCEPTION; 
         END;
         
         
         BEGIN
         
+            PUT_LOG(P_DEBUG, 'FILE REMOVE > LOCATION:CALVARIO FILENAME:' || var_file_name || '.txt'); 
+            
             UTL_FILE.FREMOVE
                 (
                     LOCATION => 'CALVARIO',
                     FILENAME => var_file_name || '.txt'
                 );
             
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.txt procesado.');
+            PUT_LOG(P_LOG, 'FILE > ' || var_file_name || '.txt procesado');
             
         EXCEPTION
             WHEN OTHERS THEN
-                fnd_file.put_line(fnd_file.log, sqlerrm);
-                
+                PUT_LOG(P_LOG, 'EXCEPTION > REMOVE_FILE_EXCEPTION');
                 RAISE REMOVE_FILE_EXCEPTION;
         END;
         
@@ -333,6 +369,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                 var_list_error      FTP.T_STRING_TABLE;
             BEGIN
                 
+                PUT_LOG(P_DEBUG, 'FTP CONNECTION > var_host:' || var_host || ' var_port_error:' || var_port_error);
+            
                 var_connection := FTP.LOGIN
                                     (
                                         P_HOST => var_host,
@@ -340,13 +378,17 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                                         P_USER => var_user,
                                         P_PASS => var_pass
                                     );
-                            
+                         
+                PUT_LOG(P_DEBUG, 'FTP NAMES LISTING');
+                   
                 FTP.NLST
                     (
                         P_CONN   => var_connection,
                         P_DIR    => '/',
                         P_LIST   => var_list_error
                     );
+                    
+                PUT_LOG(P_DEBUG, 'FTP LOGOUT');    
                     
                 FTP.LOGOUT
                     (
@@ -356,15 +398,17 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                 IF var_list_error.COUNT > 0 THEN
                 
                     FOR I IN var_list_error.FIRST .. var_list_error.LAST LOOP
+                    
+                        PUT_LOG(P_DEBUG, 'FILE > var_file_name:' || var_file_name);
                 
                         IF var_list_error(I) LIKE '%' || var_file_name || '%' THEN
                         
-                            FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.txt con error.');
-                            FND_FILE.PUT_LINE(FND_FILE.LOG, RPAD('*',40,'*'));
-                            FND_FILE.PUT_LINE(FND_FILE.LOG, RPAD(' ',15, ' ')||'ERROR DE TIMBRADO');
-                            FND_FILE.PUT_LINE(FND_FILE.LOG, RPAD('*',40,'*'));
+                            PUT_LOG(P_LOG, 'FILE ERROR > ' || var_file_name || '.txt');
                         
                             BEGIN
+                            
+                                PUT_LOG(P_DEBUG, 'FTP CONNECTION > var_host:' || var_host || ' var_port_error:' || var_port_error);
+                            
                                 var_connection := FTP.LOGIN
                                                     (
                                                         P_HOST => var_host,
@@ -372,16 +416,27 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                                                         P_USER => var_user,
                                                         P_PASS => var_pass
                                                     );
+                                                    
+                                PUT_LOG(P_LOG, 'FTP DELETE > FILE:' || var_list_error(I));                                                     
+                                                    
                                 FTP.DELETE
                                     (
                                         P_CONN => var_connection,
                                         P_FILE => var_list_error(I)
                                     );
+                                    
+                                PUT_LOG(P_DEBUG, 'FTP LOGOUT');                                                                      
+                                    
                                 FTP.LOGOUT
                                     (
                                         P_CONN  => var_connection
                                     );
                             END;
+                            
+                            PUT_LOG(P_LOG, 'PROCESS > GET_CFDI_MESSAGES(P_RFCEMI=>' || P_RFCEMI ||
+                                                                       ', P_RFCREC=>' || P_RFCREC ||
+                                                                       ', P_SERFOL=>' || P_SERFOL ||
+                                                                       ', P_NUMFOL=>' || P_NUMFOL || ')');
                             
                             var_result := GET_CFDI_MESSAGES
                                             (
@@ -393,11 +448,22 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                             
                             IF var_result = 'OK' THEN
                                 FOR MESSAGE IN MESSAGES_CUR LOOP
-                                    FND_FILE.PUT_LINE(FND_FILE.LOG,MESSAGE.EVE_DATE     ||'  '||
-                                                                   MESSAGE.EVE_TITLE   ||'  '||
-                                                                   MESSAGE.EVE_DESC);
+                                    PUT_LOG(P_LOG,MESSAGE.EVE_DATE ||'  '|| MESSAGE.EVE_TITLE ||'  '|| REPLACE(REPLACE(MESSAGE.EVE_DESC, CHR(10), ''), CHR(13), ''));
+                                    P_ERRBUF   := MESSAGE.EVE_DATE ||'  '|| MESSAGE.EVE_TITLE ||'  '|| REPLACE(REPLACE(MESSAGE.EVE_DESC, CHR(10), ''), CHR(13), '');
                                 END LOOP;
                             END IF;
+                            
+                        
+                            SELECT COUNT(1)
+                              INTO var_validate 
+                              FROM PAC_MASTEREDI_LOG_TB
+                             WHERE 1 = 1
+                               AND RFCEMI = P_RFCEMI
+                               AND RFCREC = P_RFCREC
+                               AND SERFOL = P_SERFOL
+                               AND NUMFOL = P_NUMFOL
+                               AND EVE_TITLE = 'Error tecnico num:91';                
+                            
                             
                             DELETE FROM PAC_MASTEREDI_LOG_TB PML
                              WHERE 1 = 1
@@ -408,6 +474,12 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                                
                             COMMIT;
                             
+                            IF var_validate > 0 THEN
+                                PUT_LOG(P_DEBUG, 'ERROR > Error tecnico num:91');
+                                EXIT;
+                            END IF;                 
+                            
+                            PUT_LOG(P_LOG, 'EXCEPTION > CFDI_ERROR_EXCEPTION');
                             RAISE CFDI_ERROR_EXCEPTION;
                         END IF;
                 
@@ -416,20 +488,20 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                 END IF;
             EXCEPTION
                 WHEN CFDI_ERROR_EXCEPTION THEN
+                    PUT_LOG(P_LOG, 'EXCEPTION > CFDI_ERROR_EXCEPTION');
                     RAISE CFDI_ERROR_EXCEPTION;
                 WHEN OTHERS THEN
+                    PUT_LOG(P_LOG, 'EXCEPTION > LISTING_ERRORS_EXCEPTION');
                     RAISE LISTING_ERRORS_EXCEPTION;    
             END;
             
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'GET_CFDI_UUID (' ||
-                                                    'P_RFCEMI=>' ||P_RFCEMI|| ', '||
-                                                    'P_RFCREC=>' ||P_RFCREC|| ', '||
-                                                    'P_SERFOL=>' ||P_SERFOL|| ', '||
-                                                    'P_NUMFOL=>' ||P_NUMFOL|| ', '||
-                                                    'P_EMIANIO=>' ||var_year|| ', '||
-                                                    'P_EMIMES=>' ||var_month||', '||
-                                                    'P_EMIDIA=>' ||var_day||
-                                                ')');
+            PUT_LOG(P_DEBUG, 'PROCESS > GET_CFDI_UUID (P_RFCEMI=>' || P_RFCEMI ||
+                                                    ', P_RFCREC=>' || P_RFCREC ||
+                                                    ', P_SERFOL=>' || P_SERFOL ||
+                                                    ', P_NUMFOL=>' || P_NUMFOL ||
+                                                    ', P_EMIANIO=>' || var_year ||
+                                                    ', P_EMIMES=>' || var_month ||
+                                                    ', P_EMIDIA=>' || var_day || ')'); 
             
             var_uuid := null;
             var_uuid := GET_CFDI_UUID 
@@ -442,19 +514,19 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                             P_EMIMES            => var_month,
                             P_EMIDIA            => var_day
                         );
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'UUID : ' || var_uuid);                        
+            
+            PUT_LOG(P_DEBUG,  'JAVA RESPONSE > ' || var_uuid);                                    
                
             IF var_uuid LIKE '-OK-null%'THEN
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'RESULT : NULL');
+                NULL;
             ELSIF var_uuid LIKE '-OK-%' THEN
                 var_waiting := 1;  
+            
+                PUT_LOG(P_DEBUG,  'JAVA RESPONSE > ' || var_uuid);
                 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, '');
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'Respuesta : ' || var_uuid);
                 var_uuid := TRIM(REPLACE(var_uuid, '-OK-', ''));
                 
-                FND_FILE.PUT_LINE(FND_FILE.LOG, 'UUID : ' || var_uuid);
-                FND_FILE.PUT_LINE(FND_FILE.LOG, '');
+                PUT_LOG(P_LOG, 'UUID > ' || var_uuid);
                 
                 BEGIN 
                     NOTES_REC.NOTE_TYPE               := 'MAINTAIN';
@@ -469,12 +541,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                         (
                            P_NOTES_REC => NOTES_REC
                         );
+                        
+                    PUT_LOG(P_LOG, 'AR_NOTE >  CUSTOMER_TRX_ID:' || P_CUSTOMER_TRX_ID || ' UUID:' || var_uuid);    
 
                     COMMIT;                        
                         
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.txt UUID insertado.');
+                    PUT_LOG(P_LOG, 'FILE > ' || var_file_name || '.XML UUID insertado');
+                    
                 EXCEPTION
                     WHEN OTHERS THEN
+                        PUT_LOG(P_LOG, 'EXCEPTION > INSERT_NOTES_EXCEPTION');
                         RAISE INSERT_NOTES_EXCEPTION;
                 END;
                 
@@ -482,6 +558,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                     var_connection  UTL_TCP.CONNECTION;
                     var_result      VARCHAR2(2000);
                 BEGIN
+                    
+                    PUT_LOG(P_DEBUG, 'FTP CONNECTION > var_host:' || var_host || ' var_port_transfer:' || var_port_transfer);    
+                
                     var_connection := FTP.LOGIN
                                         (
                                             P_HOST => var_host,
@@ -494,6 +573,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                         (
                             P_CONN => var_connection
                         );
+
+                    PUT_LOG(P_LOG, 'FTP GET > FROM_FILE:' ||'/'||P_RFCEMI||'/'||var_year||'/'||TRIM(TO_CHAR(var_month, '09'))||'/'||var_file_name||'.XML' ||' TO_FILE:' || '/'||var_file_name||'.XML');                        
                         
                     FTP.GET
                         (
@@ -502,44 +583,60 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                             P_TO_DIR    => 'CALVARIO',
                             P_TO_FILE   => '/'||var_file_name||'.XML');
                     
+                    PUT_LOG(P_DEBUG, 'FTP LOGOUT');
+                    
                     FTP.LOGOUT
                         (
                             P_CONN  => var_connection
                         );
-                        
-                    var_connection := FTP.LOGIN
-                                        (   
-                                            P_HOST => var_put_host,
-                                            P_PORT => '21',
-                                            P_USER => var_put_user,
-                                            P_PASS => var_put_pass
-                                        );
-                                        
-                    FTP.BINARY
-                    (
-                        P_CONN => var_connection
-                    );
-                                
-                    FTP.PUT
-                    (
-                        P_CONN      => var_connection,
-                        P_FROM_DIR  => 'CALVARIO',
-                        P_FROM_FILE => var_file_name || '.XML',
-                        P_TO_FILE   => '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.XML'
-                    );
-                              
-                    FTP.LOGOUT
-                    (
-                        P_CONN => var_connection
-                    );    
                     
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, var_file_name);
+                    IF P_REPORT IN ('Y', 'YES') THEN   
+                        
+                        PUT_LOG(P_DEBUG, 'FTP CONNECTION > var_put_host:' || var_put_host || ' var_port:21');
+                         
+                        var_connection := FTP.LOGIN
+                                            (   
+                                                P_HOST => var_put_host,
+                                                P_PORT => '21',
+                                                P_USER => var_put_user,
+                                                P_PASS => var_put_pass
+                                            );
+                                            
+                        FTP.BINARY
+                        (
+                            P_CONN => var_connection
+                        );
+                        
+                        PUT_LOG(P_LOG, 'FTP PUT > FROM_FILE:' || var_file_name || '.XML TO_FILE:' || '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.XML'); 
+                                    
+                        FTP.PUT
+                        (
+                            P_CONN      => var_connection,
+                            P_FROM_DIR  => 'CALVARIO',
+                            P_FROM_FILE => var_file_name || '.XML',
+                            P_TO_FILE   => '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.XML'
+                        );
+                        
+                        PUT_LOG(P_DEBUG, 'FTP LOGOUT');
+                                  
+                        FTP.LOGOUT
+                        (
+                            P_CONN => var_connection
+                        );
+                    END IF;        
+                    
+                    PUT_LOG(P_LOG, 'READ FILE > ' || var_file_name || '.XML');
+                    
                     var_result := READ_XML('/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.XML');
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, var_result);
+                    
+                    PUT_LOG(P_LOG, 'JAVA RESPONSE > ' || var_result);
+                    
                     IF var_result LIKE '%-CHANGE-%' THEN
-                        FND_FILE.PUT_LINE(FND_FILE.LOG, 'EL NODO DE XML O LOS NOMBRES DE ATRIBUTOS HAN CAMBIADO   ' || var_result);
-                        P_RETCODE  := 2;
+                        PUT_LOG(P_LOG, 'READ XML ERROR > ' || var_result);
+                        RAISE READ_XML_EXCEPTION;
                     END IF;
+                    
+                    PUT_LOG(P_DEBUG, 'FILE REMOVE > LOCATION:CALVARIO FILENAME:' || var_file_name || '.XML'); 
                     
                     UTL_FILE.FREMOVE
                     (
@@ -547,15 +644,22 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                         FILENAME => var_file_name || '.XML'
                     );
                         
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.XML descargado.');
+                    PUT_LOG(P_LOG, 'FILE > ' || var_file_name || '.XML descargado');
                 EXCEPTION
+                    WHEN READ_XML_EXCEPTION THEN
+                        PUT_LOG(P_LOG, 'EXCEPTION > READ_XML_EXCEPTION');
+                        RAISE READ_XML_EXCEPTION;
                     WHEN OTHERS THEN
+                        PUT_LOG(P_LOG, 'EXCEPTION > DOWNLOAD_XML_EXCEPTION');
                         RAISE DOWNLOAD_XML_EXCEPTION;
                 END;
                 
                 DECLARE
                     var_connection  UTL_TCP.CONNECTION;
                 BEGIN
+                
+                    PUT_LOG(P_DEBUG, 'FTP CONNECTION > var_host:' || var_host || ' var_port_transfer:' || var_port_transfer);
+                
                     var_connection := FTP.LOGIN
                                         (
                                             P_HOST => var_host,
@@ -569,6 +673,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                             P_CONN => var_connection
                         );
                         
+                    PUT_LOG(P_LOG, 'FTP GET > FROM_FILE:' ||'/'||P_RFCEMI||'/'||var_year||'/'||TRIM(TO_CHAR(var_month, '09'))||'/'||var_file_name||'.PDF' ||' TO_FILE:' || '/'||var_file_name||'.PDF');                         
+                        
                     FTP.GET
                         (
                             P_CONN      => var_connection,
@@ -576,88 +682,191 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                             P_TO_DIR    => 'CALVARIO',
                             P_TO_FILE   => '/'||var_file_name||'.PDF');
                     
+                    PUT_LOG(P_DEBUG, 'FTP LOGOUT');
+                    
                     FTP.LOGOUT
                         (
                             P_CONN  => var_connection
                         );
-                        
-                    var_connection := FTP.LOGIN
-                                        (   
-                                            P_HOST => var_put_host,
-                                            P_PORT => '21',
-                                            P_USER => var_put_user,
-                                            P_PASS => var_put_pass
-                                        );
-                                        
-                    FTP.BINARY
-                    (
-                        P_CONN => var_connection
-                    );
-                                
-                    FTP.PUT
-                    (
-                        P_CONN      => var_connection,
-                        P_FROM_DIR  => 'CALVARIO',
-                        P_FROM_FILE => var_file_name || '.PDF',
-                        P_TO_FILE   => '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.PDF'
-                    );
+                    
+                    IF P_REPORT IN ('Y', 'YES') THEN    
+                    
+                        PUT_LOG(P_DEBUG, 'FTP CONNECTION > var_put_host:' || var_put_host || ' var_port:21');    
+                    
+                        var_connection := FTP.LOGIN
+                                            (   
+                                                P_HOST => var_put_host,
+                                                P_PORT => '21',
+                                                P_USER => var_put_user,
+                                                P_PASS => var_put_pass
+                                            );
+                                            
+                        FTP.BINARY
+                        (
+                            P_CONN => var_connection
+                        );
                               
-                    FTP.LOGOUT
-                    (
-                        P_CONN => var_connection
-                    );      
+                        PUT_LOG(P_LOG, 'FTP PUT > FROM_FILE:' || var_file_name || '.PDF TO_FILE:' || '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.PDF');
+                              
+                        FTP.PUT
+                        (
+                            P_CONN      => var_connection,
+                            P_FROM_DIR  => 'CALVARIO',
+                            P_FROM_FILE => var_file_name || '.PDF',
+                            P_TO_FILE   => '/var/tmp/CARGAS/CALVARIO/' || var_file_name || '.PDF'
+                        );
+                                
+                        PUT_LOG(P_DEBUG, 'FTP LOGOUT');
+                          
+                        FTP.LOGOUT
+                        (
+                            P_CONN => var_connection
+                        );
+                    END IF;           
                         
+                    PUT_LOG(P_DEBUG, 'FILE REMOVE > LOCATION:CALVARIO FILENAME:' || var_file_name || '.PDF'); 
+                    
                     UTL_FILE.FREMOVE
                     (
                         LOCATION => 'CALVARIO',
                         FILENAME => var_file_name || '.PDF'
                     );
                     
-                    FND_FILE.PUT_LINE(FND_FILE.LOG, 'Archivo ' || var_file_name || '.PDF descargado.');
+                    PUT_LOG(P_LOG, 'FILE > ' || var_file_name || '.PDF descargado');
                 EXCEPTION
                     WHEN OTHERS THEN
+                        PUT_LOG(P_LOG, 'EXCEPTION > DOWNLOAD_PDF_EXCEPTION');
                         RAISE DOWNLOAD_PDF_EXCEPTION;
                 END;
                 
                 EXIT;
             
             ELSIF var_uuid LIKE '-DUPLICATE-%' THEN
-                var_result := GET_CFDI_MESSAGES
-                                (
-                                    P_RFCEMI    =>  P_RFCEMI,
-                                    P_RFCREC    =>  P_RFCREC,
-                                    P_SERFOL    =>  P_SERFOL,
-                                    P_NUMFOL    =>  P_NUMFOL
-                                );
+                
+                DECLARE
+                    var_connection      UTL_TCP.CONNECTION;
+                    var_list_error      FTP.T_STRING_TABLE;
+                BEGIN
+                    
+                    PUT_LOG(P_DEBUG, 'FTP CONNECTION > var_host:' || var_host || ' var_port_error:' || var_port_error);
+                
+                    var_connection := FTP.LOGIN
+                                        (
+                                            P_HOST => var_host,
+                                            P_PORT => var_port_error,
+                                            P_USER => var_user,
+                                            P_PASS => var_pass
+                                        );
+                             
+                    PUT_LOG(P_DEBUG, 'FTP NAMES LISTING');
+                       
+                    FTP.NLST
+                        (
+                            P_CONN   => var_connection,
+                            P_DIR    => '/',
+                            P_LIST   => var_list_error
+                        );
+                        
+                    PUT_LOG(P_DEBUG, 'FTP LOGOUT');    
+                        
+                    FTP.LOGOUT
+                        (
+                            P_CONN  => var_connection
+                        );
+                      
+                    IF var_list_error.COUNT > 0 THEN
+                    
+                        FOR I IN var_list_error.FIRST .. var_list_error.LAST LOOP
+                        
+                            PUT_LOG(P_DEBUG, 'FILE > var_file_name:' || var_file_name);
+                    
+                            IF var_list_error(I) LIKE '%' || var_file_name || '%' THEN
                             
-                IF var_result = 'OK' THEN
-                    FOR MESSAGE IN MESSAGES_CUR LOOP
-                        FND_FILE.PUT_LINE(FND_FILE.LOG,MESSAGE.EVE_DATE     ||'  '||
-                                                       MESSAGE.EVE_TITLE   ||'  '||
-                                                       MESSAGE.EVE_DESC);
-                    END LOOP;
-                END IF;
+                                PUT_LOG(P_LOG, 'FILE ERROR > ' || var_file_name || '.txt');
                             
-                DELETE FROM PAC_MASTEREDI_LOG_TB PML
-                 WHERE 1 = 1
-                   AND RFCEMI = P_RFCEMI
-                   AND RFCREC = P_RFCREC
-                   AND SERFOL = P_SERFOL
-                   AND NUMFOL = P_NUMFOL;
-                               
-                COMMIT;
-                            
-                RAISE CFDI_ERROR_EXCEPTION;
+                                BEGIN
+                                
+                                    PUT_LOG(P_DEBUG, 'FTP CONNECTION > var_host:' || var_host || ' var_port_error:' || var_port_error);
+                                
+                                    var_connection := FTP.LOGIN
+                                                        (
+                                                            P_HOST => var_host,
+                                                            P_PORT => var_port_error,
+                                                            P_USER => var_user,
+                                                            P_PASS => var_pass
+                                                        );
+                                                        
+                                    PUT_LOG(P_LOG, 'FTP DELETE > FILE:' || var_list_error(I));                                                     
+                                                        
+                                    FTP.DELETE
+                                        (
+                                            P_CONN => var_connection,
+                                            P_FILE => var_list_error(I)
+                                        );
+                                        
+                                    PUT_LOG(P_DEBUG, 'FTP LOGOUT');                                                                      
+                                        
+                                    FTP.LOGOUT
+                                        (
+                                            P_CONN  => var_connection
+                                        );
+                                END;
+                                
+                                PUT_LOG(P_LOG, 'PROCESS > GET_CFDI_MESSAGES(P_RFCEMI=>' || P_RFCEMI ||
+                                                                           ', P_RFCREC=>' || P_RFCREC ||
+                                                                           ', P_SERFOL=>' || P_SERFOL ||
+                                                                           ', P_NUMFOL=>' || P_NUMFOL || ')');
+                                
+                                var_result := GET_CFDI_MESSAGES
+                                                (
+                                                    P_RFCEMI    =>  P_RFCEMI,
+                                                    P_RFCREC    =>  P_RFCREC,
+                                                    P_SERFOL    =>  P_SERFOL,
+                                                    P_NUMFOL    =>  P_NUMFOL
+                                                );
+                                
+                                IF var_result = 'OK' THEN
+                                    FOR MESSAGE IN MESSAGES_CUR LOOP
+                                        PUT_LOG(P_LOG,MESSAGE.EVE_DATE ||'  '|| MESSAGE.EVE_TITLE ||'  '|| REPLACE(REPLACE(MESSAGE.EVE_DESC, CHR(10), ''), CHR(13), ''));
+                                        P_ERRBUF   := MESSAGE.EVE_DATE ||'  '|| MESSAGE.EVE_TITLE ||'  '|| REPLACE(REPLACE(MESSAGE.EVE_DESC, CHR(10), ''), CHR(13), '');
+                                    END LOOP;
+                                END IF;
+                                
+                                DELETE FROM PAC_MASTEREDI_LOG_TB PML
+                                 WHERE 1 = 1
+                                   AND RFCEMI = P_RFCEMI
+                                   AND RFCREC = P_RFCREC
+                                   AND SERFOL = P_SERFOL
+                                   AND NUMFOL = P_NUMFOL;
+                                   
+                                COMMIT;              
+                                
+                                PUT_LOG(P_LOG, 'EXCEPTION > CFDI_DUPLICATE_EXCEPTION');
+                                RAISE CFDI_DUPLICATE_EXCEPTION;
+                            END IF;
+                    
+                        END LOOP;
+                    
+                    END IF;
+                EXCEPTION
+                    WHEN CFDI_DUPLICATE_EXCEPTION THEN
+                        PUT_LOG(P_LOG, 'EXCEPTION > CFDI_DUPLICATE_EXCEPTION');
+                        RAISE CFDI_DUPLICATE_EXCEPTION;
+                    WHEN OTHERS THEN
+                        PUT_LOG(P_LOG, 'EXCEPTION > LISTING_ERRORS_EXCEPTION');
+                        RAISE LISTING_ERRORS_EXCEPTION;    
+                END;
+                           
             ELSE
-                FND_FILE.PUT_LINE(FND_FILE.LOG, '');
-                FND_FILE.PUT_LINE(FND_FILE.LOG, var_uuid);
-                FND_FILE.PUT_LINE(FND_FILE.LOG, '');       
+                PUT_LOG(P_DEBUG, 'ELSE RESPONSE > ' || var_uuid);       
             END IF;
         
         END LOOP;   
         
         IF P_REPORT IN ('Y', 'YES') THEN
             IF var_waiting = 1 THEN
+            
+                PUT_LOG(P_LOG, 'FND_REQUEST > ADD_LAYOUT > PAC_INVOICE_REPORT');
             
                 var_layout_value := FND_REQUEST.ADD_LAYOUT 
                                     (
@@ -668,6 +877,11 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                                        OUTPUT_FORMAT        => 'PDF' 
                                     );
 
+                PUT_LOG(P_LOG, 'FND_REQUEST > SUBMIT_REQUEST > PAC_INVOICE_REPORT');
+                PUT_LOG(P_LOG, 'PAC_INVOICE_REPORT > ARGUMENT1:'||P_SERFOL);
+                PUT_LOG(P_LOG, 'PAC_INVOICE_REPORT > ARGUMENT2:'||P_NUMFOL);
+                PUT_LOG(P_LOG, 'PAC_INVOICE_REPORT > ARGUMENT3:'||P_RFCREC);
+                PUT_LOG(P_LOG, 'PAC_INVOICE_REPORT > ARGUMENT4:'||P_RFCEMI);
 
                 var_report_request_id := FND_REQUEST.SUBMIT_REQUEST
                                          ( 
@@ -683,6 +897,8 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                                          );
                                          
                 STANDARD.COMMIT;
+                
+                PUT_LOG(P_LOG, 'FND_CONCURRENT > WAI_FOR_REQUEST > var_report_request_id:'|| var_report_request_id);
              
                 waiting := FND_CONCURRENT.WAIT_FOR_REQUEST 
                            (
@@ -710,12 +926,16 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                    AND FCR.REQUEST_ID = FCO.CONCURRENT_REQUEST_ID
                    AND FCO.FILE_TYPE IN ('PDF', 'pdf');
                    
+                PUT_LOG(P_LOG, 'QUERY > var_out_file_name:' || var_out_file_name);
+                PUT_LOG(P_LOG, 'QUERY > var_pdf_file_name:' || var_pdf_file_name);                        
                    
                 SELECT DD.DIRECTORY_PATH
                   INTO var_source_dir
                   FROM DBA_DIRECTORIES DD
                  WHERE 1 = 1
                    AND DD.DIRECTORY_NAME = 'CALVARIO';
+                   
+                PUT_LOG(P_LOG, 'QUERY > var_source_dir:' || var_source_dir);                   
                    
                 FND_GLOBAL.APPS_INITIALIZE 
                 (
@@ -729,7 +949,15 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
                     P_ACCESS_MODE => 'S', 
                     P_ORG_ID => 1329
                 );                       
-                           
+                
+                PUT_LOG(P_LOG, 'FND_REQUEST > SUBMIT_REQUEST > PAC_INVOICE_MOVE');
+                PUT_LOG(P_LOG, 'PAC_INVOICE_MOVE > ARGUMENT1:'||var_source_dir);
+                PUT_LOG(P_LOG, 'PAC_INVOICE_MOVE > ARGUMENT2:'||var_file_name);
+                PUT_LOG(P_LOG, 'PAC_INVOICE_MOVE > ARGUMENT3:'||var_out_file_name);
+                PUT_LOG(P_LOG, 'PAC_INVOICE_MOVE > ARGUMENT4:'||var_pdf_file_name);
+                PUT_LOG(P_LOG, 'PAC_INVOICE_MOVE > ARGUMENT5:'||'XML');
+                PUT_LOG(P_LOG, 'PAC_INVOICE_MOVE > ARGUMENT6:'||'PDF');
+                                           
                 var_move_request_id := FND_REQUEST.SUBMIT_REQUEST
                                        ( 
                                             APPLICATION =>'AR',
@@ -760,17 +988,21 @@ CREATE OR REPLACE PACKAGE BODY APPS.PAC_INVOICE_PKG IS
             P_ERRBUF   := 'LISTING_ERRORS_EXCEPTION : Error al recuperar la lista de errores del archivo ' || var_file_name || '.';
             P_RETCODE  := 1;
         WHEN CFDI_ERROR_EXCEPTION THEN
-            P_ERRBUF   := 'CFDI_ERROR_EXCEPTION : El archivo ' || var_file_name || ' marcó error al momento del timbrado.';
             P_RETCODE  := 2;
         WHEN INSERT_NOTES_EXCEPTION THEN
             P_ERRBUF   := 'INSERT_NOTES_EXCEPTION : Error al insertar el UUID como AR_NOTE para el archivo ' || var_file_name || '.';
             P_RETCODE  := 1;
+        WHEN READ_XML_EXCEPTION THEN
+            P_ERRBUF   := 'READ_XML_EXCEPTION : El Nodo de XML o los Nombres de Atributos han cambiado.';
+            P_RETCODE  := 2;
         WHEN DOWNLOAD_XML_EXCEPTION THEN
             P_ERRBUF   := 'DOWNLOAD_XML_EXCEPTION : Error al descargar el archivo *.XML del archivo ' || var_file_name || '.';
             P_RETCODE  := 1;
         WHEN DOWNLOAD_PDF_EXCEPTION THEN
             P_ERRBUF   := 'DOWNLOAD_PDF_EXCEPTION : Error al descargar el archivo *.PDF del archivo ' || var_file_name || '.';
             P_RETCODE  := 1;
+        WHEN CFDI_DUPLICATE_EXCEPTION THEN
+            P_RETCODE  := 1;    
         WHEN FATAL_EXCEPTION THEN
             P_ERRBUF   := 'EXCEPTION : Excepción no manejada.';
             P_RETCODE  := 2;

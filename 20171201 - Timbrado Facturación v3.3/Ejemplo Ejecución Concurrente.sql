@@ -19,17 +19,17 @@ BEGIN
     mo_global.set_policy_context ('S', 1329);
     
 
-    V_REQUEST_ID := APPS.FND_REQUEST.SUBMIT_REQUEST( APPLICATION =>'AR',
-                                                    PROGRAM     =>'PAC_INVOICE_SIGNED',
-                                                    DESCRIPTION => NULL,
-                                                    START_TIME  => NULL,
-                                                    SUB_REQUEST => FALSE,
-                                                    ARGUMENT1 => 'PAC941215E50',
-                                                    ARGUMENT2 => 'NWM9709244W4',
-                                                    ARGUMENT3 => 'CRTG',
-                                                    ARGUMENT4 => '244',
-                                                    ARGUMENT5 => 3488964
-                                                  );
+--    V_REQUEST_ID := APPS.FND_REQUEST.SUBMIT_REQUEST( APPLICATION =>'AR',
+--                                                    PROGRAM     =>'PAC_INVOICE_SIGNED',
+--                                                    DESCRIPTION => NULL,
+--                                                    START_TIME  => NULL,
+--                                                    SUB_REQUEST => FALSE,
+--                                                    ARGUMENT1 => 'PAC941215E50',
+--                                                    ARGUMENT2 => 'NWM9709244W4',
+--                                                    ARGUMENT3 => 'CRTG',
+--                                                    ARGUMENT4 => '244',
+--                                                    ARGUMENT5 => 3488964
+--                                                  );
 
     DBMS_OUTPUT.PUT_LINE(V_REQUEST_ID);
     
@@ -64,7 +64,7 @@ BEGIN
                                                     START_TIME  => NULL,
                                                     SUB_REQUEST => FALSE,
                                                     ARGUMENT1 => 2018,
-                                                    ARGUMENT2 => 2
+                                                    ARGUMENT2 => 3
                                                   );
 
     DBMS_OUTPUT.PUT_LINE(V_REQUEST_ID);

@@ -32,5 +32,14 @@ CREATE OR REPLACE PACKAGE APPS.PAC_INVOICE_PKG IS
             P_FILE_NAME         VARCHAR2
         )
         RETURN VARCHAR2;
+        
+    FUNCTION MERGE_PDF
+        (
+            P_FILES             PAC_PDF_FILES,
+            P_OUTPUT_DIRECTORY  VARCHAR2,
+            P_USERNAME          VARCHAR2,
+            P_REQUEST_ID        VARCHAR2
+        )
+        RETURN VARCHAR2;        
 
 END PAC_INVOICE_PKG;
